@@ -13,4 +13,5 @@ add_executable(${PROJECT_NAME}
     src/tsp_utilities.c
     include/tsp.h
     include/tsp_utilities.h
+    include/instance.h
 )
