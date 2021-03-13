@@ -147,6 +147,24 @@ void parse_input_file(instance* inst) {
 }
 
 
+void print_nodes_dat_file(const instance* inst) {
+
+	FILE* nodes_file = fopen("nodes.dat", "w");
+
+	if (nodes_file == NULL) {
+		print_error("nodes.dat not found!");
+	}
+
+	for (int i = 0; i < inst->nnodes; ++i) {
+		fprintf(nodes_file, "%f %f\n", inst->xcoord[i], inst->ycoord[i]);
+	}
+
+	fclose(nodes_file);
+
+	return;
+}
+
+
 void print_error(const char* err) { 
 	printf("\n\n ERROR: %s \n\n", err);
 	fflush(NULL);														// If stream pointer is NULL, all open output streams are flushed

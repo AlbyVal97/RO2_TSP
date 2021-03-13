@@ -35,6 +35,9 @@ int main(int argc, char **argv) {
 
 	free_instance(&inst);
 
+	// Plot the resulting optimal tour using Gnuplot
+	system("C:/\"Program Files\"/gnuplot/bin/gnuplot.exe ../src/gnuplot_commands.txt");
+
 	return 0; 
 
 }

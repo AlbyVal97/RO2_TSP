@@ -10,6 +10,9 @@ void parse_command_line(int argc, char** argv, instance* inst);
 // Opens and parses input_file and fills the instance with data
 void parse_input_file(instance* inst);
 
+// Creates and fills a "nodes.dat" file to allow for graph plotting
+void print_nodes_dat_file(const instance* inst);
+
 // Prints in a standard way the provided type of error
 void print_error(const char* err);
 
