@@ -2,14 +2,20 @@
 
 #define INSTANCE_H_
 
-#define VERBOSE				    1000		// printing level  (debug_mode if VERBOSE >= 1000)
-
-//hard-wired parameters
+// Hard-wired parameters
 #define XSMALL		  		  1e-5 		// 1e-4*	// tolerance used to decide ingerality of 0-1 var.s
 #define EPSILON		  		  1e-9		// 1e-9		// very small numerical tolerance 
 #define TICKS_PER_SECOND 	  1000.0  	// cplex's ticks on Intel Core i7 quadcore @2.3GHZ
 
-//data structures
+
+// Verbosity levels enumeration
+typedef enum {
+	LOW,
+	MEDIUM,
+	HIGH
+} verbose;
+
+// Problem instance data structure
 typedef struct {
 
 	// input data
@@ -20,8 +26,9 @@ typedef struct {
 
 	// parameters 
 	int model_type;
-	double timelimit;						// overall time limit, in sec.s
-	char input_file[1000];		  			// input file
+	double timelimit;						// overall time limit, in seconds
+	char input_file[1000];		  			// input file name
+	int verbose;							// verbosity value
 
 	// global data
 	double zbest;							// value of the best sol. available

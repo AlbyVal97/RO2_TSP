@@ -7,11 +7,6 @@
 #include "tsp.h"
 #include "tsp_utilities.h"
 
-double second();
-void parse_command_line(int argc, char** argv, instance *inst);
-void read_input(instance *inst);
-
-
 
 int main(int argc, char **argv) {
 
@@ -20,12 +15,13 @@ int main(int argc, char **argv) {
 		exit(1);
 	}
 
-	//double t1 = second();
-	//printf("Timestamp 1: %f", t1);
+	double t1 = second();
 
 	instance inst;
 
-	parse_command_line(argc, argv, &inst);     
+	parse_command_line(argc, argv, &inst);
+
+	if (inst.verbose >= HIGH) { printf("Timestamp 1: %lf seconds.\n", t1); }
 	
 	//printf(" file %s has %d non-empty lines\n", inst.input_file, number_of_nonempty_lines(inst.input_file)); exit(1);
 
@@ -33,13 +29,11 @@ int main(int argc, char **argv) {
 
 	/* 
 	if ( TSPopt(&inst) ) print_error(" error within VRPopt()");
+	*/
+
 	double t2 = second(); 
     
-	if ( VERBOSE >= 1 )   
-	{
-		printf("... VRP problem solved in %lf sec.s\n", t2-t1);  
-	}
-	*/
+	if ( inst.verbose >= LOW ) { printf("TSP problem solved successfully in %lf seconds.\n", t2-t1); }
 
 	free_instance(&inst);
 

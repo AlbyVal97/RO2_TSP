@@ -8,7 +8,6 @@ include_directories(
 
 add_executable(${PROJECT_NAME}
     src/main.c
-    src/chrono.c
     src/tsp.c
     src/tsp_utilities.c
     include/tsp.h
