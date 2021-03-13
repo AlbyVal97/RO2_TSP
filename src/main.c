@@ -27,11 +27,9 @@ int main(int argc, char **argv) {
 
 	parse_input_file(&inst);
 
-	/* 
-	if ( TSPopt(&inst) ) print_error(" error within VRPopt()");
-	*/
+	if ( TSPopt(&inst) ) print_error(" error within TSPopt()");
 
-	double t2 = second(); 
+	double t2 = second();
     
 	if ( inst.verbose >= LOW ) { printf("TSP problem solved successfully in %lf seconds.\n", t2-t1); }
 
