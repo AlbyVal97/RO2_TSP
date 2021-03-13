@@ -2,7 +2,7 @@
 
 #define TSP_H_
 
-#include "instance.h"
+#include "tsp_utilities.h"
 
 // Optimizes the provided instance of the TSP
 int TSPopt(instance* inst);
