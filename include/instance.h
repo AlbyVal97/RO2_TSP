@@ -15,6 +15,15 @@ typedef enum {
 	HIGH
 } verbose;
 
+// Model type enumeration
+typedef enum {
+	BASIC,
+	MTZ_STATIC,
+	MTZ_LAZY,
+	MTZ_SUBTOUR_SIZE_2,
+	GG
+} model_type;
+
 // Problem instance data structure
 typedef struct {
 
