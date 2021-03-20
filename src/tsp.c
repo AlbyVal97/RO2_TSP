@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <cplex.h>
+#include <gnuplot_c.h>
 
 #include "tsp.h"
 
@@ -19,9 +20,15 @@ int TSPopt(instance* inst) {
 	// Cplex's parameter setting
 	// ...
 
+	// Executes the actual optimization procedure
 	if (CPXmipopt(env, lp)) { print_error("CPXmipopt() error"); }
 
 	// use the optimal solution found by CPLEX
+
+	FILE* edges_file = fopen("edges.dat", "w");
+	if (edges_file == NULL) {
+		print_error("edges.dat not found!");
+	}
 
 	int ncols = CPXgetnumcols(env, lp);
 	// Allocate memory for the optimal solution array
@@ -31,15 +38,21 @@ int TSPopt(instance* inst) {
 	// Scan all legal edges and print the ones involved (with x ~ 1) in the optimal tour
 	for (int i = 0; i < inst->nnodes; i++) {
 		for (int j = i + 1; j < inst->nnodes; j++) {
-			if (xstar[xpos(i, j, inst)] > 0.5) printf("x(%3d,%3d) = 1\n", i + 1, j + 1);
+			if (xstar[xpos(i, j, inst)] > 0.5) {
+				printf("x(%3d,%3d) = 1\n", i + 1, j + 1);
+
+				fprintf(edges_file, "%f %f\n%f %f\n\n", inst->xcoord[i], inst->ycoord[i], inst->xcoord[j], inst->ycoord[j]);
+			}
 		}
 	}
-	free(xstar);
 
-	// free and close cplex model   
+	fclose(edges_file);
+
+	// Free allocated memory and close Cplex model
+	free(xstar);
 	CPXfreeprob(env, &lp);
 	CPXcloseCPLEX(&env);
-
+	
 	return 0; // or an appropriate nonzero error code
 }
 
