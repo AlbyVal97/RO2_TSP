@@ -11,7 +11,7 @@
 void parse_command_line(int argc, char** argv, instance* inst) {
 
 	// Set default values for the instance
-	inst->model_type = 0;
+	inst->model_type = BASIC;
 	strcpy(inst->input_file, "NULL");
 	inst->timelimit = CPX_INFBOUND;
 	inst->integer_costs = 0;

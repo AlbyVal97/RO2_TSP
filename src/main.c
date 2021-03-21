@@ -5,7 +5,6 @@
 #include <cplex.h>
 
 #include "tsp.h"
-#include "tsp_utilities.h"
 
 
 int main(int argc, char **argv) {
@@ -22,21 +21,21 @@ int main(int argc, char **argv) {
 	parse_command_line(argc, argv, &inst);
 
 	if (inst.verbose >= HIGH) { printf("Timestamp 1: %lf seconds.\n", t1); }
-	
-	//printf(" file %s has %d non-empty lines\n", inst.input_file, number_of_nonempty_lines(inst.input_file)); exit(1);
 
 	parse_input_file(&inst);
 
-	if ( TSPopt(&inst) ) print_error(" error within TSPopt()");
+	if (TSPopt(&inst)) { print_error(" error within TSPopt()"); }
 
 	double t2 = second();
     
 	if ( inst.verbose >= LOW ) { printf("TSP problem solved successfully in %lf seconds.\n", t2-t1); }
 
-	free_instance(&inst);
+	
 
 	// Plot the resulting optimal tour using Gnuplot
-	system("C:/\"Program Files\"/gnuplot/bin/gnuplot.exe ../src/gnuplot_commands.txt");
+	if (inst.verbose >= MEDIUM) { system("C:/\"Program Files\"/gnuplot/bin/gnuplot.exe ../src/gnuplot_commands.txt"); }
+
+	free_instance(&inst);
 
 	return 0; 
 
