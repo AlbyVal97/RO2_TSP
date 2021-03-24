@@ -111,7 +111,7 @@ void parse_input_file(instance* inst) {
 
 		if (strncmp(par_name, "EDGE_WEIGHT_TYPE", 16) == 0) {
 			token1 = strtok(NULL, " :\n");
-			if (strncmp(token1, "EUC_2D", 6) != 0) { print_error("Format error: only EUC_2D weight implemented yet."); }
+			if ((strncmp(token1, "EUC_2D", 6) != 0) && (strncmp(token1, "ATT", 3) != 0)) { print_error("Format error: only EUC_2D and ATT weight implemented yet."); }
 			if (debug_mode) { printf("Edge weight type: \"%s\" \n", token1); }
 			continue;
 		}

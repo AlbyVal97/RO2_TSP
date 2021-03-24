@@ -14,15 +14,15 @@ int main(int argc, char **argv) {
 		exit(1);
 	}
 
-	double t1 = second();
-
 	instance inst;
 
 	parse_command_line(argc, argv, &inst);
 
-	if (inst.verbose >= HIGH) { printf("Timestamp 1: %lf seconds.\n", t1); }
-
 	parse_input_file(&inst);
+
+	double t1 = second();
+
+	if (inst.verbose >= HIGH) { printf("Timestamp 1: %lf seconds.\n", t1); }
 
 	if (TSPopt(&inst)) { print_error(" error within TSPopt()"); }
 
