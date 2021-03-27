@@ -15,7 +15,8 @@ int TSPopt(instance* inst) {
 	CPXENVptr env = CPXopenCPLEX(&error);
 	CPXLPptr lp = CPXcreateprob(env, &error, "TSP");
 
-	CPXsetdblparam(env, CPX_PARAM_TILIM, inst->timelimit + 0.0);
+	// Set the time_limit parameter according to user input or default value.
+	if (CPXsetdblparam(env, CPX_PARAM_TILIM, inst->timelimit)) { print_error("CPXsetdblparam() error"); }
 
 	build_model(inst, env, lp);
 
@@ -113,6 +114,8 @@ int ypos_compact(int i, int j, instance* inst) {
 
 void build_model(instance* inst, CPXENVptr env, CPXLPptr lp) {
 
+	char model_file_path[100];
+
 	switch (inst->model_type) {
 
 		case BASIC:
@@ -155,7 +158,9 @@ void build_model(instance* inst, CPXENVptr env, CPXLPptr lp) {
 			}
 
 			// Outputs to file "basic_model.lp" the built model
-			CPXwriteprob(env, lp, "../results/basic_model.lp", NULL);
+			sprintf(model_file_path, "../models/%s/basic_model.lp", inst->inst_name);
+			if (inst->verbose >= MEDIUM) printf("model_file_path where .lp file is generated: %s\n", model_file_path);
+			CPXwriteprob(env, lp, model_file_path, NULL);
 
 			free(cname[0]);
 			free(cname);
@@ -266,7 +271,9 @@ void build_model(instance* inst, CPXENVptr env, CPXLPptr lp) {
 			}
 
 			// Outputs to file "model_MTZ_static.lp" the built model
-			CPXwriteprob(env, lp, "../results/model_MTZ_static.lp", NULL);
+			sprintf(model_file_path, "../models/%s/model_MTZ_static.lp", inst->inst_name);
+			if (inst->verbose >= MEDIUM) printf("model_file_path where .lp file is generated: %s\n", model_file_path);
+			CPXwriteprob(env, lp, model_file_path, NULL);
 
 			free(cname[0]);
 			free(cname);
@@ -377,7 +384,9 @@ void build_model(instance* inst, CPXENVptr env, CPXLPptr lp) {
 			}
 
 			// Outputs to file "model_MTZ_lazy_u_consistency.lp" the built model
-			CPXwriteprob(env, lp, "../results/model_MTZ_lazy_u_consistency.lp", NULL);
+			sprintf(model_file_path, "../models/%s/model_MTZ_lazy_u_consistency.lp", inst->inst_name);
+			if (inst->verbose >= MEDIUM) printf("model_file_path where .lp file is generated: %s\n", model_file_path);
+			CPXwriteprob(env, lp, model_file_path, NULL);
 
 			free(cname[0]);
 			free(cname);
@@ -505,7 +514,9 @@ void build_model(instance* inst, CPXENVptr env, CPXLPptr lp) {
 			}
 
 			// Outputs to file "model_MTZ_lazy_2_node_SECs.lp" the built model
-			CPXwriteprob(env, lp, "../results/model_MTZ_lazy_2_node_SECs.lp", NULL);
+			sprintf(model_file_path, "../models/%s/model_MTZ_lazy_2_node_SECs.lp", inst->inst_name);
+			if (inst->verbose >= MEDIUM) printf("model_file_path where .lp file is generated: %s\n", model_file_path);
+			CPXwriteprob(env, lp, model_file_path, NULL);
 
 			free(cname[0]);
 			free(cname);
@@ -648,7 +659,9 @@ void build_model(instance* inst, CPXENVptr env, CPXLPptr lp) {
 			}
 
 			// Outputs to file "model_GG.lp" the built model
-			CPXwriteprob(env, lp, "../results/model_GG.lp", NULL);
+			sprintf(model_file_path, "../models/%s/model_GG.lp", inst->inst_name);
+			if (inst->verbose >= MEDIUM) printf("model_file_path where .lp file is generated: %s\n", model_file_path);
+			CPXwriteprob(env, lp, model_file_path, NULL);
 
 			free(cname[0]);
 			free(cname);

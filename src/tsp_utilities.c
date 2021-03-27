@@ -80,6 +80,7 @@ void parse_input_file(instance* inst) {
 
 		if (strncmp(par_name, "NAME", 4) == 0) {
 			token1 = strtok(NULL, " :\n");
+			strcpy(inst->inst_name, token1);
 			if (debug_mode) { printf("Name of the instance: \"%s\" \n", token1); }
 			continue;
 		}

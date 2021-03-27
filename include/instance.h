@@ -29,6 +29,7 @@ typedef struct {
 
 	// input data
 	int nnodes;
+	char inst_name[100];
 	double* xcoord;
 	double* ycoord;
 	int integer_costs;                      // = 1 for integer costs (rounded distances), 0 otherwise
