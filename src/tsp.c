@@ -28,10 +28,41 @@ int TSPopt(instance* inst) {
 
 	// use the optimal solution found by CPLEX
 
-	FILE* edges_plot_file_name = fopen("../plots/edges_plot.dat", "w");
-	if (edges_plot_file_name == NULL) {
-		print_error("edges_plot.dat not found!");
+	// Create the edges.dat file associated to the correct model type
+	FILE* edges_plot_file_name = NULL;
+	if (inst->verbose >= MEDIUM) {
+
+		char edges_file_path[100];
+		sprintf(edges_file_path, "../outputs/%s", inst->inst_name);
+
+		switch (inst->model_type) {
+
+			case BASIC:
+				sprintf(edges_file_path, "%s/basic_model_edges.dat", edges_file_path);
+				break;
+
+			case MTZ_STATIC:
+				sprintf(edges_file_path, "%s/model_MTZ_static_edges.dat", edges_file_path);
+				break;
+
+			case MTZ_LAZY:
+				sprintf(edges_file_path, "%s/model_MTZ_lazy_u_consistency_edges.dat", edges_file_path);
+				break;
+
+			case MTZ_SUBTOUR_SIZE_2:
+				sprintf(edges_file_path, "%s/model_MTZ_lazy_2_node_SECs_edges.dat", edges_file_path);
+				break;
+
+			case GG:
+				sprintf(edges_file_path, "%s/model_GG_edges.dat", edges_file_path);
+				break;
+		}
+		printf("Complete path for *.dat file: %s\n\n", edges_file_path);
+
+		edges_plot_file_name = fopen(edges_file_path, "w");
+		if (edges_plot_file_name == NULL) print_error("File edges.dat not found!");
 	}
+	
 
 	int ncols = CPXgetnumcols(env, lp);
 	// Allocate memory for the optimal solution array
@@ -69,7 +100,9 @@ int TSPopt(instance* inst) {
 		}
 	}
 
-	fclose(edges_plot_file_name);
+	if (inst->verbose >= MEDIUM) {
+		fclose(edges_plot_file_name);
+	}
 
 	// Free allocated memory and close Cplex model
 	free(xstar);
@@ -158,8 +191,8 @@ void build_model(instance* inst, CPXENVptr env, CPXLPptr lp) {
 			}
 
 			// Outputs to file "basic_model.lp" the built model
-			sprintf(model_file_path, "../models/%s/basic_model.lp", inst->inst_name);
-			if (inst->verbose >= MEDIUM) printf("model_file_path where .lp file is generated: %s\n", model_file_path);
+			sprintf(model_file_path, "../outputs/%s/basic_model.lp", inst->inst_name);
+			if (inst->verbose >= MEDIUM) printf("\nComplete path for *.lp file: %s\n", model_file_path);
 			CPXwriteprob(env, lp, model_file_path, NULL);
 
 			free(cname[0]);
@@ -271,8 +304,8 @@ void build_model(instance* inst, CPXENVptr env, CPXLPptr lp) {
 			}
 
 			// Outputs to file "model_MTZ_static.lp" the built model
-			sprintf(model_file_path, "../models/%s/model_MTZ_static.lp", inst->inst_name);
-			if (inst->verbose >= MEDIUM) printf("model_file_path where .lp file is generated: %s\n", model_file_path);
+			sprintf(model_file_path, "../outputs/%s/model_MTZ_static.lp", inst->inst_name);
+			if (inst->verbose >= MEDIUM) printf("\nComplete path for *.lp file: %s\n", model_file_path);
 			CPXwriteprob(env, lp, model_file_path, NULL);
 
 			free(cname[0]);
@@ -384,8 +417,8 @@ void build_model(instance* inst, CPXENVptr env, CPXLPptr lp) {
 			}
 
 			// Outputs to file "model_MTZ_lazy_u_consistency.lp" the built model
-			sprintf(model_file_path, "../models/%s/model_MTZ_lazy_u_consistency.lp", inst->inst_name);
-			if (inst->verbose >= MEDIUM) printf("model_file_path where .lp file is generated: %s\n", model_file_path);
+			sprintf(model_file_path, "../outputs/%s/model_MTZ_lazy_u_consistency.lp", inst->inst_name);
+			if (inst->verbose >= MEDIUM) printf("\nComplete path for *.lp file: %s\n", model_file_path);
 			CPXwriteprob(env, lp, model_file_path, NULL);
 
 			free(cname[0]);
@@ -514,8 +547,8 @@ void build_model(instance* inst, CPXENVptr env, CPXLPptr lp) {
 			}
 
 			// Outputs to file "model_MTZ_lazy_2_node_SECs.lp" the built model
-			sprintf(model_file_path, "../models/%s/model_MTZ_lazy_2_node_SECs.lp", inst->inst_name);
-			if (inst->verbose >= MEDIUM) printf("model_file_path where .lp file is generated: %s\n", model_file_path);
+			sprintf(model_file_path, "../outputs/%s/model_MTZ_lazy_2_node_SECs.lp", inst->inst_name);
+			if (inst->verbose >= MEDIUM) printf("\nComplete path for *.lp file: %s\n", model_file_path);
 			CPXwriteprob(env, lp, model_file_path, NULL);
 
 			free(cname[0]);
@@ -659,8 +692,8 @@ void build_model(instance* inst, CPXENVptr env, CPXLPptr lp) {
 			}
 
 			// Outputs to file "model_GG.lp" the built model
-			sprintf(model_file_path, "../models/%s/model_GG.lp", inst->inst_name);
-			if (inst->verbose >= MEDIUM) printf("model_file_path where .lp file is generated: %s\n", model_file_path);
+			sprintf(model_file_path, "../outputs/%s/model_GG.lp", inst->inst_name);
+			if (inst->verbose >= MEDIUM) printf("\nComplete path for *.lp file: %s\n", model_file_path);
 			CPXwriteprob(env, lp, model_file_path, NULL);
 
 			free(cname[0]);
