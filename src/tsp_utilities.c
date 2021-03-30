@@ -16,6 +16,7 @@ void parse_command_line(int argc, char** argv, instance* inst) {
 	inst->timelimit = CPX_INFBOUND;
 	inst->integer_costs = 0;
 	inst->verbose = MEDIUM;
+	inst->seed = 0;
 
 	int help = 0;
 	if (argc < 1) help = 1;
@@ -26,6 +27,7 @@ void parse_command_line(int argc, char** argv, instance* inst) {
 		if (strcmp(argv[i], "-model_type") == 0) { inst->model_type = atoi(argv[++i]); continue; } 			// model type
 		if (strcmp(argv[i], "-integer_costs") == 0) { inst->integer_costs = 1; continue; } 					// integer costs
 		if (strcmp(argv[i], "-verbose") == 0) { inst->verbose = atoi(argv[++i]); continue; } 				// verbose
+		if (strcmp(argv[i], "-seed") == 0) { inst->seed = atoi(argv[++i]); continue; } 				// random seed
 		if (strcmp(argv[i], "-help") == 0) { help = 1; continue; } 											// help
 		if (strcmp(argv[i], "--help") == 0) { help = 1; continue; } 										// help
 		help = 1;
@@ -41,6 +43,7 @@ void parse_command_line(int argc, char** argv, instance* inst) {
 		printf("-model_type %d\n", inst->model_type);
 		printf("-integer_costs %d\n", inst->integer_costs);
 		printf("-verbose %d\n", inst->verbose);
+		printf("-seed %d\n", inst->seed);
 		printf("\nEnter -help or --help for help\n");
 		printf("----------------------------------------------------------------------------------------------\n\n");
 	}
