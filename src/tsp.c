@@ -3,7 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <cplex.h>
-#include <gnuplot_c.h>
+//#include <gnuplot_c.h>
 
 #include "tsp.h"
 
@@ -15,13 +15,15 @@ int TSPopt(instance* inst) {
 	CPXENVptr env = CPXopenCPLEX(&error);
 	CPXLPptr lp = CPXcreateprob(env, &error, "TSP");
 
-	// Set the time_limit parameter according to user input or default value.
-	if (CPXsetdblparam(env, CPX_PARAM_TILIM, inst->timelimit)) { print_error("CPXsetdblparam() error"); }
+	// Set the timelimit parameter according to user input or default value.
+	if (CPXsetdblparam(env, CPX_PARAM_TILIM, inst->timelimit)) { print_error("CPXsetdblparam() error in setting timelimit"); }
 
+	// Set the seed parameter according to user input or default value.
+	if (CPXsetintparam(env, CPX_PARAM_RANDOMSEED, inst->seed)) { print_error("CPXsetdblparam() error in setting seed"); }
+
+	// Build the Cplex model according to model_type chosen
+	// -> See "model_type" enum in instance.h for the list of models available
 	build_model(inst, env, lp);
-
-	// Cplex's parameter setting
-	// ...
 
 	// Executes the actual optimization procedure
 	if (CPXmipopt(env, lp)) { print_error("CPXmipopt() error"); }
