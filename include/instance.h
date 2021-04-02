@@ -29,6 +29,7 @@ typedef struct {
 
 	// input data
 	int nnodes;
+	char inst_name[100];
 	double* xcoord;
 	double* ycoord;
 	int integer_costs;                      // = 1 for integer costs (rounded distances), 0 otherwise
@@ -38,6 +39,7 @@ typedef struct {
 	double timelimit;						// overall time limit, in seconds
 	char input_file[1000];		  			// input file name
 	int verbose;							// verbosity value
+	int seed;								// internal branching random seed used by Cplex. If fixed, leads to more consistent computational time
 
 	// global data
 	double zbest;							// value of the best sol. available

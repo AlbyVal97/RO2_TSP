@@ -6,6 +6,7 @@
 
 #include "tsp.h"
 
+// Command line parameter list example: -f ../data/inst_max_80_nodes/berlin52.tsp -seed 123456 -model_type 1 -verbose 0 -time_limit 3600
 
 int main(int argc, char **argv) {
 
