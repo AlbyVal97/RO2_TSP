@@ -194,3 +194,21 @@ void free_instance(instance* inst) {
 double second() {
 	return ((double)clock() / (double)CLK_TCK);
 }
+
+
+int factorial(int n) {
+
+	int factorial = 1;
+	
+	if (n > 0) {										// Check if n is positive
+		while (n > 0) {
+			factorial *= n;
+			n--;
+		}
+	}
+	else {
+		print_error("Can't compute the factorial of a negative number!\n");
+	}
+	
+	return factorial;
+}
