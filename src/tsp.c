@@ -22,12 +22,13 @@ int TSPopt(instance* inst) {
 	if (CPXsetintparam(env, CPX_PARAM_RANDOMSEED, inst->seed)) { print_error("CPXsetdblparam() error in setting seed"); }
 
 	char edges_file_path[100];
-	//create outputs folder if needed
-	if (mkdir("../outputs") == -1) printf("Folder outputs already exists\n");
-	else printf("Folder outputs created for the first time\n");
+	// Create "outputs" folder if needed
+	printf("\n");
+	if (mkdir("../outputs") == -1) printf("Folder \"outputs\" already exists.\n");
+	else printf("Folder \"outputs\" created for the first time!\n");
 	sprintf(edges_file_path, "../outputs/%s", inst->inst_name);
-	if (mkdir(edges_file_path) == -1) printf("Folder for the current instance already exists\n");
-	else printf("Folder for the current instance created for the first time\n");
+	if (mkdir(edges_file_path) == -1) printf("Folder for the current instance already exists.\n");
+	else printf("Folder for the current instance created for the first time!\n");
 
 	// Build the Cplex model according to model_type chosen
 	// -> See "model_type" enum in instance.h for the list of models available
@@ -51,7 +52,7 @@ int TSPopt(instance* inst) {
 		if (CPXgetx(env, lp, x, 0, ncols - 1)) { print_error("CPXgetx() error"); }
 
 		update_components(x, inst, succ, comp, &n_comp);
-		if (inst->verbose >= MEDIUM) printf("Current n_comp: %d \n", n_comp);
+		if (inst->verbose >= HIGH) printf("Current n_comp: %d \n", n_comp);
 
 		int n_iter = 0;
 		while (n_comp > 1) {									// Repeat iteratively until just one connected component is left
@@ -68,7 +69,7 @@ int TSPopt(instance* inst) {
 
 			// Update the numbero of connected components of the new graph
 			update_components(x, inst, succ, comp, &n_comp);
-			if (inst->verbose >= MEDIUM) printf("Current n_comp: %d \n", n_comp);
+			if (inst->verbose >= HIGH) printf("Current n_comp: %d \n", n_comp);
 
 			// Increment current iteration number
 			n_iter++;
@@ -83,7 +84,6 @@ int TSPopt(instance* inst) {
 		free(succ);
 		free(comp);
 		free(x);
-
 	}
 	
 
@@ -185,6 +185,7 @@ int TSPopt(instance* inst) {
 	return 0; // or an appropriate nonzero error code
 }
 
+
 void print_solution(instance* inst, double* xstar, int symmetric, char* edges_file_path) {
 	if (symmetric != 0 && symmetric != 1) print_error("symmetric is a boolean variable\n");
 	
@@ -223,7 +224,7 @@ void print_solution(instance* inst, double* xstar, int symmetric, char* edges_fi
 
 	FILE* gn_com = fopen("../src/gnuplot_commands.txt", "w");
 	char* comand;
-	if (gn_com == NULL) print_error("Erroe while opening gnuplot_commands file\n");
+	if (gn_com == NULL) print_error("Error while opening gnuplot_commands.txt file\n");
 	if (!symmetric) 
 		comand = "set style line 1 \\\n\tlinecolor rgb '#FF0000' \\\n\tlinetype 1 linewidth 2 \\\n\tpointtype 7 pointsize 2 \\\n\nplot \"%s\" using 1:2 with linespoints linestyle 1\npause mouse close";
 	else 
@@ -270,6 +271,7 @@ int ypos_compact(int i, int j, instance* inst) {
 
 
 void update_benders_constraints(CPXCENVptr env, CPXLPptr lp, instance* inst, const int* comp, int n_iter) {
+
 	// Scan first connencted component for its number of nodes -> value of first_comp_n_nodes
 	int first_comp_n_nodes = 0;
 	for (int i = 0; i < inst->nnodes; i++) {
@@ -297,7 +299,7 @@ void update_benders_constraints(CPXCENVptr env, CPXLPptr lp, instance* inst, con
 	// as the binomial coefficient (n over 2) = n!/((n-2)!*(2!)), but it's not feasible for "big" values of n
 	// => we just allocate the square of the number of nodes, which is not that much bigger than needed:
 	int n_edges_curr_comp = first_comp_n_nodes * first_comp_n_nodes;
-	if (inst->verbose >= MEDIUM) printf("n_edges_curr_comp: %d\n", n_edges_curr_comp);
+	if (inst->verbose >= HIGH) printf("n_edges_curr_comp: %d\n", n_edges_curr_comp);
 	int* index = (int*)calloc(n_edges_curr_comp, sizeof(int));					// Array of indexes associated to the row variables
 	double* value = (double*)calloc(n_edges_curr_comp, sizeof(double));			// Array of row variables coefficients
 	int nnz = n_edges_curr_comp;
@@ -970,24 +972,15 @@ void build_model(instance* inst, CPXENVptr env, CPXLPptr lp) {
 				if (CPXaddrows(env, lp, 0, 1, nnz, &rhs, &sense, &i_zero, index, value, NULL, cname)) print_error("wrong CPXaddrows() for degree constraints!");
 			}
 
-			// Outputs to file "basic_model.lp" the built model
-			sprintf(model_file_path, "../outputs/%s/benders_model.lp", inst->inst_name);
-			if (inst->verbose >= MEDIUM) printf("\nComplete path for *.lp file: %s\n", model_file_path);
-			CPXwriteprob(env, lp, model_file_path, NULL);
-
 			free(cname[0]);
 			free(cname);
 			free(index);
 			free(value);
 
-			
-
 			break;
 		}
 
 	}
-
-	
 
 	return;
 }

@@ -27,7 +27,7 @@ void parse_command_line(int argc, char** argv, instance* inst) {
 		if (strcmp(argv[i], "-model_type") == 0) { inst->model_type = atoi(argv[++i]); continue; } 			// model type
 		if (strcmp(argv[i], "-integer_costs") == 0) { inst->integer_costs = 1; continue; } 					// integer costs
 		if (strcmp(argv[i], "-verbose") == 0) { inst->verbose = atoi(argv[++i]); continue; } 				// verbose
-		if (strcmp(argv[i], "-seed") == 0) { inst->seed = atoi(argv[++i]); continue; } 				// random seed
+		if (strcmp(argv[i], "-seed") == 0) { inst->seed = atoi(argv[++i]); continue; } 						// random seed
 		if (strcmp(argv[i], "-help") == 0) { help = 1; continue; } 											// help
 		if (strcmp(argv[i], "--help") == 0) { help = 1; continue; } 										// help
 		help = 1;
