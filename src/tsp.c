@@ -21,7 +21,14 @@ int TSPopt(instance* inst) {
 	// Set the seed parameter according to user input or default value.
 	if (CPXsetintparam(env, CPX_PARAM_RANDOMSEED, inst->seed)) { print_error("CPXsetdblparam() error in setting seed"); }
 
-	
+	char edges_file_path[100];
+	//create outputs folder if needed
+	if (mkdir("../outputs") == -1) printf("Folder outputs already exists\n");
+	else printf("Folder outputs created for the first time\n");
+	sprintf(edges_file_path, "../outputs/%s", inst->inst_name);
+	if (mkdir(edges_file_path) == -1) printf("Folder for the current instance already exists\n");
+	else printf("Folder for the current instance created for the first time\n");
+
 	// Build the Cplex model according to model_type chosen
 	// -> See "model_type" enum in instance.h for the list of models available
 	// Then executes the actual optimization procedure
@@ -83,11 +90,9 @@ int TSPopt(instance* inst) {
 	// use the optimal solution found by CPLEX
 
 	// Create the edges.dat file associated to the correct model type
-	FILE* edges_plot_file_name = NULL;
+	//FILE* edges_plot_file_name = NULL;
+	
 	if (inst->verbose >= MEDIUM) {
-
-		char edges_file_path[100];
-		sprintf(edges_file_path, "../outputs/%s", inst->inst_name);
 
 		switch (inst->model_type) {
 
@@ -117,8 +122,8 @@ int TSPopt(instance* inst) {
 		}
 		printf("Complete path for *.dat file: %s\n\n", edges_file_path);
 
-		edges_plot_file_name = fopen(edges_file_path, "w");
-		if (edges_plot_file_name == NULL) print_error("File edges.dat not found!");
+		//edges_plot_file_name = fopen(edges_file_path, "w");
+		//if (edges_plot_file_name == NULL) print_error("File edges.dat not found!");
 	}
 	
 
@@ -127,8 +132,17 @@ int TSPopt(instance* inst) {
 	double* xstar = (double*)calloc(ncols, sizeof(double));
 	// Copy the optimal solution from the Cplex environment to the new array "xstar"
 	if (CPXgetx(env, lp, xstar, 0, ncols - 1)) { print_error("CPXgetx() error"); }
+
+	int symmetric = -1;
+	if (inst->model_type == BASIC || inst->model_type == BENDERS) symmetric = 0;
+	else if (inst->model_type == MTZ_STATIC || inst->model_type == MTZ_LAZY || inst->model_type == MTZ_SUBTOUR_SIZE_2 || inst->model_type == GG) symmetric = 1;
+	
+	if (inst->verbose >= MEDIUM) {
+		print_solution(inst, xstar, symmetric, edges_file_path);
+	}
+
 	// Scan all legal edges and print the ones involved (with x ~ 1) in the optimal tour
-	if (inst->model_type == BASIC || inst->model_type == BENDERS) {
+	/*if (inst->model_type == BASIC || inst->model_type == BENDERS) {
 		for (int i = 0; i < inst->nnodes; i++) {
 			for (int j = i + 1; j < inst->nnodes; j++) {
 
@@ -156,11 +170,11 @@ int TSPopt(instance* inst) {
 				}
 			}
 		}
-	}
+	}*/
 
-	if (inst->verbose >= MEDIUM) {
-		fclose(edges_plot_file_name);
-	}
+	//if (inst->verbose >= MEDIUM) {
+		//fclose(edges_plot_file_name);
+	//}
 
 	// Free allocated memory and close Cplex model
 	free(xstar);
@@ -169,6 +183,57 @@ int TSPopt(instance* inst) {
 	if (CPXcloseCPLEX(&env)) { print_error("CPXcloseCPLEX() error"); }
 
 	return 0; // or an appropriate nonzero error code
+}
+
+void print_solution(instance* inst, double* xstar, int symmetric, char* edges_file_path) {
+	if (symmetric != 0 && symmetric != 1) print_error("symmetric is a boolean variable\n");
+	
+	FILE* edges_plot_file_name = fopen(edges_file_path, "w");
+	if (edges_plot_file_name == NULL) print_error("File edges.dat not found!");
+
+	if (!symmetric) {
+		for (int i = 0; i < inst->nnodes; i++) {
+			for (int j = i + 1; j < inst->nnodes; j++) {
+
+				if (xstar[xpos(i, j, inst)] > 0.5) {
+
+					if (inst->verbose >= MEDIUM) {
+						printf("x(%3d,%3d) = 1\n", i + 1, j + 1);
+						fprintf(edges_plot_file_name, "%f %f\n%f %f\n\n", inst->xcoord[i], inst->ycoord[i], inst->xcoord[j], inst->ycoord[j]);
+					}
+				}
+			}
+		}
+	}
+	else {
+		for (int i = 0; i < inst->nnodes; i++) {
+			for (int j = 0; j < inst->nnodes; j++) {
+				if (i == j) continue;
+
+				if (xstar[xpos_compact(i, j, inst)] > 0.5) {
+
+					if (inst->verbose >= MEDIUM) {
+						printf("x(%3d,%3d) = 1\n", i + 1, j + 1);
+						fprintf(edges_plot_file_name, "%f %f %f %f\n", inst->xcoord[i], inst->ycoord[i], inst->xcoord[j] - inst->xcoord[i], inst->ycoord[j] - inst->ycoord[i]);
+					}
+				}
+			}
+		}
+	}
+
+	FILE* gn_com = fopen("../src/gnuplot_commands.txt", "w");
+	char* comand;
+	if (gn_com == NULL) print_error("Erroe while opening gnuplot_commands file\n");
+	if (!symmetric) 
+		comand = "set style line 1 \\\n\tlinecolor rgb '#FF0000' \\\n\tlinetype 1 linewidth 2 \\\n\tpointtype 7 pointsize 2 \\\n\nplot \"%s\" using 1:2 with linespoints linestyle 1\npause mouse close";
+	else 
+		comand = "set style line 1 \\\n\tlinecolor rgb '#FF0000' \\\n\tlinetype 1 linewidth 2 \\\n\tpointtype 7 pointsize 2 \\\n\nplot \"%s\" using 1:2:3:4 with vectors linestyle 1\npause mouse close";
+	
+	fprintf(gn_com, comand, edges_file_path);
+	
+	fclose(gn_com);
+	fclose(edges_plot_file_name);
+	
 }
 
 

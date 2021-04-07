@@ -28,4 +28,8 @@ void update_components(const double* xstar, instance* inst, int* succ, int* comp
 // Builds the tableau (variables and constraints)
 void build_model(instance* inst, CPXENVptr env, CPXLPptr lp);
 
+void print_solution(instance* inst, double* xstar, int symmetric, char* edges_plot_file_name);
+
+extern int mkdir(const char* dir_name);
+
 #endif   /* TSP_H_ */ 
