@@ -25,6 +25,9 @@ void free_instance(instance* inst);
 // Returns the processor clock time used since the beginning of the program (in seconds)
 double second();
 
+// Computes the factorial of n
+int factorial(int n);
+
 // Inline useful functions
 inline int imax(int i1, int i2) { return (i1 > i2) ? i1 : i2; }
 inline double dmin(double d1, double d2) { return (d1 < d2) ? d1 : d2; }

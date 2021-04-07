@@ -21,7 +21,8 @@ typedef enum {
 	MTZ_STATIC,
 	MTZ_LAZY,
 	MTZ_SUBTOUR_SIZE_2,
-	GG
+	GG,
+	BENDERS
 } model_type;
 
 // Problem instance data structure

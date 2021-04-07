@@ -19,6 +19,12 @@ int upos_compact(int i, instance* inst);
 // Computes the position of variable y associated to edge (i, j) inside the Cplex tableau
 int ypos_compact(int i, int j, instance* inst);
 
+// Add a new subtour elimination constraint for the first connected component of the current solution
+void update_benders_constraints(CPXCENVptr env, CPXLPptr lp, instance* inst, const int* comp, int n_iter);
+
+// Finds the number of connected components in the graph defined inside xstar
+void update_components(const double* xstar, instance* inst, int* succ, int* comp, int* ncomp);
+
 // Builds the tableau (variables and constraints)
 void build_model(instance* inst, CPXENVptr env, CPXLPptr lp);
 

@@ -21,12 +21,64 @@ int TSPopt(instance* inst) {
 	// Set the seed parameter according to user input or default value.
 	if (CPXsetintparam(env, CPX_PARAM_RANDOMSEED, inst->seed)) { print_error("CPXsetdblparam() error in setting seed"); }
 
+	
 	// Build the Cplex model according to model_type chosen
 	// -> See "model_type" enum in instance.h for the list of models available
-	build_model(inst, env, lp);
+	// Then executes the actual optimization procedure
+	if (inst->model_type != BENDERS) {							// Model creation + optimization for all methods other than	BENDERS	
+		build_model(inst, env, lp);
+		if (CPXmipopt(env, lp)) { print_error("CPXmipopt() error"); }
+	}
+	else {														// Model creation + optimization specifically for BENDERS method	
+		int n_comp = 0;			
+		int* succ = (int*)malloc(inst->nnodes * sizeof(int));	// Array of the successors for each node
+		int* comp = (int*)malloc(inst->nnodes * sizeof(int));	// Array of the connected component index for each node
+		
+		// For BENDERS model, build the model at least once, then start to solve
+		build_model(inst, env, lp);
 
-	// Executes the actual optimization procedure
-	if (CPXmipopt(env, lp)) { print_error("CPXmipopt() error"); }
+		if (CPXmipopt(env, lp)) { print_error("CPXmipopt() error"); }
+			
+		int ncols = CPXgetnumcols(env, lp);
+		double* x = (double*)calloc(ncols, sizeof(double));
+		if (CPXgetx(env, lp, x, 0, ncols - 1)) { print_error("CPXgetx() error"); }
+
+		update_components(x, inst, succ, comp, &n_comp);
+		if (inst->verbose >= MEDIUM) printf("Current n_comp: %d \n", n_comp);
+
+		int n_iter = 0;
+		while (n_comp > 1) {									// Repeat iteratively until just one connected component is left
+
+			// Add a new subtour elimination constraint for the first connected component of the current solution
+			update_benders_constraints(env, lp, inst, comp, n_iter);
+
+			// Optimize with the new constraint
+			if (CPXmipopt(env, lp)) { print_error("CPXmipopt() error"); }
+
+			// Extract the new solution
+			ncols = CPXgetnumcols(env, lp);
+			if (CPXgetx(env, lp, x, 0, ncols - 1)) { print_error("CPXgetx() error"); }
+
+			// Update the numbero of connected components of the new graph
+			update_components(x, inst, succ, comp, &n_comp);
+			if (inst->verbose >= MEDIUM) printf("Current n_comp: %d \n", n_comp);
+
+			// Increment current iteration number
+			n_iter++;
+		}
+
+		// Outputs only the final model to file "benders_model.lp"
+		char model_file_path[100];
+		sprintf(model_file_path, "../outputs/%s/benders_model.lp", inst->inst_name);
+		if (inst->verbose >= MEDIUM) printf("\nComplete path for *.lp file: %s\n", model_file_path);
+		CPXwriteprob(env, lp, model_file_path, NULL);
+
+		free(succ);
+		free(comp);
+		free(x);
+
+	}
+	
 
 	// use the optimal solution found by CPLEX
 
@@ -58,6 +110,10 @@ int TSPopt(instance* inst) {
 			case GG:
 				sprintf(edges_file_path, "%s/model_GG_edges.dat", edges_file_path);
 				break;
+
+			case BENDERS:
+				sprintf(edges_file_path, "%s/model_BENDERS_edges.dat", edges_file_path);
+				break;
 		}
 		printf("Complete path for *.dat file: %s\n\n", edges_file_path);
 
@@ -72,7 +128,7 @@ int TSPopt(instance* inst) {
 	// Copy the optimal solution from the Cplex environment to the new array "xstar"
 	if (CPXgetx(env, lp, xstar, 0, ncols - 1)) { print_error("CPXgetx() error"); }
 	// Scan all legal edges and print the ones involved (with x ~ 1) in the optimal tour
-	if (inst->model_type == BASIC) {
+	if (inst->model_type == BASIC || inst->model_type == BENDERS) {
 		for (int i = 0; i < inst->nnodes; i++) {
 			for (int j = i + 1; j < inst->nnodes; j++) {
 
@@ -108,9 +164,10 @@ int TSPopt(instance* inst) {
 
 	// Free allocated memory and close Cplex model
 	free(xstar);
-	CPXfreeprob(env, &lp);
-	CPXcloseCPLEX(&env);
-	
+
+	if (CPXfreeprob(env, &lp)) { print_error("CPXfreeprob() error"); }
+	if (CPXcloseCPLEX(&env)) { print_error("CPXcloseCPLEX() error"); }
+
 	return 0; // or an appropriate nonzero error code
 }
 
@@ -144,6 +201,98 @@ int ypos_compact(int i, int j, instance* inst) {
 	int pos = (inst->nnodes) * (inst->nnodes) + i * (inst->nnodes) + j;
 
 	return pos;
+}
+
+
+void update_benders_constraints(CPXCENVptr env, CPXLPptr lp, instance* inst, const int* comp, int n_iter) {
+	// Scan first connencted component for its number of nodes -> value of first_comp_n_nodes
+	int first_comp_n_nodes = 0;
+	for (int i = 0; i < inst->nnodes; i++) {
+		if (comp[i] == 1) {
+			first_comp_n_nodes++;
+		}
+	}
+	
+	// Scan first connected component for its nodes indexes
+	int* first_comp_nodes = (int*)malloc(first_comp_n_nodes * sizeof(int));
+	int j = 0;
+	for (int i = 0; i < inst->nnodes; i++) {
+		if (comp[i] == 1) {
+			first_comp_nodes[j++] = i;
+		}
+	}
+
+	char** cname = (char**)calloc(1, sizeof(char*));			// (char **) required by cplex...
+	cname[0] = (char*)calloc(100, sizeof(char));
+	sprintf(cname[0], "subtour_elimination_constraint(%d)", n_iter);
+	double rhs = first_comp_n_nodes - 1.0;
+	char sense = 'L';
+	int i_zero = 0;
+	// We should compute the number of edges connecting the nodes of the current connected component
+	// as the binomial coefficient (n over 2) = n!/((n-2)!*(2!)), but it's not feasible for "big" values of n
+	// => we just allocate the square of the number of nodes, which is not that much bigger than needed:
+	int n_edges_curr_comp = first_comp_n_nodes * first_comp_n_nodes;
+	if (inst->verbose >= MEDIUM) printf("n_edges_curr_comp: %d\n", n_edges_curr_comp);
+	int* index = (int*)calloc(n_edges_curr_comp, sizeof(int));					// Array of indexes associated to the row variables
+	double* value = (double*)calloc(n_edges_curr_comp, sizeof(double));			// Array of row variables coefficients
+	int nnz = n_edges_curr_comp;
+
+	int k = 0;
+	for (int i = 0; i < first_comp_n_nodes; i++) {
+		for (int j = i + 1; j < first_comp_n_nodes; j++) {
+			if (i == j) {
+				continue;
+			}
+			index[k] = xpos(first_comp_nodes[i], first_comp_nodes[j], inst);
+			value[k++] = 1.0;
+		}
+
+	}
+	if (CPXaddrows(env, lp, 0, 1, nnz, &rhs, &sense, &i_zero, index, value, NULL, cname)) print_error("wrong CPXaddrows() for subtour elimination constraints!");
+
+	free(cname[0]);
+	free(cname);
+	free(index);
+	free(value);
+}
+
+
+void update_components(const double* xstar, instance* inst, int* succ, int* comp, int* ncomp) {
+
+	// Start with 0 connected components
+	*ncomp = 0;
+	// Initialize all cells of "successors" and "components" arrays to -1 (meaning that the node has not been visited yet)
+	for (int i = 0; i < inst->nnodes; i++) {
+		succ[i] = -1;
+		comp[i] = -1;
+	}
+
+	// Start visiting from node 0, then from the first node not yet visited, and so on...
+	for (int start = 0; start < inst->nnodes; start++) {
+		if (comp[start] >= 0) continue;								// Node "start" was already visited, just skip it
+
+		// If we arrive here, it means that a new component is found (count it)
+		(*ncomp)++;
+		int i = start;
+		int done = 0;
+		while (!done) {												// Visit the current component
+			comp[i] = *ncomp;
+			done = 1;
+			// Scan for feasible nodes to draw an edge and close the component
+			for (int j = 0; j < inst->nnodes; j++) {
+				// The edge [i,j] is selected in xstar and j was not visited before
+				if (i != j && xstar[xpos(i, j, inst)] > 0.5 && comp[j] == -1) {
+					succ[i] = j;
+					i = j;
+					done = 0;
+					break;
+				}
+			}
+		}
+		succ[i] = start;											// Last edge to close the cycle
+
+		// Now go to the next component, if there is one...
+	}
 }
 
 
@@ -210,6 +359,8 @@ void build_model(instance* inst, CPXENVptr env, CPXLPptr lp) {
 			double zero = 0.0;
 			char binary = 'B';
 			char integer = 'I';
+
+			if (CPXsetdblparam(env, CPX_PARAM_EPINT, 0.0)) { print_error("CPXsetdblparam() error in setting integer value tolerance"); }
 
 			char** cname = (char**)calloc(1, sizeof(char*));			// (char **) required by cplex...
 			cname[0] = (char*)calloc(100, sizeof(char));
@@ -324,6 +475,8 @@ void build_model(instance* inst, CPXENVptr env, CPXLPptr lp) {
 			char binary = 'B';
 			char integer = 'I';
 
+			if (CPXsetdblparam(env, CPX_PARAM_EPINT, 0.0)) { print_error("CPXsetdblparam() error in setting integer value tolerance"); }
+
 			char** cname = (char**)calloc(1, sizeof(char*));			// (char **) required by cplex...
 			cname[0] = (char*)calloc(100, sizeof(char));
 
@@ -436,6 +589,8 @@ void build_model(instance* inst, CPXENVptr env, CPXLPptr lp) {
 			double zero = 0.0;
 			char binary = 'B';
 			char integer = 'I';
+
+			if (CPXsetdblparam(env, CPX_PARAM_EPINT, 0.0)) { print_error("CPXsetdblparam() error in setting integer value tolerance"); }
 
 			char** cname = (char**)calloc(1, sizeof(char*));			// (char **) required by cplex...
 			cname[0] = (char*)calloc(100, sizeof(char));
@@ -700,6 +855,67 @@ void build_model(instance* inst, CPXENVptr env, CPXLPptr lp) {
 
 			free(cname[0]);
 			free(cname);
+
+			break;
+		}
+
+		case BENDERS:
+		{
+			double zero = 0.0;
+			char binary = 'B';
+			
+
+			char** cname = (char**)calloc(1, sizeof(char*));			// (char **) required by cplex...
+			cname[0] = (char*)calloc(100, sizeof(char));
+
+			// Add binary variables x(i,j) for i < j
+			for (int i = 0; i < inst->nnodes; i++) {
+				for (int j = i + 1; j < inst->nnodes; j++) {
+					sprintf(cname[0], "x(%d,%d)", i + 1, j + 1);		// Set a name for the new column/varible
+					double obj = dist(i, j, inst); // cost == distance   
+					double lb = 0.0;
+					double ub = 1.0;
+					if (CPXnewcols(env, lp, 1, &obj, &lb, &ub, &binary, cname)) { print_error("Wrong CPXnewcols on x variables"); }
+					// Verify if xpos returns the right position inside the tableu (xpos starts from 0)
+					if (CPXgetnumcols(env, lp) - 1 != xpos(i, j, inst)) { print_error("Wrong position for x variables"); }
+				}
+			}
+			
+			// Add the degree constraints for all nodes (because in TSP model the final tour is hamiltonian)
+			int i_zero = 0;
+			int* index = (int*)calloc(inst->nnodes, sizeof(int));					// Array of indexes associated to the row variables
+			double* value = (double*)calloc(inst->nnodes, sizeof(double));			// Array of row variables coefficients
+			double rhs = 2.0;														// "rhs" = right-hand side of the degree constraints
+			char sense = 'E';														// 'L' for less-or-equal constraint
+			int nnz = inst->nnodes;													// number of cells != 0 in the row
+			for (int h = 0; h < inst->nnodes; h++) {
+
+				sprintf(cname[0], "degree(%d)", h + 1);								// Set a name for the new row/constraint
+
+				for (int i = 0; i < inst->nnodes; i++) {
+					
+					if (i != h) {
+						index[i] = xpos(i, h, inst);
+						value[i] = 1.0;
+					}
+					else {
+						continue;
+					}
+				}
+				if (CPXaddrows(env, lp, 0, 1, nnz, &rhs, &sense, &i_zero, index, value, NULL, cname)) print_error("wrong CPXaddrows() for degree constraints!");
+			}
+
+			// Outputs to file "basic_model.lp" the built model
+			sprintf(model_file_path, "../outputs/%s/benders_model.lp", inst->inst_name);
+			if (inst->verbose >= MEDIUM) printf("\nComplete path for *.lp file: %s\n", model_file_path);
+			CPXwriteprob(env, lp, model_file_path, NULL);
+
+			free(cname[0]);
+			free(cname);
+			free(index);
+			free(value);
+
+			
 
 			break;
 		}
