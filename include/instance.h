@@ -20,7 +20,7 @@ typedef enum {
 	BASIC,
 	MTZ_STATIC,
 	MTZ_LAZY,
-	MTZ_SUBTOUR_SIZE_2,
+	MTZ_SEC2,
 	GG,
 	BENDERS
 } model_type;

@@ -25,8 +25,16 @@ void update_benders_constraints(CPXCENVptr env, CPXLPptr lp, instance* inst, con
 // Finds the number of connected components in the graph defined inside xstar
 void update_components(const double* xstar, instance* inst, int* succ, int* comp, int* ncomp);
 
-// Builds the tableau (variables and constraints)
 void build_model(instance* inst, CPXENVptr env, CPXLPptr lp);
+
+// Builds the tableau (variables and constraints)
+void build_model_BASIC(instance* inst, CPXENVptr env, CPXLPptr lp);
+void build_model_MTZ_STATIC(instance* inst, CPXENVptr env, CPXLPptr lp);
+void build_model_MTZ_LAZY(instance* inst, CPXENVptr env, CPXLPptr lp);
+void build_model_MTZ_SEC2(instance* inst, CPXENVptr env, CPXLPptr lp);
+void build_model_GG(instance* inst, CPXENVptr env, CPXLPptr lp);
+
+void create_lp_file(instance* inst, CPXENVptr env, CPXLPptr lp, const char* file_name);
 
 // Prints the .dat file with the list of nodes from the optimized solution, with formatting depending on graph symmetry (directed/undirected)
 void print_solution(instance* inst, double* xstar, int symmetric, char* edges_plot_file_name);

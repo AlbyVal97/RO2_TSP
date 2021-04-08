@@ -30,11 +30,52 @@ int TSPopt(instance* inst) {
 	if (mkdir(edges_file_path) == -1) printf("Folder for the current instance already exists.\n");
 	else printf("Folder for the current instance created for the first time!\n");
 
+	switch (inst->model_type) {
+
+		case BASIC:
+			build_model_BASIC(inst, env, lp);
+			if (CPXmipopt(env, lp)) { print_error("CPXmipopt() error"); }
+			sprintf(edges_file_path, "%s/model_BASIC_edges.dat", edges_file_path);
+			break;
+
+		case MTZ_STATIC:
+			build_model_MTZ_STATIC(inst, env, lp);
+			if (CPXmipopt(env, lp)) { print_error("CPXmipopt() error"); }
+			sprintf(edges_file_path, "%s/model_MTZ_STATIC_edges.dat", edges_file_path);
+			break;
+
+		case MTZ_LAZY:
+			build_model_MTZ_LAZY(inst, env, lp);
+			if (CPXmipopt(env, lp)) { print_error("CPXmipopt() error"); }
+			sprintf(edges_file_path, "%s/model_MTZ_LAZY_edges.dat", edges_file_path);
+			break;
+
+		case MTZ_SEC2:
+			build_model_MTZ_SEC2(inst, env, lp);
+			if (CPXmipopt(env, lp)) { print_error("CPXmipopt() error"); }
+			sprintf(edges_file_path, "%s/model_MTZ_SEC2_edges.dat", edges_file_path);
+			break;
+
+		case GG:
+			build_model_GG(inst, env, lp);
+			if (CPXmipopt(env, lp)) { print_error("CPXmipopt() error"); }
+			sprintf(edges_file_path, "%s/model_GG_edges.dat", edges_file_path);
+			break;
+
+		case BENDERS:
+			sprintf(edges_file_path, "%s/model_BENDERS_edges.dat", edges_file_path);
+			break;
+	}
+
+	if (inst->verbose >= MEDIUM) {
+		printf("Complete path for *.dat file: %s\n\n", edges_file_path);
+	}
+	
 	// Build the Cplex model according to model_type chosen
 	// -> See "model_type" enum in instance.h for the list of models available
 	// Then executes the actual optimization procedure
-	if (inst->model_type != BENDERS) {							// Model creation + optimization for all methods other than	BENDERS	
-		build_model(inst, env, lp);
+	/*if (inst->model_type != BENDERS) {							// Model creation + optimization for all methods other than	BENDERS	
+		build_model_BASIC(inst, env, lp);
 		if (CPXmipopt(env, lp)) { print_error("CPXmipopt() error"); }
 	}
 	else {														// Model creation + optimization specifically for BENDERS method	
@@ -84,7 +125,7 @@ int TSPopt(instance* inst) {
 		free(succ);
 		free(comp);
 		free(x);
-	}
+	}*/
 	
 
 	// use the optimal solution found by CPLEX
@@ -92,13 +133,9 @@ int TSPopt(instance* inst) {
 	// Create the edges.dat file associated to the correct model type
 	//FILE* edges_plot_file_name = NULL;
 	
-	if (inst->verbose >= MEDIUM) {
+	/*if (inst->verbose >= MEDIUM) {
 
 		switch (inst->model_type) {
-
-			case BASIC:
-				sprintf(edges_file_path, "%s/basic_model_edges.dat", edges_file_path);
-				break;
 
 			case MTZ_STATIC:
 				sprintf(edges_file_path, "%s/model_MTZ_static_edges.dat", edges_file_path);
@@ -108,7 +145,7 @@ int TSPopt(instance* inst) {
 				sprintf(edges_file_path, "%s/model_MTZ_lazy_u_consistency_edges.dat", edges_file_path);
 				break;
 
-			case MTZ_SUBTOUR_SIZE_2:
+			case MTZ_SEC2:
 				sprintf(edges_file_path, "%s/model_MTZ_lazy_2_node_SECs_edges.dat", edges_file_path);
 				break;
 
@@ -121,61 +158,21 @@ int TSPopt(instance* inst) {
 				break;
 		}
 		printf("Complete path for *.dat file: %s\n\n", edges_file_path);
-
-		//edges_plot_file_name = fopen(edges_file_path, "w");
-		//if (edges_plot_file_name == NULL) print_error("File edges.dat not found!");
-	}
+	}*/
 	
-
-	int ncols = CPXgetnumcols(env, lp);
 	// Allocate memory for the optimal solution array
+	int ncols = CPXgetnumcols(env, lp);
 	double* xstar = (double*)calloc(ncols, sizeof(double));
+
 	// Copy the optimal solution from the Cplex environment to the new array "xstar"
 	if (CPXgetx(env, lp, xstar, 0, ncols - 1)) { print_error("CPXgetx() error"); }
 
 	int symmetric = -1;
 	if (inst->model_type == BASIC || inst->model_type == BENDERS) symmetric = 0;
-	else if (inst->model_type == MTZ_STATIC || inst->model_type == MTZ_LAZY || inst->model_type == MTZ_SUBTOUR_SIZE_2 || inst->model_type == GG) symmetric = 1;
+	else if (inst->model_type == MTZ_STATIC || inst->model_type == MTZ_LAZY || inst->model_type == MTZ_SEC2 || inst->model_type == GG) symmetric = 1;
 	
-	if (inst->verbose >= MEDIUM) {
-		print_solution(inst, xstar, symmetric, edges_file_path);
-	}
-
-	// Scan all legal edges and print the ones involved (with x ~ 1) in the optimal tour
-	/*if (inst->model_type == BASIC || inst->model_type == BENDERS) {
-		for (int i = 0; i < inst->nnodes; i++) {
-			for (int j = i + 1; j < inst->nnodes; j++) {
-
-				if (xstar[xpos(i, j, inst)] > 0.5) {
-
-					if (inst->verbose >= MEDIUM) {
-						printf("x(%3d,%3d) = 1\n", i + 1, j + 1);
-						fprintf(edges_plot_file_name, "%f %f\n%f %f\n\n", inst->xcoord[i], inst->ycoord[i], inst->xcoord[j], inst->ycoord[j]);
-					}
-				}
-			}
-		}
-	}
-	else if (inst->model_type == MTZ_STATIC || inst->model_type == MTZ_LAZY || inst->model_type == MTZ_SUBTOUR_SIZE_2 || inst->model_type == GG) {
-		for (int i = 0; i < inst->nnodes; i++) {
-			for (int j = 0; j < inst->nnodes; j++) {
-				if (i == j) continue;
-
-				if (xstar[xpos_compact(i, j, inst)] > 0.5) {
-
-					if (inst->verbose >= MEDIUM) {
-						printf("x(%3d,%3d) = 1\n", i + 1, j + 1);
-						fprintf(edges_plot_file_name, "%f %f %f %f\n", inst->xcoord[i], inst->ycoord[i], inst->xcoord[j] - inst->xcoord[i], inst->ycoord[j] - inst->ycoord[i]);
-					}
-				}
-			}
-		}
-	}*/
-
-	//if (inst->verbose >= MEDIUM) {
-		//fclose(edges_plot_file_name);
-	//}
-
+	print_solution(inst, xstar, symmetric, edges_file_path);
+	
 	// Free allocated memory and close Cplex model
 	free(xstar);
 
@@ -200,8 +197,8 @@ void print_solution(instance* inst, double* xstar, int symmetric, char* edges_fi
 
 					if (inst->verbose >= MEDIUM) {
 						printf("x(%3d,%3d) = 1\n", i + 1, j + 1);
-						fprintf(edges_plot_file_name, "%f %f\n%f %f\n\n", inst->xcoord[i], inst->ycoord[i], inst->xcoord[j], inst->ycoord[j]);
 					}
+					fprintf(edges_plot_file_name, "%f %f\n%f %f\n\n", inst->xcoord[i], inst->ycoord[i], inst->xcoord[j], inst->ycoord[j]);
 				}
 			}
 		}
@@ -215,8 +212,8 @@ void print_solution(instance* inst, double* xstar, int symmetric, char* edges_fi
 
 					if (inst->verbose >= MEDIUM) {
 						printf("x(%3d,%3d) = 1\n", i + 1, j + 1);
-						fprintf(edges_plot_file_name, "%f %f %f %f\n", inst->xcoord[i], inst->ycoord[i], inst->xcoord[j] - inst->xcoord[i], inst->ycoord[j] - inst->ycoord[i]);
 					}
+					fprintf(edges_plot_file_name, "%f %f %f %f\n", inst->xcoord[i], inst->ycoord[i], inst->xcoord[j] - inst->xcoord[i], inst->ycoord[j] - inst->ycoord[i]);
 				}
 			}
 		}
@@ -409,7 +406,7 @@ void build_model(instance* inst, CPXENVptr env, CPXLPptr lp) {
 			}
 
 			// Outputs to file "basic_model.lp" the built model
-			sprintf(model_file_path, "../outputs/%s/basic_model.lp", inst->inst_name);
+			sprintf(model_file_path, "../outputs/%s/BASIC_model.lp", inst->inst_name);
 			if (inst->verbose >= MEDIUM) printf("\nComplete path for *.lp file: %s\n", model_file_path);
 			CPXwriteprob(env, lp, model_file_path, NULL);
 
@@ -649,7 +646,7 @@ void build_model(instance* inst, CPXENVptr env, CPXLPptr lp) {
 			break;
 		}
 
-		case MTZ_SUBTOUR_SIZE_2:
+		case MTZ_SEC2:
 		{
 			// Model MTZ with lazy subtour elimination constraints of dimension 2.
 
@@ -984,3 +981,721 @@ void build_model(instance* inst, CPXENVptr env, CPXLPptr lp) {
 
 	return;
 }
+
+void build_model_BASIC(instance* inst, CPXENVptr env, CPXLPptr lp) {
+
+	// N.B. This model lacks subtour elimination constraints!
+
+	double zero = 0.0;
+	char binary = 'B';
+
+	char** cname = (char**)calloc(1, sizeof(char*));			// (char **) required by cplex...
+	cname[0] = (char*)calloc(100, sizeof(char));
+
+	// Add binary variables x(i,j) for i < j
+	for (int i = 0; i < inst->nnodes; i++) {
+		for (int j = i + 1; j < inst->nnodes; j++) {
+			sprintf(cname[0], "x(%d,%d)", i + 1, j + 1);		// Set a name for the new column/varible
+			double obj = dist(i, j, inst); // cost == distance   
+			double lb = 0.0;
+			double ub = 1.0;
+			if (CPXnewcols(env, lp, 1, &obj, &lb, &ub, &binary, cname)) { print_error("Wrong CPXnewcols on x variables"); }
+			// Verify if xpos returns the right position inside the tableu (xpos starts from 0)
+			if (CPXgetnumcols(env, lp) - 1 != xpos(i, j, inst)) { print_error("Wrong position for x variables"); }
+		}
+	}
+
+	// Add the degree constraints for all nodes (because in TSP model the final tour is hamiltonian)
+	int i_zero = 0;
+	int* index = (int*)calloc(inst->nnodes, sizeof(int));					// Array of indexes associated to the row variables
+	double* value = (double*)calloc(inst->nnodes, sizeof(double));			// Array of row variables coefficients
+	double rhs = 2.0;														// "rhs" = right-hand side of the degree constraints
+	char sense = 'E';														// 'L' for less-or-equal constraint
+	int nnz = inst->nnodes;													// number of cells != 0 in the row
+	for (int h = 0; h < inst->nnodes; h++) {
+
+		sprintf(cname[0], "degree(%d)", h + 1);								// Set a name for the new row/constraint
+
+		for (int i = 0; i < inst->nnodes; i++) {
+
+			if (i != h) {
+				index[i] = xpos(i, h, inst);
+				value[i] = 1.0;
+			}
+			else {
+				continue;
+			}
+		}
+		if (CPXaddrows(env, lp, 0, 1, nnz, &rhs, &sense, &i_zero, index, value, NULL, cname)) print_error("wrong CPXaddrows() for degree constraints!");
+	}
+
+	free(index);
+	free(value);
+
+	// Outputs to file "basic_model.lp" the built model
+	create_lp_file(inst, env, lp, "model_BASIC_new");
+
+	free(cname[0]);
+	free(cname);
+}
+
+void build_model_MTZ_STATIC(instance* inst, CPXENVptr env, CPXLPptr lp) {
+
+	// Model MTZ with static subtour elimination constraints.
+
+	double zero = 0.0;
+	char binary = 'B';
+	char integer = 'I';
+
+	if (CPXsetdblparam(env, CPX_PARAM_EPINT, 0.0)) { print_error("CPXsetdblparam() error in setting integer value tolerance"); }
+
+	char** cname = (char**)calloc(1, sizeof(char*));			// (char **) required by cplex...
+	cname[0] = (char*)calloc(100, sizeof(char));
+
+	// Add binary variables x(i,j) for any i,j
+	for (int i = 0; i < inst->nnodes; i++) {
+		for (int j = 0; j < inst->nnodes; j++) {
+
+			sprintf(cname[0], "x(%d,%d)", i + 1, j + 1);		// Set a name for the new column/varible
+			double obj = dist(i, j, inst); // cost == distance   
+			double lb = 0.0;
+			double ub = 1.0;
+			if (i == j) { ub = 0.0; }
+			if (CPXnewcols(env, lp, 1, &obj, &lb, &ub, &binary, cname)) { print_error("Wrong CPXnewcols on x variables"); }
+
+			//printf("Curr num_cols: %d\n", CPXgetnumcols(env, lp));
+			// Verify if xpos returns the right position inside the tableu (xpos_compact starts from 0)
+			if (CPXgetnumcols(env, lp) - 1 != xpos_compact(i, j, inst)) {
+				printf("Curr interation: %d %d", i, j);
+				print_error("Wrong position for x variables");
+			}
+		}
+	}
+
+	// Add u variables for each node that is not the first one
+	for (int i = 1; i < inst->nnodes; i++) {
+
+		sprintf(cname[0], "u(%d)", i + 1);		// Set a name for the new column/varible
+		double obj = 0.0;
+		double lb = 0.0;
+		double ub = inst->nnodes - 2.0;
+		if (CPXnewcols(env, lp, 1, &obj, &lb, &ub, &integer, cname)) { print_error("Wrong CPXnewcols on x variables"); }
+
+		//printf("Curr num_cols: %d\n", CPXgetnumcols(env, lp));
+		if (CPXgetnumcols(env, lp) - 1 != upos_compact(i, inst)) {
+			printf("Curr interation: %d", i);
+			print_error("Wrong position for x variables");
+		}
+	}
+
+	/*// Add the inner degree constraints for all nodes (because in TSP model the final tour is hamiltonian)
+	for (int i = 0; i < inst->nnodes; i++) {					// degree constraints
+		int lastrow = CPXgetnumrows(env, lp);
+		double rhs = 1.0;										// "rhs" = right-hand side of the degree constraints
+		char sense = 'E';										// 'E' for equality constraint 
+		sprintf(cname[0], "inner_degree(%d)", i + 1);					// Set a name for the new row/constraint
+		if (CPXnewrows(env, lp, 1, &rhs, &sense, NULL, cname)) { print_error(" wrong CPXnewrows [degree]"); }
+
+		// TODO: put all coefficients in an array, not creating empty constraints and then changing coefficients one by one
+		// Set coefficient 1 to any variable associated to edges linked to node h
+		for (int j = 0; j < inst->nnodes; j++) {
+			if (j == i) continue;
+			if (CPXchgcoef(env, lp, lastrow, xpos_compact(j, i, inst), 1.0)) print_error(" wrong CPXchgcoef [degree]");
+		}
+	}*/
+
+	// Add the inner and outer degree constraints for all nodes (because in TSP model the final tour is hamiltonian)
+	int i_zero = 0;
+	int* index = (int*)calloc(inst->nnodes, sizeof(int));					// Array of indexes associated to the row variables
+	double* value = (double*)calloc(inst->nnodes, sizeof(double));			// Array of row variables coefficients
+	double rhs = 1.0;														// "rhs" = right-hand side of the degree constraints
+	char sense = 'E';														// 'L' for less-or-equal constraint
+	int nnz = inst->nnodes;													// number of cells != 0 in the row
+	for (int i = 0; i < inst->nnodes; i++) {
+
+		sprintf(cname[0], "inner_degree(%d)", i + 1);								// Set a name for the new row/constraint
+
+		for (int j = 0; j < inst->nnodes; j++) {
+
+			index[j] = xpos_compact(j, i, inst);
+			value[j] = 1.0;
+			if (j == i)
+				value[j] = 0;
+		}
+		if (CPXaddrows(env, lp, 0, 1, nnz, &rhs, &sense, &i_zero, index, value, NULL, cname)) print_error("wrong CPXaddrows() for inner degree constraints!");
+	}
+	for (int i = 0; i < inst->nnodes; i++) {
+
+		sprintf(cname[0], "outer_degree(%d)", i + 1);								// Set a name for the new row/constraint
+
+		for (int j = 0; j < inst->nnodes; j++) {
+
+				index[j] = xpos_compact(i, j, inst);
+				value[j] = 1.0;
+				if (j == i)
+					value[j] = 0;
+		}
+		if (CPXaddrows(env, lp, 0, 1, nnz, &rhs, &sense, &i_zero, index, value, NULL, cname)) print_error("wrong CPXaddrows() for inner degree constraints!");
+	}
+
+	/*// Add the outer degree constraints for all nodes (because in TSP model the final tour is hamiltonian)
+	for (int i = 0; i < inst->nnodes; i++) {					// degree constraints
+		int lastrow = CPXgetnumrows(env, lp);
+		double rhs = 1.0;										// "rhs" = right-hand side of the degree constraints
+		char sense = 'E';										// 'E' for equality constraint 
+		sprintf(cname[0], "outer_degree(%d)", i + 1);					// Set a name for the new row/constraint
+		if (CPXnewrows(env, lp, 1, &rhs, &sense, NULL, cname)) { print_error(" wrong CPXnewrows [degree]"); }
+
+		// TODO: put all coefficients in an array, not creating empty constraints and then changing coefficients one by one
+		// Set coefficient 1 to any variable associated to edges linked to node h
+		for (int j = 0; j < inst->nnodes; j++) {
+			if (j == i) continue;
+			if (CPXchgcoef(env, lp, lastrow, xpos_compact(i, j, inst), 1.0)) print_error(" wrong CPXchgcoef [degree]");
+		}
+	}*/
+
+	// Add the u consistency constraints for each edge (i,j)
+	//int i_zero = 0;
+	//int index[3];
+	//double value[3];
+	double M = inst->nnodes - 1.0;								// Smallest M value for big M trick
+	rhs = M - 1;											// "rhs" = right-hand side of the degree constraints
+	sense = 'L';											// 'L' for less-or-equal constraint
+	nnz = 3;												// number of cells != 0 in the row
+	for (int i = 1; i < inst->nnodes; i++) {
+		for (int j = 1; j < inst->nnodes; j++) {
+			if (i == j) continue;
+
+			sprintf(cname[0], "u_consistency_for_arc(%d,%d)", i + 1, j + 1);
+			index[0] = upos_compact(i, inst);										// +1.0 * Ui
+			value[0] = 1.0;
+			index[1] = upos_compact(j, inst);										// -1.0 * Uj
+			value[1] = -1.0;
+			index[2] = xpos_compact(i, j, inst);									// +M * Xij
+			value[2] = M;
+			if (CPXaddrows(env, lp, 0, 1, nnz, &rhs, &sense, &i_zero, index, value, NULL, cname)) print_error("wrong CPXaddrows() for u-consistency");
+		}
+	}
+
+	free(index);
+	free(value);
+
+	// Outputs to file "model_MTZ_static.lp" the built model
+	create_lp_file(inst, env, lp, "model_MTZ_STATIC");
+
+	free(cname[0]);
+	free(cname);
+}
+
+void build_model_MTZ_LAZY(instance* inst, CPXENVptr env, CPXLPptr lp) {
+
+	// Model MTZ with lazy subtour elimination constraints.
+
+	double zero = 0.0;
+	char binary = 'B';
+	char integer = 'I';
+
+	if (CPXsetdblparam(env, CPX_PARAM_EPINT, 0.0)) { print_error("CPXsetdblparam() error in setting integer value tolerance"); }
+
+	char** cname = (char**)calloc(1, sizeof(char*));			// (char **) required by cplex...
+	cname[0] = (char*)calloc(100, sizeof(char));
+
+	// Add binary variables x(i,j) for any i,j
+	for (int i = 0; i < inst->nnodes; i++) {
+		for (int j = 0; j < inst->nnodes; j++) {
+
+			sprintf(cname[0], "x(%d,%d)", i + 1, j + 1);		// Set a name for the new column/varible
+			double obj = dist(i, j, inst); // cost == distance   
+			double lb = 0.0;
+			double ub = 1.0;
+			if (i == j) { ub = 0.0; }
+			if (CPXnewcols(env, lp, 1, &obj, &lb, &ub, &binary, cname)) { print_error("Wrong CPXnewcols on x variables"); }
+
+			//printf("Curr num_cols: %d\n", CPXgetnumcols(env, lp));
+			// Verify if xpos returns the right position inside the tableu (xpos_compact starts from 0)
+			if (CPXgetnumcols(env, lp) - 1 != xpos_compact(i, j, inst)) {
+				printf("Curr interation: %d %d", i, j);
+				print_error("Wrong position for x variables");
+			}
+		}
+	}
+
+	// Add u variables for each node that is not the first one
+	for (int i = 1; i < inst->nnodes; i++) {
+
+		sprintf(cname[0], "u(%d)", i + 1);		// Set a name for the new column/varible
+		double obj = 0.0;
+		double lb = 0.0;
+		double ub = inst->nnodes - 2.0;
+		if (CPXnewcols(env, lp, 1, &obj, &lb, &ub, &integer, cname)) { print_error("Wrong CPXnewcols on x variables"); }
+
+		//printf("Curr num_cols: %d\n", CPXgetnumcols(env, lp));
+		if (CPXgetnumcols(env, lp) - 1 != upos_compact(i, inst)) {
+			printf("Curr interation: %d", i);
+			print_error("Wrong position for x variables");
+		}
+	}
+
+	// Add the inner and outer degree constraints for all nodes (because in TSP model the final tour is hamiltonian)
+	int i_zero = 0;
+	int* index = (int*)calloc(inst->nnodes, sizeof(int));					// Array of indexes associated to the row variables
+	double* value = (double*)calloc(inst->nnodes, sizeof(double));			// Array of row variables coefficients
+	double rhs = 1.0;														// "rhs" = right-hand side of the degree constraints
+	char sense = 'E';														// 'L' for less-or-equal constraint
+	int nnz = inst->nnodes;													// number of cells != 0 in the row
+	for (int i = 0; i < inst->nnodes; i++) {
+
+		sprintf(cname[0], "inner_degree(%d)", i + 1);								// Set a name for the new row/constraint
+
+		for (int j = 0; j < inst->nnodes; j++) {
+
+			index[j] = xpos_compact(j, i, inst);
+			value[j] = 1.0;
+			if (j == i)
+				value[j] = 0;
+		}
+		if (CPXaddrows(env, lp, 0, 1, nnz, &rhs, &sense, &i_zero, index, value, NULL, cname)) print_error("wrong CPXaddrows() for inner degree constraints!");
+	}
+	for (int i = 0; i < inst->nnodes; i++) {
+
+		sprintf(cname[0], "outer_degree(%d)", i + 1);								// Set a name for the new row/constraint
+
+		for (int j = 0; j < inst->nnodes; j++) {
+
+			index[j] = xpos_compact(i, j, inst);
+			value[j] = 1.0;
+			if (j == i)
+				value[j] = 0;
+		}
+		if (CPXaddrows(env, lp, 0, 1, nnz, &rhs, &sense, &i_zero, index, value, NULL, cname)) print_error("wrong CPXaddrows() for inner degree constraints!");
+	}
+
+	/*// Add the inner degree constraints for all nodes (because in TSP model the final tour is hamiltonian)
+	for (int i = 0; i < inst->nnodes; i++) {					// degree constraints
+		int lastrow = CPXgetnumrows(env, lp);
+		double rhs = 1.0;										// "rhs" = right-hand side of the degree constraints
+		char sense = 'E';										// 'E' for equality constraint 
+		sprintf(cname[0], "inner_degree(%d)", i + 1);					// Set a name for the new row/constraint
+		if (CPXnewrows(env, lp, 1, &rhs, &sense, NULL, cname)) { print_error(" wrong CPXnewrows [degree]"); }
+
+		// TODO: put all coefficients in an array, not creating empty constraints and then changing coefficients one by one
+		// Set coefficient 1 to any variable associated to edges linked to node h
+		for (int j = 0; j < inst->nnodes; j++) {
+			if (j == i) continue;
+			if (CPXchgcoef(env, lp, lastrow, xpos_compact(j, i, inst), 1.0)) print_error(" wrong CPXchgcoef [degree]");
+		}
+	}
+
+	// Add the outer degree constraints for all nodes (because in TSP model the final tour is hamiltonian)
+	for (int i = 0; i < inst->nnodes; i++) {					// degree constraints
+		int lastrow = CPXgetnumrows(env, lp);
+		double rhs = 1.0;										// "rhs" = right-hand side of the degree constraints
+		char sense = 'E';										// 'E' for equality constraint 
+		sprintf(cname[0], "outer_degree(%d)", i + 1);					// Set a name for the new row/constraint
+		if (CPXnewrows(env, lp, 1, &rhs, &sense, NULL, cname)) { print_error(" wrong CPXnewrows [degree]"); }
+
+		// TODO: put all coefficients in an array, not creating empty constraints and then changing coefficients one by one
+		// Set coefficient 1 to any variable associated to edges linked to node h
+		for (int j = 0; j < inst->nnodes; j++) {
+			if (j == i) continue;
+			if (CPXchgcoef(env, lp, lastrow, xpos_compact(i, j, inst), 1.0)) print_error(" wrong CPXchgcoef [degree]");
+		}
+	}*/
+
+	// Add the u consistency constraints for each edge (i,j)
+	double M = inst->nnodes - 1.0;								// Smallest M value for big M trick
+	rhs = M - 1;											// "rhs" = right-hand side of the degree constraints
+	sense = 'L';											// 'L' for less-or-equal constraint
+	nnz = 3;												// number of cells != 0 in the row
+	for (int i = 1; i < inst->nnodes; i++) {
+		for (int j = 1; j < inst->nnodes; j++) {
+			if (i == j) continue;
+
+			sprintf(cname[0], "u_consistency_for_arc(%d,%d)", i + 1, j + 1);
+			index[0] = upos_compact(i, inst);										// +1.0 * Ui
+			value[0] = 1.0;
+			index[1] = upos_compact(j, inst);										// -1.0 * Uj
+			value[1] = -1.0;
+			index[2] = xpos_compact(i, j, inst);									// +M * Xij
+			value[2] = M;
+			if (CPXaddlazyconstraints(env, lp, 1, nnz, &rhs, &sense, &i_zero, index, value, cname)) print_error("wrong CPXlazyconstraints() for u-consistency");
+		}
+	}
+
+	free(index);
+	free(value);
+
+	// Outputs to file "model_MTZ_lazy_u_consistency.lp" the built model
+	create_lp_file(inst, env, lp, "model_MTZ_LAZY");
+
+	free(cname[0]);
+	free(cname);
+}
+
+void build_model_MTZ_SEC2(instance* inst, CPXENVptr env, CPXLPptr lp) {
+
+	// Model MTZ with lazy subtour elimination constraints of dimension 2.
+
+	double zero = 0.0;
+	char binary = 'B';
+	char integer = 'I';
+
+	if (CPXsetdblparam(env, CPX_PARAM_EPINT, 0.0)) { print_error("CPXsetdblparam() error in setting integer value tolerance"); }
+
+	char** cname = (char**)calloc(1, sizeof(char*));			// (char **) required by cplex...
+	cname[0] = (char*)calloc(100, sizeof(char));
+
+	// Add binary variables x(i,j) for any i,j
+	for (int i = 0; i < inst->nnodes; i++) {
+		for (int j = 0; j < inst->nnodes; j++) {
+
+			sprintf(cname[0], "x(%d,%d)", i + 1, j + 1);		// Set a name for the new column/varible
+			double obj = dist(i, j, inst); // cost == distance   
+			double lb = 0.0;
+			double ub = 1.0;
+			if (i == j) { ub = 0.0; }
+			if (CPXnewcols(env, lp, 1, &obj, &lb, &ub, &binary, cname)) { print_error("Wrong CPXnewcols on x variables"); }
+
+			//printf("Curr num_cols: %d\n", CPXgetnumcols(env, lp));
+			// Verify if xpos returns the right position inside the tableu (xpos_compact starts from 0)
+			if (CPXgetnumcols(env, lp) - 1 != xpos_compact(i, j, inst)) {
+				printf("Curr interation: %d %d", i, j);
+				print_error("Wrong position for x variables");
+			}
+		}
+	}
+
+	// Add u variables for each node that is not the first one
+	for (int i = 1; i < inst->nnodes; i++) {
+
+		sprintf(cname[0], "u(%d)", i + 1);		// Set a name for the new column/varible
+		double obj = 0.0;
+		double lb = 0.0;
+		double ub = inst->nnodes - 2.0;
+		if (CPXnewcols(env, lp, 1, &obj, &lb, &ub, &integer, cname)) { print_error("Wrong CPXnewcols on x variables"); }
+
+		//printf("Curr num_cols: %d\n", CPXgetnumcols(env, lp));
+		if (CPXgetnumcols(env, lp) - 1 != upos_compact(i, inst)) {
+			printf("Curr interation: %d", i);
+			print_error("Wrong position for x variables");
+		}
+	}
+
+	/*// Add the inner degree constraints for all nodes (because in TSP model the final tour is hamiltonian)
+	for (int i = 0; i < inst->nnodes; i++) {					// degree constraints
+		int lastrow = CPXgetnumrows(env, lp);
+		double rhs = 1.0;										// "rhs" = right-hand side of the degree constraints
+		char sense = 'E';										// 'E' for equality constraint 
+		sprintf(cname[0], "inner_degree(%d)", i + 1);					// Set a name for the new row/constraint
+		if (CPXnewrows(env, lp, 1, &rhs, &sense, NULL, cname)) { print_error(" wrong CPXnewrows [degree]"); }
+
+		// TODO: put all coefficients in an array, not creating empty constraints and then changing coefficients one by one
+		// Set coefficient 1 to any variable associated to edges linked to node h
+		for (int j = 0; j < inst->nnodes; j++) {
+			if (j == i) continue;
+			if (CPXchgcoef(env, lp, lastrow, xpos_compact(j, i, inst), 1.0)) print_error(" wrong CPXchgcoef [degree]");
+		}
+	}
+
+	// Add the outer degree constraints for all nodes (because in TSP model the final tour is hamiltonian)
+	for (int i = 0; i < inst->nnodes; i++) {					// degree constraints
+		int lastrow = CPXgetnumrows(env, lp);
+		double rhs = 1.0;										// "rhs" = right-hand side of the degree constraints
+		char sense = 'E';										// 'E' for equality constraint 
+		sprintf(cname[0], "outer_degree(%d)", i + 1);					// Set a name for the new row/constraint
+		if (CPXnewrows(env, lp, 1, &rhs, &sense, NULL, cname)) { print_error(" wrong CPXnewrows [degree]"); }
+
+		// TODO: put all coefficients in an array, not creating empty constraints and then changing coefficients one by one
+		// Set coefficient 1 to any variable associated to edges linked to node h
+		for (int j = 0; j < inst->nnodes; j++) {
+			if (j == i) continue;
+			if (CPXchgcoef(env, lp, lastrow, xpos_compact(i, j, inst), 1.0)) print_error(" wrong CPXchgcoef [degree]");
+		}
+	}*/
+
+	// Add the inner and outer degree constraints for all nodes (because in TSP model the final tour is hamiltonian)
+	int i_zero = 0;
+	int* index = (int*)calloc(inst->nnodes, sizeof(int));					// Array of indexes associated to the row variables
+	double* value = (double*)calloc(inst->nnodes, sizeof(double));			// Array of row variables coefficients
+	double rhs = 1.0;														// "rhs" = right-hand side of the degree constraints
+	char sense = 'E';														// 'L' for less-or-equal constraint
+	int nnz = inst->nnodes;													// number of cells != 0 in the row
+	for (int i = 0; i < inst->nnodes; i++) {
+
+		sprintf(cname[0], "inner_degree(%d)", i + 1);								// Set a name for the new row/constraint
+
+		for (int j = 0; j < inst->nnodes; j++) {
+
+			index[j] = xpos_compact(j, i, inst);
+			value[j] = 1.0;
+			if (j == i)
+				value[j] = 0;
+		}
+		if (CPXaddrows(env, lp, 0, 1, nnz, &rhs, &sense, &i_zero, index, value, NULL, cname)) print_error("wrong CPXaddrows() for inner degree constraints!");
+	}
+	for (int i = 0; i < inst->nnodes; i++) {
+
+		sprintf(cname[0], "outer_degree(%d)", i + 1);								// Set a name for the new row/constraint
+
+		for (int j = 0; j < inst->nnodes; j++) {
+
+			index[j] = xpos_compact(i, j, inst);
+			value[j] = 1.0;
+			if (j == i)
+				value[j] = 0;
+		}
+		if (CPXaddrows(env, lp, 0, 1, nnz, &rhs, &sense, &i_zero, index, value, NULL, cname)) print_error("wrong CPXaddrows() for inner degree constraints!");
+	}
+
+	// Add the u consistency constraints for each edge (i,j)
+	double M = inst->nnodes - 1.0;								// Smallest M value for big M trick
+	rhs = M - 1;											// "rhs" = right-hand side of the degree constraints
+	sense = 'L';											// 'L' for less-or-equal constraint
+	nnz = 3;												// number of cells != 0 in the row
+	for (int i = 1; i < inst->nnodes; i++) {
+		for (int j = 1; j < inst->nnodes; j++) {
+			if (i == j) continue;
+
+			sprintf(cname[0], "u_consistency_for_arc(%d,%d)", i + 1, j + 1);
+			index[0] = upos_compact(i, inst);										// +1.0 * Ui
+			value[0] = 1.0;
+			index[1] = upos_compact(j, inst);										// -1.0 * Uj
+			value[1] = -1.0;
+			index[2] = xpos_compact(i, j, inst);									// +M * Xij
+			value[2] = M;
+			if (CPXaddlazyconstraints(env, lp, 1, nnz, &rhs, &sense, &i_zero, index, value, cname)) print_error("wrong CPXlazyconstraints() for u-consistency");
+		}
+	}
+
+	// Add the subtour elimination constraints of dimension 2 (2-node SECs): Xij + Xji <= 1, for any i < j
+	rhs = 1.0;													// "rhs" = right-hand side of the degree constraints
+	sense = 'L';												// 'L' for less-or-equal constraint
+	nnz = 2;													// number of cells != 0 in the row
+	for (int i = 0; i < inst->nnodes; i++) {
+		for (int j = i + 1; j < inst->nnodes; j++) {
+			if (i == j) continue;
+
+			sprintf(cname[0], "_2_node_SEC(%d,%d)", i + 1, j + 1);
+			index[0] = xpos_compact(i, j, inst);										// +1.0 * Xij
+			value[0] = 1.0;
+			index[1] = xpos_compact(j, i, inst);										// +1.0 * Xji
+			value[1] = 1.0;
+			if (CPXaddlazyconstraints(env, lp, 1, nnz, &rhs, &sense, &i_zero, index, value, cname)) print_error("wrong CPXlazyconstraints() for 2-node SECs");
+		}
+	}
+
+	free(index);
+	free(value);
+
+	// Outputs to file "model_MTZ_lazy_2_node_SECs.lp" the built model
+	create_lp_file(inst, env, lp, "model_MTZ_SEC2");
+
+	free(cname[0]);
+	free(cname);
+}
+
+void build_model_GG(instance* inst, CPXENVptr env, CPXLPptr lp) {
+
+	// Model GG with flow constraints
+
+	double zero = 0.0;
+	char binary = 'B';
+	char integer = 'I';
+
+	char** cname = (char**)calloc(1, sizeof(char*));			// (char **) required by cplex...
+	cname[0] = (char*)calloc(100, sizeof(char));
+
+	// Add binary variables x(i,j) for any i,j
+	for (int i = 0; i < inst->nnodes; i++) {
+		for (int j = 0; j < inst->nnodes; j++) {
+
+			sprintf(cname[0], "x(%d,%d)", i + 1, j + 1);		// Set a name for the new column/varible
+			double obj = dist(i, j, inst); // cost == distance   
+			double lb = 0.0;
+			double ub = 1.0;
+			if (i == j) { ub = 0.0; }
+			if (CPXnewcols(env, lp, 1, &obj, &lb, &ub, &binary, cname)) { print_error("Wrong CPXnewcols on x variables"); }
+
+			//printf("Curr num_cols: %d\n", CPXgetnumcols(env, lp));
+			// Verify if xpos returns the right position inside the tableu (xpos_compact starts from 0)
+			if (CPXgetnumcols(env, lp) - 1 != xpos_compact(i, j, inst)) {
+				printf("Curr interation: %d %d", i, j);
+				print_error("Wrong position for x variables");
+			}
+		}
+	}
+
+	// Add y variables for each edge
+	for (int i = 0; i < inst->nnodes; i++) {
+		for (int j = 0; j < inst->nnodes; j++) {
+
+			sprintf(cname[0], "y(%d,%d)", i + 1, j + 1);		// Set a name for the new column/varible
+			double obj = 0.0;
+			double lb = 0.0;
+			double ub = inst->nnodes - 1.0;
+			if (i == j || j == 0) ub = 0.0;
+			if (CPXnewcols(env, lp, 1, &obj, &lb, &ub, &integer, cname)) { print_error("Wrong CPXnewcols on y variables"); }
+
+			//printf("Curr num_cols: %d\n", CPXgetnumcols(env, lp));
+			if (CPXgetnumcols(env, lp) - 1 != ypos_compact(i, j, inst)) {
+				printf("Curr interation: %d", i);
+				print_error("Wrong position for x variables");
+			}
+		}
+	}
+
+	/*// Add the inner degree constraints for all nodes (because in TSP model the final tour is hamiltonian)
+	for (int i = 0; i < inst->nnodes; i++) {					// degree constraints
+		int lastrow = CPXgetnumrows(env, lp);
+		double rhs = 1.0;										// "rhs" = right-hand side of the degree constraints
+		char sense = 'E';										// 'E' for equality constraint 
+		sprintf(cname[0], "inner_degree(%d)", i + 1);					// Set a name for the new row/constraint
+		if (CPXnewrows(env, lp, 1, &rhs, &sense, NULL, cname)) { print_error(" wrong CPXnewrows [degree]"); }
+
+		// TODO: put all coefficients in an array, not creating empty constraints and then changing coefficients one by one
+		// Set coefficient 1 to any variable associated to edges linked to node h
+		for (int j = 0; j < inst->nnodes; j++) {
+			if (j == i) continue;
+			if (CPXchgcoef(env, lp, lastrow, xpos_compact(j, i, inst), 1.0)) print_error(" wrong CPXchgcoef [degree]");
+		}
+	}
+
+	// Add the outer degree constraints for all nodes (because in TSP model the final tour is hamiltonian)
+	for (int i = 0; i < inst->nnodes; i++) {					// degree constraints
+		int lastrow = CPXgetnumrows(env, lp);
+		double rhs = 1.0;										// "rhs" = right-hand side of the degree constraints
+		char sense = 'E';										// 'E' for equality constraint 
+		sprintf(cname[0], "outer_degree(%d)", i + 1);					// Set a name for the new row/constraint
+		if (CPXnewrows(env, lp, 1, &rhs, &sense, NULL, cname)) { print_error(" wrong CPXnewrows [degree]"); }
+
+		// TODO: put all coefficients in an array, not creating empty constraints and then changing coefficients one by one
+		// Set coefficient 1 to any variable associated to edges linked to node h
+		for (int j = 0; j < inst->nnodes; j++) {
+			if (j == i) continue;
+			if (CPXchgcoef(env, lp, lastrow, xpos_compact(i, j, inst), 1.0)) print_error(" wrong CPXchgcoef [degree]");
+		}
+	}*/
+
+	// Add the inner and outer degree constraints for all nodes (because in TSP model the final tour is hamiltonian)
+	int i_zero = 0;
+	int* index = (int*)calloc(inst->nnodes, sizeof(int));					// Array of indexes associated to the row variables
+	double* value = (double*)calloc(inst->nnodes, sizeof(double));			// Array of row variables coefficients
+	double rhs = 1.0;														// "rhs" = right-hand side of the degree constraints
+	char sense = 'E';														// 'L' for less-or-equal constraint
+	int nnz = inst->nnodes;													// number of cells != 0 in the row
+	for (int i = 0; i < inst->nnodes; i++) {
+
+		sprintf(cname[0], "inner_degree(%d)", i + 1);								// Set a name for the new row/constraint
+
+		for (int j = 0; j < inst->nnodes; j++) {
+
+			index[j] = xpos_compact(j, i, inst);
+			value[j] = 1.0;
+			if (j == i)
+				value[j] = 0;
+		}
+		if (CPXaddrows(env, lp, 0, 1, nnz, &rhs, &sense, &i_zero, index, value, NULL, cname)) print_error("wrong CPXaddrows() for inner degree constraints!");
+	}
+	for (int i = 0; i < inst->nnodes; i++) {
+
+		sprintf(cname[0], "outer_degree(%d)", i + 1);								// Set a name for the new row/constraint
+
+		for (int j = 0; j < inst->nnodes; j++) {
+
+			index[j] = xpos_compact(i, j, inst);
+			value[j] = 1.0;
+			if (j == i)
+				value[j] = 0;
+		}
+		if (CPXaddrows(env, lp, 0, 1, nnz, &rhs, &sense, &i_zero, index, value, NULL, cname)) print_error("wrong CPXaddrows() for inner degree constraints!");
+	}
+
+	// Add the linking constraints for the variable y
+	// Add the u consistency constraints for each edge (i,j)
+	rhs = 0.0;											// "rhs" = right-hand side of the degree constraints
+	sense = 'L';											// 'L' for less-or-equal constraint
+	nnz = 2;												// number of cells != 0 in the row
+	for (int i = 0; i < inst->nnodes; i++) {
+		for (int j = 0; j < inst->nnodes; j++) {
+			if (i == j) continue;
+
+			sprintf(cname[0], "linking_constr(%d,%d)", i + 1, j + 1);
+			index[0] = xpos_compact(i, j, inst);										// +(2.0 - N) * Xij
+			value[0] = 1.0 - inst->nnodes;
+			index[1] = ypos_compact(i, j, inst);										// +1.0 * Yij
+			value[1] = 1.0;
+			if (CPXaddrows(env, lp, 0, 1, nnz, &rhs, &sense, &i_zero, index, value, NULL, cname)) print_error("wrong CPXaddrows() for linking_constr");
+		}
+	}
+
+	// Add the starting flow constraint (the starting flow value from node 1 is n - 1)
+	rhs = inst->nnodes - 1.0;												// "rhs" = right-hand side of the degree constraints
+	sense = 'E';															// 'E' for equality constraint 
+	nnz = inst->nnodes;
+	index[0] = ypos_compact(0, 0, inst);
+	value[0] = 0.0;
+	sprintf(cname[0], "starting_flow_constr");
+	for (int j = 1; j < inst->nnodes; j++) {
+		index[j] = ypos_compact(0, j, inst);
+		value[j] = 1.0;
+	}
+	if (CPXaddrows(env, lp, 0, 1, nnz, &rhs, &sense, &i_zero, index, value, NULL, cname)) print_error("wrong CPXaddrows() for linking_constr");
+	// Set a name for the new row/constraint
+	//if (CPXnewrows(env, lp, 1, &rhs, &sense, NULL, cname)) { print_error(" wrong CPXnewrows [degree]"); }
+
+	// TODO: put all coefficients in an array, not creating empty constraints and then changing coefficients one by one
+	// Set coefficient 1 to any variable associated to edges linked to node h
+	//for (int j = 1; j < inst->nnodes; j++) {
+		//if (CPXchgcoef(env, lp, lastrow, ypos_compact(0, j, inst), 1.0)) print_error(" wrong CPXchgcoef [degree]");
+	//}
+
+	// Add the flow balance constraints
+	// Add the degree constraints for all nodes (because in TSP model the final tour is hamiltonian)
+	rhs = 1.0;
+	sense = 'E';
+	nnz = inst->nnodes * 2;
+	index = realloc(index, 2 * inst->nnodes * sizeof(int));
+	value = realloc(value, 2 * inst->nnodes * sizeof(double));
+	for (int h = 1; h < inst->nnodes; h++) {		
+
+		sprintf(cname[0], "flow_balance(%d)", h + 1);					// Set a name for the new row/constraint
+		//if (CPXnewrows(env, lp, 1, &rhs, &sense, NULL, cname)) { print_error(" wrong CPXnewrows [degree]"); }
+
+		// TODO: put all coefficients in an array, not creating empty constraints and then changing coefficients one by one
+		// Set coefficient 1 to any variable associated to edges linked to node h
+		for (int i = 0; i < inst->nnodes; i++) {
+			if (i == h) {
+				index[i] = ypos_compact(i, h, inst);
+				value[i] = 0.0;
+				index[i + inst->nnodes] = ypos_compact(h, i, inst);
+				value[i + inst->nnodes] = 0.0;
+				continue;
+			}
+			index[i] = ypos_compact(i, h, inst);
+			value[i] = 1.0;
+			index[i + inst->nnodes] = ypos_compact(h, i, inst);
+			value[i + inst->nnodes] = -1.0;
+			
+			//if (CPXchgcoef(env, lp, lastrow, ypos_compact(i, h, inst), 1.0)) print_error(" wrong CPXchgcoef [degree]");
+			//if (CPXchgcoef(env, lp, lastrow, ypos_compact(h, i, inst), -1.0)) print_error(" wrong CPXchgcoef [degree]");
+		}
+		if (CPXaddrows(env, lp, 0, 1, nnz, &rhs, &sense, &i_zero, index, value, NULL, cname)) print_error("wrong CPXaddrows() for linking_constr");
+	}
+
+	free(index);
+	free(value);
+
+	// Outputs to file "model_GG.lp" the built model
+	create_lp_file(inst, env, lp, "model_GG");
+
+	free(cname[0]);
+	free(cname);
+}
+
+void create_lp_file(instance* inst, CPXENVptr env, CPXLPptr lp, const char* file_name) {
+	char model_file_path[100];
+	sprintf(model_file_path, "../outputs/%s/%s.lp", inst->inst_name, file_name);
+	if (inst->verbose >= MEDIUM) printf("\nComplete path for *.lp file: %s\n", model_file_path);
+	CPXwriteprob(env, lp, model_file_path, NULL);
+}
+

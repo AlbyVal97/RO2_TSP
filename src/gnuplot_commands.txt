@@ -3,5 +3,5 @@ set style line 1 \
 	linetype 1 linewidth 2 \
 	pointtype 7 pointsize 2 \
 
-plot "../outputs/eil101/model_BENDERS_edges.dat" using 1:2 with linespoints linestyle 1
+plot "../outputs/berlin52/model_GG_edges.dat" using 1:2:3:4 with vectors linestyle 1
 pause mouse close
