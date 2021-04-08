@@ -33,6 +33,4 @@ void print_solution(instance* inst, double* xstar, int symmetric, char* edges_pl
 
 extern int mkdir(const char* dir_name);
 
-//CIAO3
-
 #endif   /* TSP_H_ */ 

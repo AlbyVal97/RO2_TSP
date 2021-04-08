@@ -7,7 +7,6 @@
 
 #include "tsp.h"
 
-//AAAAAAAAAAAAAAAAAAAA
 
 int TSPopt(instance* inst) {
 
