@@ -23,9 +23,11 @@ int ypos_compact(int i, int j, instance* inst);
 void update_benders_constraints(CPXCENVptr env, CPXLPptr lp, instance* inst, const int* comp, int n_iter);
 
 // Finds the number of connected components in the graph defined inside xstar
-void update_components(const double* xstar, instance* inst, int* succ, int* comp, int* ncomp);
+void update_connected_components(const double* xstar, instance* inst, int* succ, int* comp, int* ncomp);
 
-void build_model(instance* inst, CPXENVptr env, CPXLPptr lp);
+void solve_benders(instance* inst, CPXENVptr env, CPXLPptr lp);
+
+//void build_model(instance* inst, CPXENVptr env, CPXLPptr lp);
 
 // Builds the tableau (variables and constraints)
 void build_model_BASIC(instance* inst, CPXENVptr env, CPXLPptr lp);

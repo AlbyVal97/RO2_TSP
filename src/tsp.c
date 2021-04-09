@@ -22,11 +22,13 @@ int TSPopt(instance* inst) {
 	if (CPXsetintparam(env, CPX_PARAM_RANDOMSEED, inst->seed)) { print_error("CPXsetdblparam() error in setting seed"); }
 
 	char edges_file_path[100];
+	char logfile_path[100];
 	// Create "outputs" folder if needed
 	printf("\n");
 	if (mkdir("../outputs") == -1) printf("Folder \"outputs\" already exists.\n");
 	else printf("Folder \"outputs\" created for the first time!\n");
 	sprintf(edges_file_path, "../outputs/%s", inst->inst_name);
+	sprintf(logfile_path, "../outputs/%s", inst->inst_name);
 	if (mkdir(edges_file_path) == -1) printf("Folder for the current instance already exists.\n");
 	else printf("Folder for the current instance created for the first time!\n");
 
@@ -34,6 +36,8 @@ int TSPopt(instance* inst) {
 
 		case BASIC:
 			build_model_BASIC(inst, env, lp);
+			sprintf(logfile_path, "%s/logfile_BASIC.txt", logfile_path);
+			if (CPXsetlogfilename(env, logfile_path, "w")) { print_error("CPXsetlogfilename() error in setting logfile name"); }
 			if (CPXmipopt(env, lp)) { print_error("CPXmipopt() error"); }
 			sprintf(edges_file_path, "%s/model_BASIC_edges.dat", edges_file_path);
 			break;
@@ -63,6 +67,8 @@ int TSPopt(instance* inst) {
 			break;
 
 		case BENDERS:
+			build_model_BASIC(inst, env, lp);
+			solve_benders(inst, env, lp);
 			sprintf(edges_file_path, "%s/model_BENDERS_edges.dat", edges_file_path);
 			break;
 	}
@@ -176,6 +182,7 @@ int TSPopt(instance* inst) {
 	// Free allocated memory and close Cplex model
 	free(xstar);
 
+	if (CPXsetlogfilename(env, NULL, NULL)) { print_error("CPXsetlogfilename() error"); }
 	if (CPXfreeprob(env, &lp)) { print_error("CPXfreeprob() error"); }
 	if (CPXcloseCPLEX(&env)) { print_error("CPXcloseCPLEX() error"); }
 
@@ -266,62 +273,121 @@ int ypos_compact(int i, int j, instance* inst) {
 	return pos;
 }
 
+void solve_benders(instance* inst, CPXENVptr env, CPXLPptr lp) {
 
-void update_benders_constraints(CPXCENVptr env, CPXLPptr lp, instance* inst, const int* comp, int n_iter) {
+	int n_comp = 2;
+	int* succ = (int*)malloc(inst->nnodes * sizeof(int));	
+	int* comp = (int*)malloc(inst->nnodes * sizeof(int));
+	double new_timelimit = inst->timelimit;
 
-	// Scan first connencted component for its number of nodes -> value of first_comp_n_nodes
-	int first_comp_n_nodes = 0;
-	for (int i = 0; i < inst->nnodes; i++) {
-		if (comp[i] == 1) {
-			first_comp_n_nodes++;
-		}
-	}
+	int ncols = CPXgetnumcols(env, lp);
+	double* x = (double*)calloc(ncols, sizeof(double));
 	
-	// Scan first connected component for its nodes indexes
-	int* first_comp_nodes = (int*)malloc(first_comp_n_nodes * sizeof(int));
-	int j = 0;
-	for (int i = 0; i < inst->nnodes; i++) {
-		if (comp[i] == 1) {
-			first_comp_nodes[j++] = i;
-		}
+	int n_iter = 0;
+	while (n_comp > 1) {									// Repeat iteratively until just one connected component is left
+
+		// Add a new subtour elimination constraint for the first connected component of the current solution
+		if (n_iter > 0)
+			update_benders_constraints(env, lp, inst, comp, n_iter);
+
+		double t1 = second();
+		// Optimize with the new constraint
+		if (CPXmipopt(env, lp)) { print_error("CPXmipopt() error"); }
+		double t2 = second();
+
+		printf("time used iteration number %d: %f\n", n_iter, t2 - t1);
+
+		new_timelimit = new_timelimit - (t2 - t1);
+		printf("new time limit %f\n", new_timelimit);
+		if (new_timelimit < 0) print_error("Time limit excedded\n");
+		if (CPXsetdblparam(env, CPX_PARAM_TILIM, new_timelimit)) { print_error("CPXsetdblparam() error in setting timelimit"); }
+		
+
+		// Extract the new solution
+		ncols = CPXgetnumcols(env, lp);
+		if (CPXgetx(env, lp, x, 0, ncols - 1)) { print_error("CPXgetx() error"); }
+
+		// Update the number of connected components of the new graph
+		update_connected_components(x, inst, succ, comp, &n_comp);
+		if (inst->verbose >= HIGH) printf("Current n_comp: %d \n", n_comp);
+
+		// Increment current iteration number
+		n_iter++;
 	}
 
-	char** cname = (char**)calloc(1, sizeof(char*));			// (char **) required by cplex...
-	cname[0] = (char*)calloc(100, sizeof(char));
-	sprintf(cname[0], "subtour_elimination_constraint(%d)", n_iter);
-	double rhs = first_comp_n_nodes - 1.0;
-	char sense = 'L';
-	int i_zero = 0;
-	// We should compute the number of edges connecting the nodes of the current connected component
-	// as the binomial coefficient (n over 2) = n!/((n-2)!*(2!)), but it's not feasible for "big" values of n
-	// => we just allocate the square of the number of nodes, which is not that much bigger than needed:
-	int n_edges_curr_comp = first_comp_n_nodes * first_comp_n_nodes;
-	if (inst->verbose >= HIGH) printf("n_edges_curr_comp: %d\n", n_edges_curr_comp);
-	int* index = (int*)calloc(n_edges_curr_comp, sizeof(int));					// Array of indexes associated to the row variables
-	double* value = (double*)calloc(n_edges_curr_comp, sizeof(double));			// Array of row variables coefficients
-	int nnz = n_edges_curr_comp;
+	create_lp_file(inst, env, lp, "model_BENDERS");
 
-	int k = 0;
-	for (int i = 0; i < first_comp_n_nodes; i++) {
-		for (int j = i + 1; j < first_comp_n_nodes; j++) {
-			if (i == j) {
-				continue;
-			}
-			index[k] = xpos(first_comp_nodes[i], first_comp_nodes[j], inst);
-			value[k++] = 1.0;
-		}
-
-	}
-	if (CPXaddrows(env, lp, 0, 1, nnz, &rhs, &sense, &i_zero, index, value, NULL, cname)) print_error("wrong CPXaddrows() for subtour elimination constraints!");
-
-	free(cname[0]);
-	free(cname);
-	free(index);
-	free(value);
+	free(succ);
+	free(comp);
+	free(x);
 }
 
 
-void update_components(const double* xstar, instance* inst, int* succ, int* comp, int* ncomp) {
+void update_benders_constraints(CPXCENVptr env, CPXLPptr lp, instance* inst, const int* comp, int n_iter) {
+
+	int n = 1;
+	//int stop = 0;
+	while (1) {
+
+		// Scan connencted components for its number of nodes -> value of comp_n_nodes
+		int comp_n_nodes = 0;
+		for (int i = 0; i < inst->nnodes; i++) {
+			if (comp[i] == n) {
+				comp_n_nodes++;
+			}
+		}
+
+		if (comp_n_nodes == 0) break;
+
+		// Scan connected components for its nodes indexes
+		int* comp_nodes = (int*)malloc(comp_n_nodes * sizeof(int));
+		int j = 0;
+		for (int i = 0; i < inst->nnodes; i++) {
+			if (comp[i] == n) {
+				comp_nodes[j++] = i;
+			}
+		}
+
+		char** cname = (char**)calloc(1, sizeof(char*));			// (char **) required by cplex...
+		cname[0] = (char*)calloc(100, sizeof(char));
+		sprintf(cname[0], "subtour_elimination_constraint(%d,%d)", n_iter + 1, n);
+		double rhs = comp_n_nodes - 1.0;
+		char sense = 'L';
+		int i_zero = 0;
+		// We should compute the number of edges connecting the nodes of the current connected component
+		// as the binomial coefficient (n over 2) = n!/((n-2)!*(2!)), but it's not feasible for "big" values of n
+		// => we just allocate the square of the number of nodes, which is not that much bigger than needed:
+		int n_edges_curr_comp = comp_n_nodes * (comp_n_nodes - 1) / 2;
+		if (inst->verbose >= HIGH) printf("n_edges_curr_comp: %d\n", n_edges_curr_comp);
+		int* index = (int*)calloc(n_edges_curr_comp, sizeof(int));					// Array of indexes associated to the row variables
+		double* value = (double*)calloc(n_edges_curr_comp, sizeof(double));			// Array of row variables coefficients
+		int nnz = n_edges_curr_comp;
+
+		int k = 0;
+		for (int i = 0; i < comp_n_nodes; i++) {
+			for (int j = i + 1; j < comp_n_nodes; j++) {
+				if (i == j) {
+					continue;
+				}
+				index[k] = xpos(comp_nodes[i], comp_nodes[j], inst);
+				value[k++] = 1.0;
+			}
+
+		}
+		if (CPXaddrows(env, lp, 0, 1, nnz, &rhs, &sense, &i_zero, index, value, NULL, cname)) print_error("wrong CPXaddrows() for subtour elimination constraints!");
+
+		free(comp_nodes);
+		free(cname[0]);
+		free(cname);
+		free(index);
+		free(value);
+
+		n++;
+	}
+}
+
+
+void update_connected_components(const double* xstar, instance* inst, int* succ, int* comp, int* ncomp) {
 
 	// Start with 0 connected components
 	*ncomp = 0;
@@ -1033,7 +1099,7 @@ void build_model_BASIC(instance* inst, CPXENVptr env, CPXLPptr lp) {
 	free(value);
 
 	// Outputs to file "basic_model.lp" the built model
-	create_lp_file(inst, env, lp, "model_BASIC_new");
+	create_lp_file(inst, env, lp, "model_BASIC");
 
 	free(cname[0]);
 	free(cname);
