@@ -13,6 +13,9 @@ void parse_input_file(instance* inst);
 // Creates and fills a "nodes.dat" file to allow for graph plotting
 void print_nodes_dat_file(const instance* inst);
 
+// Create the given number of random (but deterministic) instances with a fixed number of nodes (all parameters are inside inst)
+void create_instances(instance* inst);
+
 // Prints in a standard way the provided type of error
 void print_error(const char* err);
 
@@ -25,8 +28,7 @@ void free_instance(instance* inst);
 // Returns the processor clock time used since the beginning of the program (in seconds)
 double second();
 
-// Computes the factorial of n
-int factorial(int n);
+extern int mkdir(const char* dir_name);
 
 // Inline useful functions
 inline int imax(int i1, int i2) { return (i1 > i2) ? i1 : i2; }

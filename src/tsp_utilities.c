@@ -11,6 +11,7 @@
 void parse_command_line(int argc, char** argv, instance* inst) {
 
 	// Set default values for the instance
+	inst->mode = DEFAULT;
 	inst->model_type = BASIC;
 	strcpy(inst->input_file, "NULL");
 	inst->timelimit = CPX_INFBOUND;
@@ -22,6 +23,9 @@ void parse_command_line(int argc, char** argv, instance* inst) {
 	if (argc < 1) help = 1;
 	for (int i = 1; i < argc; i++) {
 
+		if (strcmp(argv[i], "-m") == 0) { inst->mode = atoi(argv[++i]); continue; }							// working mode
+		if (strcmp(argv[i], "-n_inst") == 0) { inst->n_instances = atoi(argv[++i]); continue; }				// instances to generate
+		if (strcmp(argv[i], "-n_nodes") == 0) { inst->n_nodes_per_instance = atoi(argv[++i]); continue; }	// nodes for each instance
 		if (strcmp(argv[i], "-f") == 0) { strcpy(inst->input_file, argv[++i]); continue; } 					// input file
 		if (strcmp(argv[i], "-time_limit") == 0) { inst->timelimit = atof(argv[++i]); continue; }			// total time limit
 		if (strcmp(argv[i], "-model_type") == 0) { inst->model_type = atoi(argv[++i]); continue; } 			// model type
@@ -38,6 +42,9 @@ void parse_command_line(int argc, char** argv, instance* inst) {
 	if (help || (inst->verbose >= MEDIUM)) {
 
 		printf("\nAvailable parameters (vers. 05-march-2021) --------------------------------------------------\n");
+		printf("-m %d\n", inst->mode);
+		printf("-n_inst %d\n", inst->n_instances);
+		printf("-n_nodes %d\n", inst->n_nodes_per_instance);
 		printf("-f %s\n", inst->input_file);
 		printf("-time_limit %lf\n", inst->timelimit);
 		printf("-model_type %d\n", inst->model_type);
@@ -169,6 +176,58 @@ void print_nodes_dat_file(const instance* inst) {
 }
 
 
+void create_instances(instance* inst) {
+
+	if (mkdir("../data/rnd_compact_instances") == -1) printf("Folder \"rnd_compact_instances\" already exists.\n");
+	else printf("Folder \"rnd_compact_instances\" created for the first time!\n");
+
+	// Generate a list of seeds, one per instance
+	int* seeds = (int*)malloc(sizeof(int) * inst->n_instances);
+	int base_seed = 1236460 - 1236009;
+	for (int i = 0; i < inst->n_instances; i++) {
+		seeds[i] = base_seed + i * 9;
+	}
+
+	
+	char inst_name[20];
+	char inst_file_path[50];
+	for (int i = 0; i < inst->n_instances; i++) {
+
+		// Create the name for the current instance file
+		sprintf(inst_name, "rnd_inst_%d", i+1);
+		sprintf(inst_file_path, "../data/rnd_compact_instances/%s.tsp", inst_name);
+
+		// Open the file for the current instance
+		FILE* fin = fopen(inst_file_path, "w");
+		if (fin == NULL) print_error("Input file not found!");
+
+		fprintf(fin, "NAME : %s\n", inst_name);
+		fprintf(fin, "COMMENT : Instance #%d out of %d with seed %d.\n", i+1, inst->n_instances, seeds[i]);
+		fprintf(fin, "TYPE : TSP\n");
+		fprintf(fin, "DIMENSION : %d\n", inst->n_nodes_per_instance);
+		fprintf(fin, "EDGE_WEIGHT_TYPE : EUC_2D\n");
+		fprintf(fin, "NODE_COORD_SECTION\n");
+
+		// Set the seed for the current instance
+		srand(seeds[i]);
+
+		// Add the nodes coordinates (one node per row)
+		for (int j = 0; j < inst->n_nodes_per_instance; j++) {
+			double x_coord = (double)rand() / RAND_MAX;
+			double y_coord = (double)rand() / RAND_MAX;
+
+			fprintf(fin, "%d %f %f\n", j+1, x_coord, y_coord);
+		}
+
+		fprintf(fin, "EOF");
+
+		fclose(fin);
+	}
+
+	return;
+}
+
+
 void print_error(const char* err) { 
 	printf("\n\n ERROR: %s \n\n", err);
 	fflush(NULL);														// If stream pointer is NULL, all open output streams are flushed
@@ -180,7 +239,9 @@ double dist(int i, int j, instance* inst) {
 	double dx = inst->xcoord[i] - inst->xcoord[j];
 	double dy = inst->ycoord[i] - inst->ycoord[j];
 	if (!inst->integer_costs) return sqrt(dx * dx + dy * dy);
-	int dis = (int)(sqrt(dx * dx + dy * dy) + 0.499999999); 			// Round to the nearest integer
+	
+	// Only if integer_costs is 1, then we need to round to the nearest integer
+	int dis = (int)(sqrt(dx * dx + dy * dy) + 0.499999999);
 	return dis + 0.0;
 }
 
@@ -188,27 +249,11 @@ double dist(int i, int j, instance* inst) {
 void free_instance(instance* inst) { 
 	free(inst->xcoord);
 	free(inst->ycoord);
+
+	return;
 }
 
 
 double second() {
 	return ((double)clock() / (double)CLK_TCK);
-}
-
-
-int factorial(int n) {
-
-	int factorial = 1;
-	
-	if (n > 0) {										// Check if n is positive
-		while (n > 0) {
-			factorial *= n;
-			n--;
-		}
-	}
-	else {
-		print_error("Can't compute the factorial of a negative number!\n");
-	}
-	
-	return factorial;
 }

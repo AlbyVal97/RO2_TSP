@@ -19,6 +19,11 @@ int main(int argc, char **argv) {
 
 	parse_command_line(argc, argv, &inst);
 
+	if (inst.mode == CREATE_INSTANCES) {
+		create_instances(&inst);
+		return 0;
+	}
+
 	parse_input_file(&inst);
 
 	double t1 = second();

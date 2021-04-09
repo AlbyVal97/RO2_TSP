@@ -25,18 +25,30 @@ typedef enum {
 	BENDERS
 } model_type;
 
+typedef enum {
+	DEFAULT,
+	CREATE_INSTANCES
+} mode;
+
 // Problem instance data structure
 typedef struct {
 
-	// input data
+	// Input data
 	int nnodes;
 	char inst_name[100];
 	double* xcoord;
 	double* ycoord;
 	int integer_costs;                      // = 1 for integer costs (rounded distances), 0 otherwise
 
-	// parameters 
-	int model_type;
+	// Command line parameters list
+	int mode;								// working mode of the program
+
+	// Command line arguments for CREATE_INSTANCES mode
+	int n_instances;						// number of instances to generate
+	int n_nodes_per_instance;				// number of nodes (fixed) for the instances to be generated
+
+	// Command line arguments for DEFAULT mode
+	int model_type;							// model number to be used to solve the instance
 	double timelimit;						// overall time limit, in seconds
 	char input_file[1000];		  			// input file name
 	int verbose;							// verbosity value
