@@ -3,5 +3,9 @@ set style line 1 \
 	linetype 1 linewidth 2 \
 	pointtype 7 pointsize 2 \
 
+<<<<<<< HEAD
 plot "../outputs/rnd_inst_1/model_MTZ_STATIC_edges.dat" using 1:2:3:4 with vectors linestyle 1
+=======
+plot "../outputs/berlin52/model_MTZ_LAZY_edges.dat" using 1:2:3:4 with vectors linestyle 1
+>>>>>>> 13c7d7a4dfdde0defc74544033df3b13f897d7ff
 pause mouse close

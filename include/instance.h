@@ -10,6 +10,7 @@
 
 // Verbosity levels enumeration
 typedef enum {
+	TEST,
 	LOW,
 	MEDIUM,
 	HIGH
