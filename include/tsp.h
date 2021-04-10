@@ -20,7 +20,7 @@ int upos_compact(int i, instance* inst);
 int ypos_compact(int i, int j, instance* inst);
 
 // Returns if the results are from an optimal solution or not (es. timelimit has been reached)
-int mip_solved_to_optimality(CPXENVptr env, CPXLPptr lp);
+int mip_solved_to_optimality(instance* inst, CPXENVptr env, CPXLPptr lp);
 
 // Add a new subtour elimination constraint for the first connected component of the current solution
 void update_benders_constraints(CPXCENVptr env, CPXLPptr lp, instance* inst, const int* comp, int n_iter);

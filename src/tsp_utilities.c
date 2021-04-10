@@ -39,7 +39,7 @@ void parse_command_line(int argc, char** argv, instance* inst) {
 
 	if (inst->verbose >= HIGH) { printf("Running %s with %d parameters \n", argv[0], argc - 1); }
 
-	if (help || (inst->verbose >= MEDIUM)) {
+	if (help || (inst->verbose >= LOW)) {
 
 		printf("\nAvailable parameters (vers. 05-march-2021) --------------------------------------------------\n");
 		printf("-m %d\n", inst->mode);
@@ -52,7 +52,12 @@ void parse_command_line(int argc, char** argv, instance* inst) {
 		printf("-verbose %d\n", inst->verbose);
 		printf("-seed %d\n", inst->seed);
 		printf("\nEnter -help or --help for help\n");
-		printf("----------------------------------------------------------------------------------------------\n\n");
+		printf("----------------------------------------------------------------------------------------------\n");
+	}
+	else if (inst->verbose == TEST) {
+		printf("-f %s\n", inst->input_file);
+		printf("-time_limit %lf\n", inst->timelimit);
+		printf("-model_type %d\n", inst->model_type);
 	}
 
 	if (help) exit(1);
@@ -85,8 +90,6 @@ void parse_input_file(instance* inst) {
 		// Gets the portion of line before separators " " and ":", that is the parameter name. 
 		// Then replaces \0 to the first found separator
 		par_name = strtok(line, " :\n");
-
-		if (inst->verbose >= HIGH) { printf("Current parameter name: \"%s\" \n", par_name); fflush(NULL); }
 
 		if (strncmp(par_name, "NAME", 4) == 0) {
 			token1 = strtok(NULL, " :\n");

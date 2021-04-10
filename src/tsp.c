@@ -25,67 +25,87 @@ int TSPopt(instance* inst) {
 	char logfile_path[100];
 	// Create "outputs" folder if needed
 	printf("\n");
-	if (mkdir("../outputs") == -1) printf("Folder \"outputs\" already exists.\n");
-	else printf("Folder \"outputs\" created for the first time!\n");
+	if (mkdir("../outputs") == -1) {
+		if (inst->verbose >= MEDIUM) printf("Folder \"outputs\" already exists.\n");
+	}
+	else {
+		if (inst->verbose >= MEDIUM) printf("Folder \"outputs\" created for the first time!\n");
+	}
 	sprintf(edges_file_path, "../outputs/%s", inst->inst_name);
 	sprintf(logfile_path, "../outputs/%s", inst->inst_name);
-	if (mkdir(edges_file_path) == -1) printf("Folder for the current instance already exists.\n");
-	else printf("Folder for the current instance created for the first time!\n");
+	if (mkdir(edges_file_path) == -1) {
+		if (inst->verbose >= MEDIUM) printf("Folder for the current instance already exists.\n");
+	}
+	else {
+		if (inst->verbose >= MEDIUM) printf("Folder for the current instance created for the first time!\n");
+	}
 
 	switch (inst->model_type) {
 
 		case BASIC:
 			build_model_BASIC(inst, env, lp);
-			sprintf(logfile_path, "%s/logfile_BASIC.txt", logfile_path);
-			if (CPXsetlogfilename(env, logfile_path, "w")) { print_error("CPXsetlogfilename() error in setting logfile name"); }
+			if (inst->verbose >= LOW) {
+				sprintf(logfile_path, "%s/logfile_BASIC.txt", logfile_path);
+				if (CPXsetlogfilename(env, logfile_path, "w")) print_error("CPXsetlogfilename() error in setting logfile name");
+			}
 			if (CPXmipopt(env, lp)) { print_error("CPXmipopt() error"); }
-			mip_solved_to_optimality(env, lp);												// Check if CPXmipopt has ended correctly
+			mip_solved_to_optimality(inst, env, lp);												// Check if CPXmipopt has ended correctly
 			sprintf(edges_file_path, "%s/model_BASIC_edges.dat", edges_file_path);
 			break;
 
 		case MTZ_STATIC:
 			build_model_MTZ_STATIC(inst, env, lp);
-			sprintf(logfile_path, "%s/logfile_MTZ_STATIC.txt", logfile_path);
-			if (CPXsetlogfilename(env, logfile_path, "w")) { print_error("CPXsetlogfilename() error in setting logfile name"); }
+			if (inst->verbose >= LOW) {
+				sprintf(logfile_path, "%s/logfile_MTZ_STATIC.txt", logfile_path);
+				if (CPXsetlogfilename(env, logfile_path, "w")) print_error("CPXsetlogfilename() error in setting logfile name");
+			}
 			if (CPXsetdblparam(env, CPX_PARAM_EPINT, 0.0)) { print_error("CPXsetdblparam() error in setting integer value tolerance"); }
 			if (CPXmipopt(env, lp)) { print_error("CPXmipopt() error"); }
-			mip_solved_to_optimality(env, lp);												// Check if CPXmipopt has ended correctly
+			mip_solved_to_optimality(inst, env, lp);												// Check if CPXmipopt has ended correctly
 			sprintf(edges_file_path, "%s/model_MTZ_STATIC_edges.dat", edges_file_path);
 			break;
 
 		case MTZ_LAZY:
 			build_model_MTZ_LAZY(inst, env, lp);
-			sprintf(logfile_path, "%s/logfile_MTZ_LAZY.txt", logfile_path);
-			if (CPXsetlogfilename(env, logfile_path, "w")) { print_error("CPXsetlogfilename() error in setting logfile name"); }
+			if (inst->verbose >= LOW) {
+				sprintf(logfile_path, "%s/logfile_MTZ_LAZY.txt", logfile_path);
+				if (CPXsetlogfilename(env, logfile_path, "w")) print_error("CPXsetlogfilename() error in setting logfile name");
+			}
 			if (CPXsetdblparam(env, CPX_PARAM_EPINT, 0.0)) { print_error("CPXsetdblparam() error in setting integer value tolerance"); }
 			if (CPXmipopt(env, lp)) { print_error("CPXmipopt() error"); }
-			mip_solved_to_optimality(env, lp);												// Check if CPXmipopt has ended correctly
+			mip_solved_to_optimality(inst, env, lp);												// Check if CPXmipopt has ended correctly
 			sprintf(edges_file_path, "%s/model_MTZ_LAZY_edges.dat", edges_file_path);
 			break;
 
 		case MTZ_SEC2:
 			build_model_MTZ_SEC2(inst, env, lp);
-			sprintf(logfile_path, "%s/logfile_MTZ_SEC2.txt", logfile_path);
-			if (CPXsetlogfilename(env, logfile_path, "w")) { print_error("CPXsetlogfilename() error in setting logfile name"); }
+			if (inst->verbose >= LOW) {
+				sprintf(logfile_path, "%s/logfile_MTZ_SEC2.txt", logfile_path);
+				if (CPXsetlogfilename(env, logfile_path, "w")) print_error("CPXsetlogfilename() error in setting logfile name");
+			}
 			if (CPXsetdblparam(env, CPX_PARAM_EPINT, 0.0)) { print_error("CPXsetdblparam() error in setting integer value tolerance"); }
 			if (CPXmipopt(env, lp)) { print_error("CPXmipopt() error"); }
-			mip_solved_to_optimality(env, lp);												// Check if CPXmipopt has ended correctly
+			mip_solved_to_optimality(inst, env, lp);												// Check if CPXmipopt has ended correctly
 			sprintf(edges_file_path, "%s/model_MTZ_SEC2_edges.dat", edges_file_path);
 			break;
 
 		case GG:
 			build_model_GG(inst, env, lp);
-			sprintf(logfile_path, "%s/logfile_GG.txt", logfile_path);
-			if (CPXsetlogfilename(env, logfile_path, "w")) { print_error("CPXsetlogfilename() error in setting logfile name"); }
+			if (inst->verbose >= LOW) {
+				sprintf(logfile_path, "%s/logfile_GG.txt", logfile_path);
+				if (CPXsetlogfilename(env, logfile_path, "w")) print_error("CPXsetlogfilename() error in setting logfile name");
+			}
 			if (CPXmipopt(env, lp)) { print_error("CPXmipopt() error"); }
-			mip_solved_to_optimality(env, lp);												// Check if CPXmipopt has ended correctly
+			mip_solved_to_optimality(inst, env, lp);												// Check if CPXmipopt has ended correctly
 			sprintf(edges_file_path, "%s/model_GG_edges.dat", edges_file_path);
 			break;
 
 		case BENDERS:
 			build_model_BASIC(inst, env, lp);
-			sprintf(logfile_path, "%s/logfile_BENDERS.txt", logfile_path);
-			if (CPXsetlogfilename(env, logfile_path, "w")) { print_error("CPXsetlogfilename() error in setting logfile name"); }
+			if (inst->verbose >= LOW) {
+				sprintf(logfile_path, "%s/logfile_BENDERS.txt", logfile_path);
+				if (CPXsetlogfilename(env, logfile_path, "w")) print_error("CPXsetlogfilename() error in setting logfile name");
+			}
 			solve_benders(inst, env, lp);
 			sprintf(edges_file_path, "%s/model_BENDERS_edges.dat", edges_file_path);
 			break;
@@ -111,7 +131,7 @@ int TSPopt(instance* inst) {
 	else if (inst->model_type == MTZ_STATIC || inst->model_type == MTZ_LAZY || inst->model_type == MTZ_SEC2 || inst->model_type == GG) symmetric = 1;
 	
 	// Fill the .dat file with the correctly formatted nodes of the found solution
-	print_solution(inst, xstar, symmetric, edges_file_path);
+	if (inst->verbose >= LOW) print_solution(inst, xstar, symmetric, edges_file_path);
 	
 	// Free allocated memory and close Cplex model
 	free(xstar);
@@ -136,7 +156,7 @@ void print_solution(instance* inst, double* xstar, int symmetric, char* edges_fi
 
 				if (xstar[xpos(i, j, inst)] > 0.5) {
 
-					if (inst->verbose >= MEDIUM) {
+					if (inst->verbose >= HIGH) {
 						printf("x(%3d,%3d) = 1\n", i + 1, j + 1);
 					}
 					fprintf(edges_plot_file_name, "%f %f\n%f %f\n\n", inst->xcoord[i], inst->ycoord[i], inst->xcoord[j], inst->ycoord[j]);
@@ -151,7 +171,7 @@ void print_solution(instance* inst, double* xstar, int symmetric, char* edges_fi
 
 				if (xstar[xpos_compact(i, j, inst)] > 0.5) {
 
-					if (inst->verbose >= MEDIUM) {
+					if (inst->verbose >= HIGH) {
 						printf("x(%3d,%3d) = 1\n", i + 1, j + 1);
 					}
 					fprintf(edges_plot_file_name, "%f %f %f %f\n", inst->xcoord[i], inst->ycoord[i], inst->xcoord[j] - inst->xcoord[i], inst->ycoord[j] - inst->ycoord[i]);
@@ -208,18 +228,18 @@ int ypos_compact(int i, int j, instance* inst) {
 }
 
 
-int mip_solved_to_optimality(CPXENVptr env, CPXLPptr lp) {
+int mip_solved_to_optimality(instance* inst, CPXENVptr env, CPXLPptr lp) {
 
 	int lpstat = CPXgetstat(env, lp);
 	switch (lpstat) {
 		case CPXMIP_OPTIMAL:
-			printf("Optimal integer solution found.\n");
+			if (inst->verbose >= MEDIUM) printf("\nOptimal integer solution found.\n");
 			break;
 		case CPXMIP_OPTIMAL_INFEAS:
-			printf("Problem optimal with unscaled infeasibilities.\n");
+			if (inst->verbose >= MEDIUM) printf("\nProblem optimal with unscaled infeasibilities.\n");
 			break;
 		case CPXMIP_OPTIMAL_TOL:
-			printf("Optimal solution within epgap or epagap tolerance found.\n");
+			if (inst->verbose >= MEDIUM) printf("\nOptimal solution within epgap or epagap tolerance found.\n");
 			break;
 		case CPXMIP_TIME_LIM_FEAS:
 			print_error("Time limit exceeded, integer solution exists.\n");
@@ -262,13 +282,13 @@ void solve_benders(instance* inst, CPXENVptr env, CPXLPptr lp) {
 		double t2 = second();
 
 		// Check if CPXmipopt has ended correctly
-		mip_solved_to_optimality(env, lp);
+		mip_solved_to_optimality(inst, env, lp);
 
-		printf("time used iteration number %d: %f\n", n_iter, t2 - t1);
+		if (inst->verbose >= MEDIUM) printf("Time used for iteration number %d: %f\n", n_iter, t2 - t1);
 
 		// Update the amount of time left before timelimit is reached and provide it to Cplex to check
 		residual_timelimit = residual_timelimit - (t2 - t1);
-		printf("new time limit %f\n\n", residual_timelimit);
+		if (inst->verbose >= MEDIUM) printf("New time limit: %f\n\n", residual_timelimit);
 		if (CPXsetdblparam(env, CPX_PARAM_TILIM, residual_timelimit)) { print_error("CPXsetdblparam() error in setting timelimit"); }
 
 		// Extract the new solution
@@ -277,13 +297,14 @@ void solve_benders(instance* inst, CPXENVptr env, CPXLPptr lp) {
 
 		// Update the number of connected components of the new graph
 		update_connected_components(x, inst, succ, comp, &n_comp);
-		if (inst->verbose >= HIGH) printf("Current n_comp: %d \n", n_comp);
+		if (inst->verbose >= MEDIUM) printf("Current number of connected components (n_comp): %d \n", n_comp);
+		if (inst->verbose >= MEDIUM && n_comp == 1) printf("BENDERS method ended successfully!\n");
 
 		// Increment current iteration number
 		n_iter++;
 	}
 
-	create_lp_file(inst, env, lp, "model_BENDERS");
+	if (inst->verbose >= LOW) create_lp_file(inst, env, lp, "model_BENDERS");
 
 	free(succ);
 	free(comp);
@@ -326,7 +347,7 @@ void update_benders_constraints(CPXCENVptr env, CPXLPptr lp, instance* inst, con
 		// We should compute the number of edges connecting the nodes of the current connected component
 		// as the binomial coefficient (n over 2) = n!/((n-2)!*(2!)) = n*(n-1)/2
 		int n_edges_curr_comp = comp_n_nodes * (comp_n_nodes - 1) / 2;
-		if (inst->verbose >= HIGH) printf("n_edges_curr_comp: %d\n", n_edges_curr_comp);
+		if (inst->verbose >= HIGH) printf("Number of edges in connected component #%d (n_edges_curr_comp): %d\n", n, n_edges_curr_comp);
 		int* index = (int*)calloc(n_edges_curr_comp, sizeof(int));					// Array of indexes associated to the row variables
 		double* value = (double*)calloc(n_edges_curr_comp, sizeof(double));			// Array of row variables coefficients
 		int nnz = n_edges_curr_comp;
@@ -439,7 +460,7 @@ void build_model_BASIC(instance* inst, CPXENVptr env, CPXLPptr lp) {
 	}
 
 	// Outputs to file "basic_model.lp" the built model
-	create_lp_file(inst, env, lp, "model_BASIC");
+	if (inst->verbose >= LOW) create_lp_file(inst, env, lp, "model_BASIC");
 
 	free(index);
 	free(value);
@@ -550,7 +571,7 @@ void build_model_MTZ_STATIC(instance* inst, CPXENVptr env, CPXLPptr lp) {
 	}
 
 	// Outputs to file "model_MTZ_static.lp" the built model
-	create_lp_file(inst, env, lp, "model_MTZ_STATIC");
+	if (inst->verbose >= LOW) create_lp_file(inst, env, lp, "model_MTZ_STATIC");
 
 	free(index);
 	free(value);
@@ -661,7 +682,7 @@ void build_model_MTZ_LAZY(instance* inst, CPXENVptr env, CPXLPptr lp) {
 	}
 
 	// Outputs to file "model_MTZ_lazy_u_consistency.lp" the built model
-	create_lp_file(inst, env, lp, "model_MTZ_LAZY");
+	if (inst->verbose >= LOW) create_lp_file(inst, env, lp, "model_MTZ_LAZY");
 
 	free(index);
 	free(value);
@@ -789,7 +810,7 @@ void build_model_MTZ_SEC2(instance* inst, CPXENVptr env, CPXLPptr lp) {
 	}
 
 	// Outputs to file "model_MTZ_lazy_2_node_SECs.lp" the built model
-	create_lp_file(inst, env, lp, "model_MTZ_SEC2");
+	if (inst->verbose >= LOW) create_lp_file(inst, env, lp, "model_MTZ_SEC2");
 
 	free(index);
 	free(value);
@@ -940,7 +961,7 @@ void build_model_GG(instance* inst, CPXENVptr env, CPXLPptr lp) {
 	}
 
 	// Outputs to file "model_GG.lp" the built model
-	create_lp_file(inst, env, lp, "model_GG");
+	if (inst->verbose >= LOW) create_lp_file(inst, env, lp, "model_GG");
 
 	free(index);
 	free(value);
