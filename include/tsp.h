@@ -31,6 +31,12 @@ void update_connected_components(const double* xstar, instance* inst, int* succ,
 // Apply the loop method (called Benders) to solve the tsp problem without a compact model
 void solve_benders(instance* inst, CPXENVptr env, CPXLPptr lp);
 
+// Apply the Branch & Cut method to solve the tsp problem without a compact model
+void solve_branch_cut(instance* inst, CPXENVptr env, CPXLPptr lp);
+
+// Callback function to be used internally by Cplex only in BRANCH_CUT method
+static int CPXPUBLIC branch_cut_callback(CPXCALLBACKCONTEXTptr context, CPXLONG contextid, void* userhandle);
+
 //void build_model(instance* inst, CPXENVptr env, CPXLPptr lp);
 
 // Builds the tableau (variables and constraints)

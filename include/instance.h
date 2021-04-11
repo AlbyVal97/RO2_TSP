@@ -23,7 +23,8 @@ typedef enum {
 	MTZ_LAZY,
 	MTZ_SEC2,
 	GG,
-	BENDERS
+	BENDERS,
+	BRANCH_CUT
 } model_type;
 
 typedef enum {

@@ -110,24 +110,32 @@ int TSPopt(instance* inst) {
 			sprintf(edges_file_path, "%s/model_BENDERS_edges.dat", edges_file_path);
 			break;
 
+		case BRANCH_CUT:
+			build_model_BASIC(inst, env, lp);
+			if (inst->verbose >= LOW) {
+				sprintf(logfile_path, "%s/logfile_BRANCH_CUT.txt", logfile_path);
+				if (CPXsetlogfilename(env, logfile_path, "w")) print_error("CPXsetlogfilename() error in setting logfile name");
+			}
+			solve_branch_cut(inst, env, lp);
+			sprintf(edges_file_path, "%s/model_BRANCH_CUT_edges.dat", edges_file_path);
+			break;
+
 		default:
 			print_error("Choose a correct value for the model to be used!");
 	}
 
-	if (inst->verbose >= MEDIUM) {
-		printf("Complete path for *.dat file: %s\n\n", edges_file_path);
-	}
+	if (inst->verbose >= MEDIUM) printf("Complete path for *.dat file: %s\n\n", edges_file_path);
 	
 	// Allocate memory for the optimal solution array
 	int ncols = CPXgetnumcols(env, lp);
 	double* xstar = (double*)calloc(ncols, sizeof(double));
 
 	// Copy the optimal solution from the Cplex environment to the new array "xstar"
-	if (CPXgetx(env, lp, xstar, 0, ncols - 1)) { print_error("CPXgetx() error"); }
+	if (CPXgetx(env, lp, xstar, 0, ncols - 1)) print_error("CPXgetx() error");
 
 	// Discern if a model is symmetric (olves the TSP for a directed or an undirected graph)
 	int symmetric = -1;
-	if (inst->model_type == BASIC || inst->model_type == BENDERS) symmetric = 0;
+	if (inst->model_type == BASIC || inst->model_type == BENDERS || inst->model_type == BRANCH_CUT) symmetric = 0;
 	else if (inst->model_type == MTZ_STATIC || inst->model_type == MTZ_LAZY || inst->model_type == MTZ_SEC2 || inst->model_type == GG) symmetric = 1;
 	
 	// Fill the .dat file with the correctly formatted nodes of the found solution
@@ -145,6 +153,7 @@ int TSPopt(instance* inst) {
 
 
 void print_solution(instance* inst, double* xstar, int symmetric, char* edges_file_path) {
+
 	if (symmetric != 0 && symmetric != 1) print_error("symmetric is a boolean variable\n");
 	
 	FILE* edges_plot_file_name = fopen(edges_file_path, "w");
@@ -373,6 +382,111 @@ void update_benders_constraints(CPXCENVptr env, CPXLPptr lp, instance* inst, con
 
 		n++;																		// Go to the next connected component to add more constraints
 	}
+}
+
+
+void solve_branch_cut(instance* inst, CPXENVptr env, CPXLPptr lp) {
+
+	// N.B. It is required to install a "lazy constraint" callback to cut infeasible integer solutions (es. found by heuristics) 
+	CPXLONG contextid = CPX_CALLBACKCONTEXT_CANDIDATE;
+	if (CPXcallbacksetfunc(env, lp, contextid, branch_cut_callback, inst)) print_error("CPXcallbacksetfunc() error");
+
+	if (CPXmipopt(env, lp)) print_error("CPXmipopt() error");
+
+	// Check if CPXmipopt has ended correctly
+	mip_solved_to_optimality(inst, env, lp);
+
+	return;
+}
+
+
+static int CPXPUBLIC branch_cut_callback(CPXCALLBACKCONTEXTptr context, CPXLONG contextid, void* userhandle) {
+
+	instance* inst = (instance*)userhandle;
+	int n_edges = inst->nnodes * (inst->nnodes - 1) / 2;
+	double* xstar = (double*)malloc(n_edges * sizeof(double));
+	double objval = CPX_INFBOUND;
+	if (CPXcallbackgetcandidatepoint(context, xstar, 0, n_edges - 1, &objval)) print_error("CPXcallbackgetcandidatepoint error");
+
+	// get some random information at the node (as an example for the students)
+	int mythread = -1; CPXcallbackgetinfoint(context, CPXCALLBACKINFO_THREADID, &mythread);
+	int mynode = -1; CPXcallbackgetinfoint(context, CPXCALLBACKINFO_NODECOUNT, &mynode);
+	double incumbent = CPX_INFBOUND; CPXcallbackgetinfodbl(context, CPXCALLBACKINFO_BEST_SOL, &incumbent);
+	if (inst->verbose >= HIGH) {
+		printf("mythread: %d\n", mythread);
+		printf("mynode: %d\n", mynode);
+		printf("incumbent: %f\n", incumbent);
+	}
+
+	int n_comp = 0;
+	int* succ = (int*)malloc(inst->nnodes * sizeof(int));
+	int* comp = (int*)malloc(inst->nnodes * sizeof(int));
+
+	update_connected_components(xstar, inst, succ, comp, &n_comp);
+	printf("n_comp: %d\n", n_comp);
+
+	if (n_comp > 1) {								// means that the solution is infeasible and a violated cut has been found
+
+		int n = 1;									// n is the index of the current connected component
+		while (1) {
+
+			// Scan connected components for its number of nodes -> value of comp_n_nodes
+			int comp_n_nodes = 0;
+			for (int i = 0; i < inst->nnodes; i++) {
+				if (comp[i] == n) {
+					comp_n_nodes++;
+				}
+			}
+
+			// If there is no node for the last examined component => there are no more components left
+			if (comp_n_nodes == 0) break;
+
+			// Scan connected components for its nodes indexes
+			int* comp_nodes = (int*)malloc(comp_n_nodes * sizeof(int));
+			int j = 0;
+			for (int i = 0; i < inst->nnodes; i++) {
+				if (comp[i] == n) {
+					comp_nodes[j++] = i;
+				}
+			}
+
+			double rhs = comp_n_nodes - 1.0;
+			char sense = 'L';
+			int i_zero = 0;
+			// We should compute the number of edges connecting the nodes of the current connected component
+			// as the binomial coefficient (n over 2) = n!/((n-2)!*(2!)) = n*(n-1)/2
+			int n_edges_curr_comp = comp_n_nodes * (comp_n_nodes - 1) / 2;
+			int* index = (int*)calloc(n_edges_curr_comp, sizeof(int));					// Array of indexes associated to the row variables
+			double* value = (double*)calloc(n_edges_curr_comp, sizeof(double));			// Array of row variables coefficients
+			int nnz = n_edges_curr_comp;
+
+			// Build (and add to the model) the subtour elimination constraint for the current connected component
+			int k = 0;
+			for (int i = 0; i < comp_n_nodes; i++) {
+				for (int j = i + 1; j < comp_n_nodes; j++) {
+					if (i == j) {
+						continue;
+					}
+					index[k] = xpos(comp_nodes[i], comp_nodes[j], inst);
+					value[k++] = 1.0;
+				}
+			}
+			// Rejects the current (infeasible) solution and adds one cut (a SEC)
+			if (CPXcallbackrejectcandidate(context, 1, nnz, &rhs, &sense, &i_zero, index, value)) print_error("CPXcallbackrejectcandidate() error");
+
+			free(comp_nodes);
+			free(index);
+			free(value);
+
+			n++;
+		}
+	}
+
+	free(xstar);
+	free(succ);
+	free(comp);
+
+	return 0;
 }
 
 
