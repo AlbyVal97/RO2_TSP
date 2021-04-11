@@ -77,16 +77,28 @@ int TSPopt(instance* inst) {
 			sprintf(edges_file_path, "%s/model_MTZ_LAZY_edges.dat", edges_file_path);
 			break;
 
-		case MTZ_SEC2:
-			build_model_MTZ_SEC2(inst, env, lp);
+		case MTZ_SEC2_STATIC:
+			build_model_MTZ_SEC2_STATIC(inst, env, lp);
 			if (inst->verbose >= LOW) {
-				sprintf(logfile_path, "%s/logfile_MTZ_SEC2.txt", logfile_path);
+				sprintf(logfile_path, "%s/logfile_MTZ_SEC2_STATIC.txt", logfile_path);
 				if (CPXsetlogfilename(env, logfile_path, "w")) print_error("CPXsetlogfilename() error in setting logfile name");
 			}
 			if (CPXsetdblparam(env, CPX_PARAM_EPINT, 0.0)) { print_error("CPXsetdblparam() error in setting integer value tolerance"); }
 			if (CPXmipopt(env, lp)) { print_error("CPXmipopt() error"); }
 			mip_solved_to_optimality(inst, env, lp);												// Check if CPXmipopt has ended correctly
-			sprintf(edges_file_path, "%s/model_MTZ_SEC2_edges.dat", edges_file_path);
+			sprintf(edges_file_path, "%s/model_MTZ_SEC2_STATIC_edges.dat", edges_file_path);
+			break;
+
+		case MTZ_SEC2_LAZY:
+			build_model_MTZ_SEC2_LAZY(inst, env, lp);
+			if (inst->verbose >= LOW) {
+				sprintf(logfile_path, "%s/logfile_MTZ_SEC2_LAZY.txt", logfile_path);
+				if (CPXsetlogfilename(env, logfile_path, "w")) print_error("CPXsetlogfilename() error in setting logfile name");
+			}
+			if (CPXsetdblparam(env, CPX_PARAM_EPINT, 0.0)) { print_error("CPXsetdblparam() error in setting integer value tolerance"); }
+			if (CPXmipopt(env, lp)) { print_error("CPXmipopt() error"); }
+			mip_solved_to_optimality(inst, env, lp);												// Check if CPXmipopt has ended correctly
+			sprintf(edges_file_path, "%s/model_MTZ_SEC2_LAZY_edges.dat", edges_file_path);
 			break;
 
 		case GG:
@@ -136,7 +148,7 @@ int TSPopt(instance* inst) {
 	// Discern if a model is symmetric (olves the TSP for a directed or an undirected graph)
 	int symmetric = -1;
 	if (inst->model_type == BASIC || inst->model_type == BENDERS || inst->model_type == BRANCH_CUT) symmetric = 0;
-	else if (inst->model_type == MTZ_STATIC || inst->model_type == MTZ_LAZY || inst->model_type == MTZ_SEC2 || inst->model_type == GG) symmetric = 1;
+	else if (inst->model_type == MTZ_STATIC || inst->model_type == MTZ_LAZY ||inst->model_type == MTZ_SEC2_STATIC || inst->model_type == MTZ_SEC2_LAZY || inst->model_type == GG) symmetric = 1;
 	
 	// Fill the .dat file with the correctly formatted nodes of the found solution
 	if (inst->verbose >= LOW) print_solution(inst, xstar, symmetric, edges_file_path);
@@ -805,7 +817,135 @@ void build_model_MTZ_LAZY(instance* inst, CPXENVptr env, CPXLPptr lp) {
 }
 
 
-void build_model_MTZ_SEC2(instance* inst, CPXENVptr env, CPXLPptr lp) {
+void build_model_MTZ_SEC2_STATIC(instance* inst, CPXENVptr env, CPXLPptr lp) {
+
+	// Model MTZ with static (added directly to the TSP model) subtour elimination constraints of dimension 2.
+
+	double zero = 0.0;
+	char binary = 'B';
+	char integer = 'I';
+
+	char** cname = (char**)calloc(1, sizeof(char*));			// (char **) required by cplex...
+	cname[0] = (char*)calloc(100, sizeof(char));
+
+	// Add binary variables x(i,j) for any i,j
+	for (int i = 0; i < inst->nnodes; i++) {
+		for (int j = 0; j < inst->nnodes; j++) {
+
+			sprintf(cname[0], "x(%d,%d)", i + 1, j + 1);		// Set a name for the new column/varible
+			double obj = dist(i, j, inst); // cost == distance   
+			double lb = 0.0;
+			double ub = 1.0;
+			if (i == j) { ub = 0.0; }
+			if (CPXnewcols(env, lp, 1, &obj, &lb, &ub, &binary, cname)) { print_error("Wrong CPXnewcols on x variables"); }
+
+			//printf("Curr num_cols: %d\n", CPXgetnumcols(env, lp));
+			// Verify if xpos returns the right position inside the tableu (xpos_compact starts from 0)
+			if (CPXgetnumcols(env, lp) - 1 != xpos_compact(i, j, inst)) {
+				printf("Curr interation: %d %d", i, j);
+				print_error("Wrong position for x variables");
+			}
+		}
+	}
+
+	// Add u variables for each node that is not the first one
+	for (int i = 1; i < inst->nnodes; i++) {
+
+		sprintf(cname[0], "u(%d)", i + 1);		// Set a name for the new column/varible
+		double obj = 0.0;
+		double lb = 0.0;
+		double ub = inst->nnodes - 2.0;
+		if (CPXnewcols(env, lp, 1, &obj, &lb, &ub, &integer, cname)) { print_error("Wrong CPXnewcols on x variables"); }
+
+		//printf("Curr num_cols: %d\n", CPXgetnumcols(env, lp));
+		if (CPXgetnumcols(env, lp) - 1 != upos_compact(i, inst)) {
+			printf("Curr interation: %d", i);
+			print_error("Wrong position for x variables");
+		}
+	}
+
+	// Add the inner and outer degree constraints for all nodes (because in TSP model the final tour is hamiltonian)
+	int i_zero = 0;
+	int* index = (int*)calloc(inst->nnodes, sizeof(int));					// Array of indexes associated to the row variables
+	double* value = (double*)calloc(inst->nnodes, sizeof(double));			// Array of row variables coefficients
+	double rhs = 1.0;														// "rhs" = right-hand side of the degree constraints
+	char sense = 'E';														// 'L' for less-or-equal constraint
+	int nnz = inst->nnodes;													// number of cells != 0 in the row
+	for (int i = 0; i < inst->nnodes; i++) {
+
+		sprintf(cname[0], "inner_degree(%d)", i + 1);								// Set a name for the new row/constraint
+
+		for (int j = 0; j < inst->nnodes; j++) {
+
+			index[j] = xpos_compact(j, i, inst);
+			value[j] = 1.0;
+			if (j == i)
+				value[j] = 0;
+		}
+		if (CPXaddrows(env, lp, 0, 1, nnz, &rhs, &sense, &i_zero, index, value, NULL, cname)) print_error("wrong CPXaddrows() for inner degree constraints!");
+	}
+	for (int i = 0; i < inst->nnodes; i++) {
+
+		sprintf(cname[0], "outer_degree(%d)", i + 1);								// Set a name for the new row/constraint
+
+		for (int j = 0; j < inst->nnodes; j++) {
+
+			index[j] = xpos_compact(i, j, inst);
+			value[j] = 1.0;
+			if (j == i)
+				value[j] = 0;
+		}
+		if (CPXaddrows(env, lp, 0, 1, nnz, &rhs, &sense, &i_zero, index, value, NULL, cname)) print_error("wrong CPXaddrows() for inner degree constraints!");
+	}
+
+	// Add the u consistency constraints for each edge (i,j)
+	double M = inst->nnodes - 1.0;													// Smallest M value for big M trick
+	rhs = M - 1;																	// "rhs" = right-hand side of the degree constraints
+	sense = 'L';																	// 'L' for less-or-equal constraint
+	nnz = 3;																		// number of cells != 0 in the row
+	for (int i = 1; i < inst->nnodes; i++) {
+		for (int j = 1; j < inst->nnodes; j++) {
+			if (i == j) continue;
+
+			sprintf(cname[0], "u_consistency_for_arc(%d,%d)", i + 1, j + 1);
+			index[0] = upos_compact(i, inst);										// +1.0 * Ui
+			value[0] = 1.0;
+			index[1] = upos_compact(j, inst);										// -1.0 * Uj
+			value[1] = -1.0;
+			index[2] = xpos_compact(i, j, inst);									// +M * Xij
+			value[2] = M;
+			if (CPXaddrows(env, lp, 0, 1, nnz, &rhs, &sense, &i_zero, index, value, NULL, cname)) print_error("wrong CPXaddrows() for u-consistency!");
+		}
+	}
+
+	// Add the subtour elimination constraints of dimension 2 (2-node SECs): Xij + Xji <= 1, for any i < j
+	rhs = 1.0;													// "rhs" = right-hand side of the degree constraints
+	sense = 'L';												// 'L' for less-or-equal constraint
+	nnz = 2;													// number of cells != 0 in the row
+	for (int i = 0; i < inst->nnodes; i++) {
+		for (int j = i + 1; j < inst->nnodes; j++) {
+			if (i == j) continue;
+
+			sprintf(cname[0], "_2_node_SEC(%d,%d)", i + 1, j + 1);
+			index[0] = xpos_compact(i, j, inst);										// +1.0 * Xij
+			value[0] = 1.0;
+			index[1] = xpos_compact(j, i, inst);										// +1.0 * Xji
+			value[1] = 1.0;
+			if (CPXaddrows(env, lp, 0, 1, nnz, &rhs, &sense, &i_zero, index, value, NULL, cname)) print_error("wrong CPXaddrows() for 2-node SECs!");
+		}
+	}
+
+	// Outputs to file "model_MTZ_SEC2_STATIC.lp" the built model
+	if (inst->verbose >= LOW) create_lp_file(inst, env, lp, "model_MTZ_SEC2_STATIC");
+
+	free(index);
+	free(value);
+	free(cname[0]);
+	free(cname);
+}
+
+
+void build_model_MTZ_SEC2_LAZY(instance* inst, CPXENVptr env, CPXLPptr lp) {
 
 	// Model MTZ with lazy subtour elimination constraints of dimension 2.
 
@@ -923,8 +1063,8 @@ void build_model_MTZ_SEC2(instance* inst, CPXENVptr env, CPXLPptr lp) {
 		}
 	}
 
-	// Outputs to file "model_MTZ_lazy_2_node_SECs.lp" the built model
-	if (inst->verbose >= LOW) create_lp_file(inst, env, lp, "model_MTZ_SEC2");
+	// Outputs to file "model_MTZ_SEC2_LAZY.lp" the built model
+	if (inst->verbose >= LOW) create_lp_file(inst, env, lp, "model_MTZ_SEC2_LAZY");
 
 	free(index);
 	free(value);

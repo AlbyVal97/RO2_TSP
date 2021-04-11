@@ -43,7 +43,8 @@ static int CPXPUBLIC branch_cut_callback(CPXCALLBACKCONTEXTptr context, CPXLONG 
 void build_model_BASIC(instance* inst, CPXENVptr env, CPXLPptr lp);
 void build_model_MTZ_STATIC(instance* inst, CPXENVptr env, CPXLPptr lp);
 void build_model_MTZ_LAZY(instance* inst, CPXENVptr env, CPXLPptr lp);
-void build_model_MTZ_SEC2(instance* inst, CPXENVptr env, CPXLPptr lp);
+void build_model_MTZ_SEC2_STATIC(instance* inst, CPXENVptr env, CPXLPptr lp);
+void build_model_MTZ_SEC2_LAZY(instance* inst, CPXENVptr env, CPXLPptr lp);
 void build_model_GG(instance* inst, CPXENVptr env, CPXLPptr lp);
 
 // Create and fill the .lp file containing the complete model definition used by Cplex
