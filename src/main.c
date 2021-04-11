@@ -56,7 +56,7 @@ int main(int argc, char **argv) {
 	
 
 	// Plot the resulting optimal tour using Gnuplot
-	if (inst.verbose >= MEDIUM) system("C:/\"Program Files\"/gnuplot/bin/gnuplot.exe ../src/gnuplot_commands.txt");
+	if (inst.verbose >= MEDIUM) system("C:/\"Program Files\"/gnuplot/bin/gnuplot.exe ../outputs/gnuplot_commands.txt");
 
 	free_instance(&inst);
 

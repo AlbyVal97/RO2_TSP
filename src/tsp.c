@@ -189,7 +189,7 @@ void print_solution(instance* inst, double* xstar, int symmetric, char* edges_fi
 		}
 	}
 
-	FILE* gn_com = fopen("../src/gnuplot_commands.txt", "w");
+	FILE* gn_com = fopen("../outputs/gnuplot_commands.txt", "w");
 	char* comand;
 	if (gn_com == NULL) print_error("Error while opening gnuplot_commands.txt file\n");
 	if (!symmetric) 
