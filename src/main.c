@@ -7,8 +7,14 @@
 #include "tsp.h"
 
 // Command line parameter list examples:
-// -f ../data/inst_max_100_nodes/berlin52.tsp -seed 123456 -model_type 1 -verbose 0 -time_limit 3600
+// -f ../data/inst_max_100_nodes/berlin52.tsp -seed 123456 -model_type 1 -verbose 1 -time_limit 3600
 // -m 0 -n_inst 20 -n_nodes 50 -f ../data/inst_max_100_nodes/berlin52.tsp -seed 123456 -model_type 3 -verbose 2 -time_limit 60
+// -f ../data/rnd_compact_instances/rnd_inst_1.tsp -seed 123456 -model_type 7 -verbose 2 -time_limit 60
+// -m 2 -test test_instances -folder test_instances -n_inst 5 -n_models 5 1 2 3 4 5 -prefix rnd -time_limit 3600
+// -m 1 -folder test_instances -prefix rnd -n_inst 5 -n_nodes 15
+
+void update_csvfile(instance* inst, int first_model, int last_model, double time);
+void run_test(instance* inst);
 
 int main(int argc, char **argv) {
 
@@ -26,6 +32,11 @@ int main(int argc, char **argv) {
 		return 0;
 	}
 
+	if (inst.mode == RUN_TEST) {
+		run_test(&inst);
+		return 0;
+	}
+
 	parse_input_file(&inst);
 
 	double t1 = second();
@@ -37,20 +48,7 @@ int main(int argc, char **argv) {
 	double t2 = second();
 
 	if (inst.verbose == TEST) {
-		FILE* csv_file = fopen("../../outputs/test.csv", "a");
-		if (csv_file == NULL) print_error("test.csv file not found inside \"outputs\" folder!");
-
-		if (inst.model_type == MTZ_STATIC) {				// Print the instance name just for the first test execution (on the first model)
-			fprintf(csv_file, "%s, %f, ", inst.inst_name, t2 - t1);
-		}
-		else if (inst.model_type == GG) {					// Go to next line only when the last test (on the last model) has been executed
-			fprintf(csv_file, "%f\n", t2 - t1);
-		}
-		else {
-			fprintf(csv_file, "%f, ", t2 - t1);
-		}
-
-		fclose(csv_file);
+		update_csvfile(&inst, inst.first_model, inst.last_model, t2 - t1);
 	}
     
 	if ( inst.verbose >= TEST ) printf("TSP problem solved successfully in %lf seconds.\n\n", t2-t1);
@@ -64,4 +62,76 @@ int main(int argc, char **argv) {
 
 	return 0; 
 
+}
+
+
+void run_test(instance* inst) {
+	printf("*** RUN %s ***\n\n", inst->test_name);
+	printf("Istances from folder %s\n", inst->folder_istances);
+	printf("Models used\n");
+	for (int j = 0; j < inst->n_models_test; j++)
+		printf("%s\n", models[inst->models_to_test[j]]);
+
+	if (mkdir("../outputs") == -1) {
+		if (inst->verbose >= MEDIUM) printf("Folder \"outputs\" already exists.\n");
+	}
+	else {
+		if (inst->verbose >= MEDIUM) printf("Folder \"outputs\" created for the first time!\n");
+	}
+
+	if (inst->n_instances <= 0) print_error("Number of instances to be tested must be greater than zero");
+
+	char csv_pathname[100];
+	sprintf(csv_pathname, "../outputs/%s.csv", inst->test_name);
+	FILE* csv_file = fopen(csv_pathname, "w");
+	if (csv_file == NULL) print_error("test.csv file not found inside \"outputs\" folder!");
+
+	fprintf(csv_file, "%d, ", inst->n_models_test);
+	for (int j = 0; j < inst->n_models_test - 1; j++)
+		fprintf(csv_file, "%s, ", models[inst->models_to_test[j]]);
+	fprintf(csv_file, "%s\n", models[inst->models_to_test[inst->n_models_test-1]]);
+
+	fclose(csv_file);
+
+	char bat_pathname[100];
+	sprintf(bat_pathname, "../outputs/%s.bat", inst->test_name);
+	FILE* bat_file = fopen(bat_pathname, "w");
+	if (bat_file == NULL) print_error("bat file not found inside \"outputs\" folder!");
+
+	for (int i = 0; i < inst->n_instances; i++) {
+		for (int j = 0; j < inst->n_models_test; j++) {
+
+			fprintf(bat_file, ".\\Release\\tsp -f ../data/%s/%s_%d.tsp -test %s -model_type %d -first %d -last %d -verbose 0 -seed 123456 -time_limit %f -end\n", inst->folder_istances, inst->instance_prefix_name, i+1, inst->test_name, inst->models_to_test[j], inst->models_to_test[0], inst->models_to_test[inst->n_models_test-1], inst->timelimit);
+
+		}
+	}
+	fprintf(bat_file, "@echo *** TEST ENDED ***\n");
+	fprintf(bat_file, "pause\n");
+
+	fclose(bat_file);
+
+	free(inst->models_to_test);
+
+	sprintf(bat_pathname, "..\\outputs\\%s.bat", inst->test_name);
+	system(bat_pathname);
+}
+
+
+void update_csvfile(instance* inst, int first_model, int last_model, double time) {
+	char csv_path[20];
+	sprintf(csv_path, "../outputs/%s.csv", inst->test_name);
+	FILE* csv_file = fopen(csv_path, "a");
+	if (csv_file == NULL) print_error("csv file file not found inside \"outputs\" folder!");
+
+	if (inst->model_type == first_model) {				// Print the instance name just for the first test execution (on the first model)
+		fprintf(csv_file, "%s, %f, ", inst->inst_name, time);
+	}
+	else if (inst->model_type == last_model) {					// Go to next line only when the last test (on the last model) has been executed
+		fprintf(csv_file, "%f\n", time);
+	}
+	else {
+		fprintf(csv_file, "%f, ", time);
+	}
+
+	fclose(csv_file);
 }

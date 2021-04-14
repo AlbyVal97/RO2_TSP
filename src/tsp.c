@@ -33,11 +33,13 @@ int TSPopt(instance* inst) {
 	}
 	sprintf(edges_file_path, "../outputs/%s", inst->inst_name);
 	sprintf(logfile_path, "../outputs/%s", inst->inst_name);
-	if (mkdir(edges_file_path) == -1) {
-		if (inst->verbose >= MEDIUM) printf("Folder for the current instance already exists.\n");
-	}
-	else {
-		if (inst->verbose >= MEDIUM) printf("Folder for the current instance created for the first time!\n");
+	if (inst->verbose != TEST) {
+		if (mkdir(edges_file_path) == -1) {
+			if (inst->verbose >= MEDIUM) printf("Folder for the current instance already exists.\n");
+		}
+		else {
+			if (inst->verbose >= MEDIUM) printf("Folder for the current instance created for the first time!\n");
+		}
 	}
 
 	switch (inst->model_type) {
@@ -131,7 +133,7 @@ int TSPopt(instance* inst) {
 			solve_branch_cut(inst, env, lp);
 			sprintf(edges_file_path, "%s/model_BRANCH_CUT_edges.dat", edges_file_path);
 			break;
-
+		
 		default:
 			print_error("Choose a correct value for the model to be used!");
 	}
@@ -301,7 +303,7 @@ void solve_benders(instance* inst, CPXENVptr env, CPXLPptr lp) {
 		// Optimize with the new constraint
 		if (CPXmipopt(env, lp)) { print_error("CPXmipopt() error"); }
 		double t2 = second();
-
+		
 		// Check if CPXmipopt has ended correctly
 		mip_solved_to_optimality(inst, env, lp);
 
@@ -435,7 +437,6 @@ static int CPXPUBLIC branch_cut_callback(CPXCALLBACKCONTEXTptr context, CPXLONG 
 	int* comp = (int*)malloc(inst->nnodes * sizeof(int));
 
 	update_connected_components(xstar, inst, succ, comp, &n_comp);
-	printf("n_comp: %d\n", n_comp);
 
 	if (n_comp > 1) {								// means that the solution is infeasible and a violated cut has been found
 
@@ -575,12 +576,16 @@ void build_model_BASIC(instance* inst, CPXENVptr env, CPXLPptr lp) {
 
 		sprintf(cname[0], "degree(%d)", h + 1);								// Set a name for the new row/constraint
 
+		int j = 0;
 		for (int i = 0; i < inst->nnodes; i++) {
 
-			if (i == h) continue;
+			if (i == h ) {
+				continue;
+			}
 
-			index[i] = xpos(i, h, inst);
-			value[i] = 1.0;
+			index[j] = xpos(i, h, inst);
+			value[j] = 1.0;
+			j++;
 		}
 		if (CPXaddrows(env, lp, 0, 1, nnz, &rhs, &sense, &i_zero, index, value, NULL, cname)) print_error("wrong CPXaddrows() for degree constraints!");
 	}

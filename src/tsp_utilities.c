@@ -13,7 +13,11 @@ void parse_command_line(int argc, char** argv, instance* inst) {
 	// Set default values for the instance
 	inst->mode = DEFAULT;
 	inst->model_type = BASIC;
+	inst->n_instances = 0;
+	inst->n_nodes_per_instance = 0;
 	strcpy(inst->input_file, "NULL");
+	strcpy(inst->folder_istances, "NULL");
+	strcpy(inst->instance_prefix_name, "NULL");
 	inst->timelimit = CPX_INFBOUND;
 	inst->integer_costs = 0;
 	inst->verbose = MEDIUM;
@@ -23,33 +27,67 @@ void parse_command_line(int argc, char** argv, instance* inst) {
 	if (argc < 1) help = 1;
 	for (int i = 1; i < argc; i++) {
 
-		if (strcmp(argv[i], "-m") == 0) { inst->mode = atoi(argv[++i]); continue; }							// working mode
+		if (strcmp(argv[i], "-end") == 0) break;
+		if (strcmp(argv[i], "-m") == 0) {																	// working mode
+			inst->mode = atoi(argv[++i]); 
+			if (inst->mode < 0 || inst->mode >= N_MODES) print_error("Incorrect value of Mode");
+			continue;
+		}							
+		if (strcmp(argv[i], "-folder") == 0) { strcpy(inst->folder_istances, argv[++i]); continue; }
+		if (strcmp(argv[i], "-prefix") == 0) { strcpy(inst->instance_prefix_name, argv[++i]); continue; }
+		if (strcmp(argv[i], "-test") == 0) { strcpy(inst->test_name, argv[++i]); continue; }
 		if (strcmp(argv[i], "-n_inst") == 0) { inst->n_instances = atoi(argv[++i]); continue; }				// instances to generate
 		if (strcmp(argv[i], "-n_nodes") == 0) { inst->n_nodes_per_instance = atoi(argv[++i]); continue; }	// nodes for each instance
 		if (strcmp(argv[i], "-f") == 0) { strcpy(inst->input_file, argv[++i]); continue; } 					// input file
 		if (strcmp(argv[i], "-time_limit") == 0) { inst->timelimit = atof(argv[++i]); continue; }			// total time limit
-		if (strcmp(argv[i], "-model_type") == 0) { inst->model_type = atoi(argv[++i]); continue; } 			// model type
+		if (strcmp(argv[i], "-model_type") == 0) {															// model type
+			inst->model_type = atoi(argv[++i]);
+			if (inst->model_type < 0 || inst->model_type >= N_MODELS) print_error("Incorrect value of Model");
+			continue;
+		} 			
 		if (strcmp(argv[i], "-integer_costs") == 0) { inst->integer_costs = 1; continue; } 					// integer costs
-		if (strcmp(argv[i], "-verbose") == 0) { inst->verbose = atoi(argv[++i]); continue; } 				// verbose
+		if (strcmp(argv[i], "-first") == 0) { inst->first_model = atoi(argv[++i]); continue; }
+		if (strcmp(argv[i], "-last") == 0) { inst->last_model = atoi(argv[++i]); continue; }
+		if (strcmp(argv[i], "-verbose") == 0) {																// verbose
+			inst->verbose = atoi(argv[++i]);
+			if (inst->verbose < 0 || inst->verbose >= N_VERBOSITIES) print_error("Incorrect value of Verbose");
+			continue;
+		} 				
 		if (strcmp(argv[i], "-seed") == 0) { inst->seed = atoi(argv[++i]); continue; } 						// random seed
 		if (strcmp(argv[i], "-help") == 0) { help = 1; continue; } 											// help
 		if (strcmp(argv[i], "--help") == 0) { help = 1; continue; } 										// help
+
+		if (strcmp(argv[i], "-n_models") == 0) {
+			inst->n_models_test = atoi(argv[++i]);
+			if (inst->n_models_test <= 0 || inst->n_models_test > N_MODELS) print_error("Incorrect value of n_models");
+			inst->models_to_test = malloc(sizeof(int) * inst->n_models_test);
+			for (int j = 0; j < inst->n_models_test; j++) {
+				int temp = atoi(argv[++i]);
+				if (temp < 0 || temp >= N_MODELS) print_error("Incorrect value of one model in the list");
+				inst->models_to_test[j] = temp;
+			}
+			continue;
+		}
+
+
 		help = 1;
 	}
 
 	if (inst->verbose >= HIGH) { printf("Running %s with %d parameters \n", argv[0], argc - 1); }
 
-	if (help || (inst->verbose >= LOW)) {
+	if (help || ((inst->verbose >= LOW) && inst->mode != RUN_TEST)) {
 
 		printf("\nAvailable parameters (vers. 05-march-2021) --------------------------------------------------\n");
-		printf("-m %d\n", inst->mode);
+		printf("-m %s\n", modes[inst->mode]);
+		printf("-folder %s\n", inst->folder_istances);
+		printf("-prefix %s\n", inst->instance_prefix_name);
 		printf("-n_inst %d\n", inst->n_instances);
 		printf("-n_nodes %d\n", inst->n_nodes_per_instance);
 		printf("-f %s\n", inst->input_file);
 		printf("-time_limit %lf\n", inst->timelimit);
-		printf("-model_type %d\n", inst->model_type);
+		printf("-model_type %s\n", models[inst->model_type]);
 		printf("-integer_costs %d\n", inst->integer_costs);
-		printf("-verbose %d\n", inst->verbose);
+		printf("-verbose %s\n", verbosities[inst->verbose]);
 		printf("-seed %d\n", inst->seed);
 		printf("\nEnter -help or --help for help\n");
 		printf("----------------------------------------------------------------------------------------------\n");
@@ -57,7 +95,7 @@ void parse_command_line(int argc, char** argv, instance* inst) {
 	else if (inst->verbose == TEST) {
 		printf("-f %s\n", inst->input_file);
 		printf("-time_limit %lf\n", inst->timelimit);
-		printf("-model_type %d\n", inst->model_type);
+		printf("-model_type %s\n", models[inst->model_type]);
 	}
 
 	if (help) exit(1);
@@ -181,8 +219,10 @@ void print_nodes_dat_file(const instance* inst) {
 
 void create_instances(instance* inst) {
 
-	if (mkdir("../data/rnd_compact_instances") == -1) printf("Folder \"rnd_compact_instances\" already exists.\n");
-	else printf("Folder \"rnd_compact_instances\" created for the first time!\n");
+	char folder_path[50];
+	sprintf(folder_path, "../data/%s", inst->folder_istances);
+	if (mkdir(folder_path) == -1) printf("Folder \"%s\" already exists.\n", inst->folder_istances);
+	else printf("Folder \"%s\" created for the first time!\n", inst->folder_istances);
 
 	// Generate a list of seeds, one per instance
 	int* seeds = (int*)malloc(sizeof(int) * inst->n_instances);
@@ -197,8 +237,8 @@ void create_instances(instance* inst) {
 	for (int i = 0; i < inst->n_instances; i++) {
 
 		// Create the name for the current instance file
-		sprintf(inst_name, "rnd_inst_%d", i+1);
-		sprintf(inst_file_path, "../data/rnd_compact_instances/%s.tsp", inst_name);
+		sprintf(inst_name, "%s_%d", inst->instance_prefix_name, i+1);
+		sprintf(inst_file_path, "../data/%s/%s.tsp", inst->folder_istances, inst_name);
 
 		// Open the file for the current instance
 		FILE* fin = fopen(inst_file_path, "w");
