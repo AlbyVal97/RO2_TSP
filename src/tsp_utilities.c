@@ -15,10 +15,10 @@ void parse_command_line(int argc, char** argv, instance* inst) {
 	inst->model_type = BASIC;
 	inst->n_instances = 0;
 	inst->n_nodes_per_instance = 0;
-	strcpy(inst->input_file, "NULL");
-	strcpy(inst->folder_istances, "NULL");
-	strcpy(inst->instance_prefix_name, "NULL");
-	strcpy(inst->test_name, "NULL");
+	strcpy(inst->input_file, "NULL\0");
+	strcpy(inst->folder_istances, "NULL\0");
+	strcpy(inst->instance_prefix_name, "NULL\0");
+	strcpy(inst->testname, "NULL\0");
 	inst->n_models_test = 0;
 	inst->models_to_test = NULL;
 	inst->timelimit = CPX_INFBOUND;
@@ -39,7 +39,7 @@ void parse_command_line(int argc, char** argv, instance* inst) {
 		}							
 		if (strcmp(argv[i], "-folder") == 0) { strcpy(inst->folder_istances, argv[++i]); continue; }
 		if (strcmp(argv[i], "-prefix") == 0) { strcpy(inst->instance_prefix_name, argv[++i]); continue; }
-		if (strcmp(argv[i], "-test") == 0) { strcpy(inst->test_name, argv[++i]); continue; }
+		if (strcmp(argv[i], "-test") == 0) { strcpy(inst->testname, argv[++i]); continue; }
 		if (strcmp(argv[i], "-n_inst") == 0) { inst->n_instances = atoi(argv[++i]); continue; }				// instances to generate
 		if (strcmp(argv[i], "-n_nodes") == 0) { inst->n_nodes_per_instance = atoi(argv[++i]); continue; }	// nodes for each instance
 		if (strcmp(argv[i], "-f") == 0) { strcpy(inst->input_file, argv[++i]); continue; } 					// input file
@@ -100,7 +100,7 @@ void parse_command_line(int argc, char** argv, instance* inst) {
 		printf("-f %s\n", inst->input_file);
 		printf("-time_limit %lf\n", inst->timelimit);
 		printf("-model_type %s\n", models[inst->model_type]);
-		printf("-test %s\n", inst->test_name);
+		printf("-test %s\n", inst->testname);
 	}
 
 	if (help) exit(1);
