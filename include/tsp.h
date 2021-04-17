@@ -23,7 +23,7 @@ int ypos_compact(int i, int j, instance* inst);
 int mip_solved_to_optimality(instance* inst, CPXENVptr env, CPXLPptr lp);
 
 // Add a new subtour elimination constraint for the first connected component of the current solution
-void update_benders_constraints(CPXCENVptr env, CPXLPptr lp, instance* inst, const int* comp, int n_iter);
+void update_benders_constraints(CPXCENVptr env, CPXLPptr lp, instance* inst, const int* comp, int n_comp, int n_iter);
 
 // Finds the number of connected components in the graph defined inside xstar
 void update_connected_components(const double* xstar, instance* inst, int* succ, int* comp, int* ncomp);

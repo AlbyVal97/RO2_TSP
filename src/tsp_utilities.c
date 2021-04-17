@@ -18,7 +18,11 @@ void parse_command_line(int argc, char** argv, instance* inst) {
 	strcpy(inst->input_file, "NULL");
 	strcpy(inst->folder_istances, "NULL");
 	strcpy(inst->instance_prefix_name, "NULL");
+	strcpy(inst->test_name, "NULL");
+	inst->n_models_test = 0;
+	inst->models_to_test = NULL;
 	inst->timelimit = CPX_INFBOUND;
+	inst->timelimit_exceeded = 0;
 	inst->integer_costs = 0;
 	inst->verbose = MEDIUM;
 	inst->seed = 0;
@@ -96,6 +100,7 @@ void parse_command_line(int argc, char** argv, instance* inst) {
 		printf("-f %s\n", inst->input_file);
 		printf("-time_limit %lf\n", inst->timelimit);
 		printf("-model_type %s\n", models[inst->model_type]);
+		printf("-test %s\n", inst->test_name);
 	}
 
 	if (help) exit(1);
@@ -110,6 +115,7 @@ void parse_input_file(instance* inst) {
 	}
 
 	inst->nnodes = -1;
+	inst->ncols = -1;
 
 	char line[180];
 	char* par_name;

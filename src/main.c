@@ -13,6 +13,8 @@
 // -m 2 -test test_instances -folder test_instances -n_inst 5 -n_models 5 1 2 3 4 5 -prefix rnd -time_limit 3600
 // -m 1 -folder test_instances -prefix rnd -n_inst 5 -n_nodes 15
 
+// -f ../data/test_instances/rnd_1.tsp -test test_instances -model_type 4 -first 1 -last 5 -verbose 0 -seed 123456 -time_limit 3600.000000 -end
+
 void update_csvfile(instance* inst, int first_model, int last_model, double time);
 void run_test(instance* inst);
 
@@ -47,18 +49,39 @@ int main(int argc, char **argv) {
 
 	double t2 = second();
 
-	if (inst.verbose == TEST) {
-		update_csvfile(&inst, inst.first_model, inst.last_model, t2 - t1);
-	}
-    
-	if ( inst.verbose >= TEST ) printf("TSP problem solved successfully in %lf seconds.\n\n", t2-t1);
+	//if (inst.verbose == TEST) update_csvfile(&inst, inst.first_model, inst.last_model, t2 - t1);
 
+	printf("inst.timelimit_exceeded: %d\n", inst.timelimit_exceeded);
+	if (inst.verbose >= TEST && (inst.timelimit_exceeded == 0)) printf("TSP problem solved successfully in %lf seconds.\n\n", t2 - t1);
+	update_csvfile(&inst, inst.first_model, inst.last_model, t2 - t1);
+	printf("BBBBBBBBBBBBBBBB\n");
+
+	/*
+	if (inst.verbose == TEST) {	
+		if (inst.timelimit_exceeded == 1) {
+			update_csvfile(&inst, inst.first_model, inst.last_model, 10.0 * inst.timelimit);
+			printf("CCCCCCCCCCCCC\n");
+		}
+		else {
+			
+			printf("dddddddddddddddddd\n");
+			update_csvfile(&inst, inst.first_model, inst.last_model, t2 - t1);
+			printf("DDDDDDDDDDDDDDDDDD\n");
+		}
+	}
+	*/
 	
+	/*
+	if (!(inst.timelimit_exceeded)) printf("TSP problem solved successfully in %lf seconds.\n\n", t2 - t1);
+	else if (inst.verbose == TEST && inst.timelimit_exceeded) printf("TSP problem ended with timelimit of %lf seconds.\n\n", inst.timelimit);
+	else {}
+	*/
 
 	// Plot the resulting optimal tour using Gnuplot
 	if (inst.verbose >= MEDIUM) system("C:/\"Program Files\"/gnuplot/bin/gnuplot.exe ../outputs/gnuplot_commands.txt");
 
 	free_instance(&inst);
+	printf("HHHHHHHHHHHHHHH\n");
 
 	return 0; 
 
@@ -68,7 +91,7 @@ int main(int argc, char **argv) {
 void run_test(instance* inst) {
 	printf("*** RUN %s ***\n\n", inst->test_name);
 	printf("Istances from folder %s\n", inst->folder_istances);
-	printf("Models used\n");
+	printf("Models used:\n");
 	for (int j = 0; j < inst->n_models_test; j++)
 		printf("%s\n", models[inst->models_to_test[j]]);
 
@@ -102,7 +125,7 @@ void run_test(instance* inst) {
 		for (int j = 0; j < inst->n_models_test; j++) {
 
 			fprintf(bat_file, ".\\Release\\tsp -f ../data/%s/%s_%d.tsp -test %s -model_type %d -first %d -last %d -verbose 0 -seed 123456 -time_limit %f -end\n", inst->folder_istances, inst->instance_prefix_name, i+1, inst->test_name, inst->models_to_test[j], inst->models_to_test[0], inst->models_to_test[inst->n_models_test-1], inst->timelimit);
-
+			fprintf(bat_file, "pause\n");
 		}
 	}
 	fprintf(bat_file, "@echo *** TEST ENDED ***\n");
@@ -121,9 +144,10 @@ void update_csvfile(instance* inst, int first_model, int last_model, double time
 	char csv_path[20];
 	sprintf(csv_path, "../outputs/%s.csv", inst->test_name);
 	FILE* csv_file = fopen(csv_path, "a");
+	printf("csv_file: %p\n", csv_file);
 	if (csv_file == NULL) print_error("csv file file not found inside \"outputs\" folder!");
 
-	if (inst->model_type == first_model) {				// Print the instance name just for the first test execution (on the first model)
+	if (inst->model_type == first_model) {						// Print the instance name just for the first test execution (on the first model)
 		fprintf(csv_file, "%s, %f, ", inst->inst_name, time);
 	}
 	else if (inst->model_type == last_model) {					// Go to next line only when the last test (on the last model) has been executed
@@ -134,4 +158,5 @@ void update_csvfile(instance* inst, int first_model, int last_model, double time
 	}
 
 	fclose(csv_file);
+	printf("EEEEEEEEEEEEEEE\n");
 }

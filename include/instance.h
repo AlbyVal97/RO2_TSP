@@ -46,10 +46,12 @@ typedef struct {
 
 	// Input data
 	int nnodes;
+	int ncols;
 	char inst_name[100];
 	double* xcoord;
 	double* ycoord;
 	int integer_costs;                      // = 1 for integer costs (rounded distances), 0 otherwise
+	int timelimit_exceeded;
 
 	// Command line parameters list
 	int mode;								// working mode of the program
@@ -62,7 +64,7 @@ typedef struct {
 	char instance_prefix_name[20];			// prefix of instance file name (used both in CREATE_INSTANCES and RUN_TEST modes)
 
 	// Command line arguments for TEST mode
-	char test_name[100];
+	char test_name[1000];
 	int n_models_test;
 	int* models_to_test;
 
