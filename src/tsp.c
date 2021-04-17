@@ -46,6 +46,9 @@ int TSPopt(instance* inst) {
 
 		case BASIC:
 			build_model_BASIC(inst, env, lp);
+			inst->ncols = CPXgetnumcols(env, lp);
+			printf("inst->ncols: %d\n", inst->ncols);
+
 			if (inst->verbose >= LOW) {
 				sprintf(logfile_path, "%s/logfile_BASIC.txt", logfile_path);
 				if (CPXsetlogfilename(env, logfile_path, "w")) print_error("CPXsetlogfilename() error in setting logfile name");
@@ -116,6 +119,7 @@ int TSPopt(instance* inst) {
 
 		case BENDERS:
 			build_model_BASIC(inst, env, lp);
+			inst->ncols = CPXgetnumcols(env, lp);
 			if (inst->verbose >= LOW) {
 				sprintf(logfile_path, "%s/logfile_BENDERS.txt", logfile_path);
 				if (CPXsetlogfilename(env, logfile_path, "w")) print_error("CPXsetlogfilename() error in setting logfile name");
@@ -126,6 +130,7 @@ int TSPopt(instance* inst) {
 
 		case BRANCH_CUT:
 			build_model_BASIC(inst, env, lp);
+			inst->ncols = CPXgetnumcols(env, lp);
 			if (inst->verbose >= LOW) {
 				sprintf(logfile_path, "%s/logfile_BRANCH_CUT.txt", logfile_path);
 				if (CPXsetlogfilename(env, logfile_path, "w")) print_error("CPXsetlogfilename() error in setting logfile name");
@@ -145,9 +150,9 @@ int TSPopt(instance* inst) {
 	double* xstar = (double*)calloc(ncols, sizeof(double));
 
 	// Copy the optimal solution from the Cplex environment to the new array "xstar"
-	if (CPXgetx(env, lp, xstar, 0, ncols - 1)) print_error("CPXgetx() error");
+	if (!inst->timelimit_exceeded && CPXgetx(env, lp, xstar, 0, ncols - 1)) print_error("CPXgetx() error");
 
-	// Discern if a model is symmetric (olves the TSP for a directed or an undirected graph)
+	// Discern if a model is symmetric (solves the TSP for a directed or an undirected graph)
 	int symmetric = -1;
 	if (inst->model_type == BASIC || inst->model_type == BENDERS || inst->model_type == BRANCH_CUT) symmetric = 0;
 	else if (inst->model_type == MTZ_STATIC || inst->model_type == MTZ_LAZY ||inst->model_type == MTZ_SEC2_STATIC || inst->model_type == MTZ_SEC2_LAZY || inst->model_type == GG) symmetric = 1;
@@ -265,10 +270,12 @@ int mip_solved_to_optimality(instance* inst, CPXENVptr env, CPXLPptr lp) {
 			if (inst->verbose >= MEDIUM) printf("\nOptimal solution within epgap or epagap tolerance found.\n");
 			break;
 		case CPXMIP_TIME_LIM_FEAS:
-			print_error("Time limit exceeded, integer solution exists.\n");
+			inst->timelimit_exceeded = 1;
+			if (inst->verbose >= LOW) print_error("Time limit exceeded, integer solution exists.\n");
 			break;
 		case CPXMIP_TIME_LIM_INFEAS:
-			print_error("Time limit exceeded, no integer solution.\n");
+			inst->timelimit_exceeded = 1;
+			if (inst->verbose >= LOW) print_error("Time limit exceeded, no integer solution.\n");
 			break;
 	}
 	
@@ -288,7 +295,7 @@ void solve_benders(instance* inst, CPXENVptr env, CPXLPptr lp) {
 	int* comp = (int*)malloc(inst->nnodes * sizeof(int));
 	double residual_timelimit = inst->timelimit;
 
-	int ncols = CPXgetnumcols(env, lp);
+	int ncols = inst->ncols;
 	double* x = (double*)calloc(ncols, sizeof(double));
 	
 	int n_iter = 0;
@@ -296,7 +303,7 @@ void solve_benders(instance* inst, CPXENVptr env, CPXLPptr lp) {
 
 		if (n_iter > 0) {									// For the first iteration just solve the BASIC_MODEL
 			// Add a new subtour elimination constraint for each connected components of the current solution
-			update_benders_constraints(env, lp, inst, comp, n_iter);
+			update_benders_constraints(env, lp, inst, comp, n_comp, n_iter);
 		}
 
 		double t1 = second();
@@ -314,9 +321,8 @@ void solve_benders(instance* inst, CPXENVptr env, CPXLPptr lp) {
 		if (inst->verbose >= MEDIUM) printf("New time limit: %f\n\n", residual_timelimit);
 		if (CPXsetdblparam(env, CPX_PARAM_TILIM, residual_timelimit)) { print_error("CPXsetdblparam() error in setting timelimit"); }
 
-		// Extract the new solution
-		ncols = CPXgetnumcols(env, lp);
-		if (CPXgetx(env, lp, x, 0, ncols - 1)) { print_error("CPXgetx() error"); }
+		// Extract the new solution (but only if timelimit has not been reached)
+		if (!inst->timelimit_exceeded && CPXgetx(env, lp, x, 0, ncols - 1)) { print_error("CPXgetx() error"); }
 
 		// Update the number of connected components of the new graph
 		update_connected_components(x, inst, succ, comp, &n_comp);
@@ -335,11 +341,13 @@ void solve_benders(instance* inst, CPXENVptr env, CPXLPptr lp) {
 }
 
 
-void update_benders_constraints(CPXCENVptr env, CPXLPptr lp, instance* inst, const int* comp, int n_iter) {
+void update_benders_constraints(CPXCENVptr env, CPXLPptr lp, instance* inst, const int* comp, int n_comp, int n_iter) {
+						
+	int* index = (int*)calloc(inst->ncols, sizeof(int));					// Array of indexes associated to the row variables
+	double* value = (double*)calloc(inst->ncols, sizeof(double));			// Array of row variables coefficients
+	int* comp_nodes = (int*)malloc(inst->nnodes * sizeof(int));				// Array of indexes of the nodes for one component
 
-	int n = 1;									// n is the index of the current connected component
-	//int stop = 0;
-	while (1) {
+	for (int n = 1; n <= n_comp; n++) {					// n is the index of the current connected component
 
 		// Scan connected components for its number of nodes -> value of comp_n_nodes
 		int comp_n_nodes = 0;
@@ -349,11 +357,7 @@ void update_benders_constraints(CPXCENVptr env, CPXLPptr lp, instance* inst, con
 			}
 		}
 
-		// If there is no node for the last examined component => there are no more components left
-		if (comp_n_nodes == 0) break;
-
 		// Scan connected components for its nodes indexes
-		int* comp_nodes = (int*)malloc(comp_n_nodes * sizeof(int));
 		int j = 0;
 		for (int i = 0; i < inst->nnodes; i++) {
 			if (comp[i] == n) {
@@ -371,8 +375,6 @@ void update_benders_constraints(CPXCENVptr env, CPXLPptr lp, instance* inst, con
 		// as the binomial coefficient (n over 2) = n!/((n-2)!*(2!)) = n*(n-1)/2
 		int n_edges_curr_comp = comp_n_nodes * (comp_n_nodes - 1) / 2;
 		if (inst->verbose >= HIGH) printf("Number of edges in connected component #%d (n_edges_curr_comp): %d\n", n, n_edges_curr_comp);
-		int* index = (int*)calloc(n_edges_curr_comp, sizeof(int));					// Array of indexes associated to the row variables
-		double* value = (double*)calloc(n_edges_curr_comp, sizeof(double));			// Array of row variables coefficients
 		int nnz = n_edges_curr_comp;
 
 		// Build (and add to the model) the subtour elimination constraint for the current connected component
@@ -388,14 +390,13 @@ void update_benders_constraints(CPXCENVptr env, CPXLPptr lp, instance* inst, con
 		}
 		if (CPXaddrows(env, lp, 0, 1, nnz, &rhs, &sense, &i_zero, index, value, NULL, cname)) print_error("wrong CPXaddrows() for subtour elimination constraints!");
 
-		free(comp_nodes);
 		free(cname[0]);
-		free(cname);
-		free(index);
-		free(value);
-
-		n++;																		// Go to the next connected component to add more constraints
+		free(cname);																	// Go to the next connected component to add more constraints
 	}
+
+	free(index);
+	free(value);
+	free(comp_nodes);
 }
 
 
@@ -417,10 +418,10 @@ void solve_branch_cut(instance* inst, CPXENVptr env, CPXLPptr lp) {
 static int CPXPUBLIC branch_cut_callback(CPXCALLBACKCONTEXTptr context, CPXLONG contextid, void* userhandle) {
 
 	instance* inst = (instance*)userhandle;
-	int n_edges = inst->nnodes * (inst->nnodes - 1) / 2;
-	double* xstar = (double*)malloc(n_edges * sizeof(double));
+	int ncols = inst->ncols;
+	double* xstar = (double*)malloc(ncols * sizeof(double));
 	double objval = CPX_INFBOUND;
-	if (CPXcallbackgetcandidatepoint(context, xstar, 0, n_edges - 1, &objval)) print_error("CPXcallbackgetcandidatepoint error");
+	if (CPXcallbackgetcandidatepoint(context, xstar, 0, ncols - 1, &objval)) print_error("CPXcallbackgetcandidatepoint error");
 
 	// get some random information at the node (as an example for the students)
 	int mythread = -1; CPXcallbackgetinfoint(context, CPXCALLBACKINFO_THREADID, &mythread);
@@ -440,8 +441,11 @@ static int CPXPUBLIC branch_cut_callback(CPXCALLBACKCONTEXTptr context, CPXLONG 
 
 	if (n_comp > 1) {								// means that the solution is infeasible and a violated cut has been found
 
-		int n = 1;									// n is the index of the current connected component
-		while (1) {
+		int* index = (int*)calloc(ncols, sizeof(int));					// Array of indexes associated to the row variables
+		double* value = (double*)calloc(ncols, sizeof(double));			// Array of row variables coefficients
+		int* comp_nodes = (int*)malloc(inst->nnodes * sizeof(int));		// Array of indexes of the nodes for one component
+								
+		for (int n = 1; n <= n_comp; n++) {			// n is the index of the current connected component
 
 			// Scan connected components for its number of nodes -> value of comp_n_nodes
 			int comp_n_nodes = 0;
@@ -451,11 +455,7 @@ static int CPXPUBLIC branch_cut_callback(CPXCALLBACKCONTEXTptr context, CPXLONG 
 				}
 			}
 
-			// If there is no node for the last examined component => there are no more components left
-			if (comp_n_nodes == 0) break;
-
 			// Scan connected components for its nodes indexes
-			int* comp_nodes = (int*)malloc(comp_n_nodes * sizeof(int));
 			int j = 0;
 			for (int i = 0; i < inst->nnodes; i++) {
 				if (comp[i] == n) {
@@ -469,8 +469,6 @@ static int CPXPUBLIC branch_cut_callback(CPXCALLBACKCONTEXTptr context, CPXLONG 
 			// We should compute the number of edges connecting the nodes of the current connected component
 			// as the binomial coefficient (n over 2) = n!/((n-2)!*(2!)) = n*(n-1)/2
 			int n_edges_curr_comp = comp_n_nodes * (comp_n_nodes - 1) / 2;
-			int* index = (int*)calloc(n_edges_curr_comp, sizeof(int));					// Array of indexes associated to the row variables
-			double* value = (double*)calloc(n_edges_curr_comp, sizeof(double));			// Array of row variables coefficients
 			int nnz = n_edges_curr_comp;
 
 			// Build (and add to the model) the subtour elimination constraint for the current connected component
@@ -487,12 +485,12 @@ static int CPXPUBLIC branch_cut_callback(CPXCALLBACKCONTEXTptr context, CPXLONG 
 			// Rejects the current (infeasible) solution and adds one cut (a SEC)
 			if (CPXcallbackrejectcandidate(context, 1, nnz, &rhs, &sense, &i_zero, index, value)) print_error("CPXcallbackrejectcandidate() error");
 
-			free(comp_nodes);
-			free(index);
-			free(value);
-
-			n++;
+			
 		}
+
+		free(index);
+		free(value);
+		free(comp_nodes);
 	}
 
 	free(xstar);
