@@ -44,6 +44,7 @@ typedef enum {
 // Problem instance data structure
 typedef struct {
 
+	
 	// Input data
 	int nnodes;
 	int ncols;
@@ -64,14 +65,14 @@ typedef struct {
 	char instance_prefix_name[20];			// prefix of instance file name (used both in CREATE_INSTANCES and RUN_TEST modes)
 
 	// Command line arguments for TEST mode
-	char test_name[1000];
+	char testname[100];
 	int n_models_test;
 	int* models_to_test;
 
 	// Command line arguments for DEFAULT mode
 	int model_type;							// model number to be used to solve the instance
 	double timelimit;						// overall time limit, in seconds
-	char input_file[1000];		  			// input file name
+	char input_file[100];		  			// input file name
 	int verbose;							// verbosity value
 	int seed;								// internal branching random seed used by Cplex. If fixed, leads to more consistent computational time
 	int first_model;
