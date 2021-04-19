@@ -10,13 +10,15 @@
 // -f ../data/inst_max_100_nodes/berlin52.tsp -seed 123456 -model_type 1 -verbose 1 -time_limit 3600
 // -m 0 -n_inst 20 -n_nodes 50 -f ../data/inst_max_100_nodes/berlin52.tsp -seed 123456 -model_type 3 -verbose 2 -time_limit 60
 // -f ../data/rnd_compact_instances/rnd_inst_1.tsp -seed 123456 -model_type 7 -verbose 2 -time_limit 60
-// -m 2 -test test_instances -folder test_instances -n_inst 5 -n_models 5 1 2 3 4 5 -prefix rnd -time_limit 3600
 // -m 1 -folder test_instances -prefix rnd -n_inst 5 -n_nodes 15
 // -m 1 -folder test_instances_200 -prefix rnd -n_inst 20 -n_nodes 200
 // -f ../data/test_instances_200/rnd_1.tsp -seed 123456 -model_type 6 -verbose 2 -time_limit 60
 // -m 2 -test test_instances_200 -folder test_instances_200 -n_inst 20 -n_models 2 6 7 -prefix rnd -time_limit 3600
 
 // -f ../data/test_instances/rnd_1.tsp -test test_instances -model_type 4 -first 1 -last 5 -verbose 0 -seed 123456 -time_limit 3600.000000 -end
+
+// Command line arguments list for compact models official tests:
+// -m 2 -test test_compact_models_50 -folder rnd_compact_instances -n_inst 20 -n_models 5 1 2 3 4 5 -prefix rnd_inst -time_limit 1800
 
 void update_csvfile(instance* inst, int first_model, int last_model, double time);
 void run_test(instance* inst);

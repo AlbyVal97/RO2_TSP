@@ -139,6 +139,17 @@ int TSPopt(instance* inst) {
 			sprintf(edges_file_path, "%s/model_BRANCH_CUT_edges.dat", edges_file_path);
 			break;
 		
+		case ADV_BRANCH_CUT:
+			build_model_BASIC(inst, env, lp);
+			inst->ncols = CPXgetnumcols(env, lp);
+			if (inst->verbose >= LOW) {
+				sprintf(logfile_path, "%s/logfile_ADV_BRANCH_CUT.txt", logfile_path);
+				if (CPXsetlogfilename(env, logfile_path, "w")) print_error("CPXsetlogfilename() error in setting logfile name");
+			}
+			solve_adv_branch_cut(inst, env, lp);
+			sprintf(edges_file_path, "%s/model_ADV_BRANCH_CUT_edges.dat", edges_file_path);
+			break;
+
 		default:
 			print_error("Choose a correct value for the model to be used!");
 	}
@@ -154,7 +165,7 @@ int TSPopt(instance* inst) {
 
 	// Discern if a model is symmetric (solves the TSP for a directed or an undirected graph)
 	int symmetric = -1;
-	if (inst->model_type == BASIC || inst->model_type == BENDERS || inst->model_type == BRANCH_CUT) symmetric = 0;
+	if (inst->model_type == BASIC || inst->model_type == BENDERS || inst->model_type == BRANCH_CUT || inst->model_type == ADV_BRANCH_CUT) symmetric = 0;
 	else if (inst->model_type == MTZ_STATIC || inst->model_type == MTZ_LAZY ||inst->model_type == MTZ_SEC2_STATIC || inst->model_type == MTZ_SEC2_LAZY || inst->model_type == GG) symmetric = 1;
 	
 	// Fill the .dat file with the correctly formatted nodes of the found solution
@@ -484,8 +495,6 @@ static int CPXPUBLIC branch_cut_callback(CPXCALLBACKCONTEXTptr context, CPXLONG 
 			}
 			// Rejects the current (infeasible) solution and adds one cut (a SEC)
 			if (CPXcallbackrejectcandidate(context, 1, nnz, &rhs, &sense, &i_zero, index, value)) print_error("CPXcallbackrejectcandidate() error");
-
-			
 		}
 
 		free(index);
@@ -496,6 +505,57 @@ static int CPXPUBLIC branch_cut_callback(CPXCALLBACKCONTEXTptr context, CPXLONG 
 	free(xstar);
 	free(succ);
 	free(comp);
+
+	return 0;
+}
+
+
+void solve_adv_branch_cut(instance* inst, CPXENVptr env, CPXLPptr lp) {
+
+	// N.B. It is required to install a "lazy constraint" callback to cut infeasible integer solutions (es. found by heuristics) 
+	CPXLONG contextid = CPX_CALLBACKCONTEXT_CANDIDATE | CPX_CALLBACKCONTEXT_RELAXATION;
+	if (CPXcallbacksetfunc(env, lp, contextid, adv_branch_cut_callback_driver, inst)) print_error("CPXcallbacksetfunc() error");
+
+	if (CPXmipopt(env, lp)) print_error("CPXmipopt() error");
+
+	// Check if CPXmipopt has ended correctly
+	mip_solved_to_optimality(inst, env, lp);
+
+	return;
+}
+
+
+static int CPXPUBLIC adv_branch_cut_callback_driver(CPXCALLBACKCONTEXTptr context, CPXLONG contextid, void* userhandle) {
+
+	instance* inst = (instance*)userhandle;
+	if (contextid == CPX_CALLBACKCONTEXT_CANDIDATE) return branch_cut_callback(context, contextid, inst);
+	if (contextid == CPX_CALLBACKCONTEXT_RELAXATION) return adv_branch_cut_callback(context, contextid, inst);
+	print_error("Unknown \"contextid\" in adv_branch_cut_callback_driver");
+	return 1;
+}
+
+
+static int CPXPUBLIC adv_branch_cut_callback(CPXCALLBACKCONTEXTptr context, CPXLONG contextid, void* userhandle) {
+
+	instance* inst = (instance*)userhandle;
+	int ncols = inst->ncols;
+	double* xstar = (double*)malloc(inst->ncols * sizeof(double));
+	double objval = CPX_INFBOUND;
+	if (CPXcallbackgetrelaxationpoint(context, xstar, 0, ncols - 1, &objval)) print_error("CPXcallbackgetrelaxationpoint error");
+
+	print_solution(inst, xstar, 0, "../outputs/rnd_inst_1/model_ADV_BRANCH_CUT_edges.dat");
+
+	/*
+	for (int i = 0; i < inst->nnodes; i++) {
+		for (int j = i + 1; j < inst->nnodes; j++) {
+			printf("x(%3d,%3d) = %f\n", i + 1, j + 1, xstar[xpos(i, j, inst)]);
+		}
+	}
+	*/
+
+	free(xstar);
+	system("C:/\"Program Files\"/gnuplot/bin/gnuplot.exe ../outputs/gnuplot_commands.txt");
+	exit(0);
 
 	return 0;
 }

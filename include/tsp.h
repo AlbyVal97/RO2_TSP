@@ -37,7 +37,14 @@ void solve_branch_cut(instance* inst, CPXENVptr env, CPXLPptr lp);
 // Callback function to be used internally by Cplex only in BRANCH_CUT method
 static int CPXPUBLIC branch_cut_callback(CPXCALLBACKCONTEXTptr context, CPXLONG contextid, void* userhandle);
 
-//void build_model(instance* inst, CPXENVptr env, CPXLPptr lp);
+// Apply an improvement of the Branch & Cut method to solve the tsp problem without a compact model
+void solve_adv_branch_cut(instance* inst, CPXENVptr env, CPXLPptr lp);
+
+// Intermediate callback function to be called in ADV_BRANCH_CUT method to activate the correct callback depending on current contextid
+static int CPXPUBLIC adv_branch_cut_callback_driver(CPXCALLBACKCONTEXTptr context, CPXLONG contextid, void* userhandle);
+
+// Callback function to be used internally by Cplex only in ADV_BRANCH_CUT method
+static int CPXPUBLIC adv_branch_cut_callback(CPXCALLBACKCONTEXTptr context, CPXLONG contextid, void* userhandle);
 
 // Builds the tableau (variables and constraints)
 void build_model_BASIC(instance* inst, CPXENVptr env, CPXLPptr lp);

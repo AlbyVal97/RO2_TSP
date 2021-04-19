@@ -7,11 +7,11 @@
 #define EPSILON		  		  1e-9		// 1e-9		// very small numerical tolerance 
 #define TICKS_PER_SECOND 	  1000.0  	// cplex's ticks on Intel Core i7 quadcore @2.3GHZ
 
-#define N_MODELS 8
+#define N_MODELS 9
 #define N_VERBOSITIES 4
 #define N_MODES 3
 
-static const char* models[] = { "BASIC", "MTZ_STATIC", "MTZ_LAZY", "MTZ_SEC2_STATIC", "MTZ_SEC2_LAZY", "GG", "BENDERS", "BRANCH_CUT" };
+static const char* models[] = { "BASIC", "MTZ_STATIC", "MTZ_LAZY", "MTZ_SEC2_STATIC", "MTZ_SEC2_LAZY", "GG", "BENDERS", "BRANCH_CUT", "ADV_BRANCH_CUT" };
 static const char* verbosities[] = { "TEST", "LOW", "MEDIUM", "HIGH" };
 static const char* modes[] = { "DEFAULT", "CREATE_INSTANCES", "RUN_TEST" };
 
@@ -32,7 +32,8 @@ typedef enum {
 	MTZ_SEC2_LAZY,
 	GG,
 	BENDERS,
-	BRANCH_CUT
+	BRANCH_CUT,
+	ADV_BRANCH_CUT
 } model_type;
 
 typedef enum {
