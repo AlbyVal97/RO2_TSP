@@ -55,9 +55,6 @@ int main(int argc, char **argv) {
 	if (!(inst.timelimit_exceeded)) printf("TSP problem solved successfully in %lf seconds.\n\n", t2 - t1);
 	else if (inst.verbose == TEST && inst.timelimit_exceeded) printf("TSP problem ended with timelimit of %lf seconds.\n\n", inst.timelimit);
 
-	//if (inst.verbose >= TEST && (inst.timelimit_exceeded == 0)) printf("TSP problem solved successfully in %lf seconds.\n\n", t2 - t1);
-
-
 	if (inst.verbose == TEST) {	
 		if (inst.timelimit_exceeded == 1) {
 			update_csvfile(&inst, inst.first_model, inst.last_model, 10.0 * inst.timelimit);
@@ -66,8 +63,6 @@ int main(int argc, char **argv) {
 			update_csvfile(&inst, inst.first_model, inst.last_model, t2 - t1);
 		}
 	}
-	
-	//WARNING: possibile segmentation fault above!!!
 
 	// Plot the resulting optimal tour using Gnuplot
 	if (inst.verbose >= MEDIUM) system("C:/\"Program Files\"/gnuplot/bin/gnuplot.exe ../outputs/gnuplot_commands.txt");
@@ -131,7 +126,7 @@ void run_test(instance* inst) {
 
 
 void update_csvfile(instance* inst, int first_model, int last_model, double time) {
-	char csv_path[20];
+	char csv_path[100];
 	sprintf(csv_path, "../outputs/%s.csv", inst->testname);
 	FILE* csv_file = fopen(csv_path, "a");
 	if (csv_file == NULL) print_error("csv file file not found inside \"outputs\" folder!");
