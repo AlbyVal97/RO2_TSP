@@ -84,4 +84,12 @@ typedef struct {
 
 } instance;
 
+typedef struct {
+	instance* inst;
+	CPXCALLBACKCONTEXTptr context;
+	int* index;
+	double* value;
+	int local;
+} concorde_instance;
+
 #endif   /* INSTANCE_H_ */

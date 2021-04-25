@@ -46,6 +46,8 @@ static int CPXPUBLIC adv_branch_cut_callback_driver(CPXCALLBACKCONTEXTptr contex
 // Callback function to be used internally by Cplex only in ADV_BRANCH_CUT method
 static int CPXPUBLIC adv_branch_cut_callback(CPXCALLBACKCONTEXTptr context, CPXLONG contextid, void* userhandle);
 
+int doit_fn_concorde(double cutval, int cutcount, int* cut, void* in_param);
+
 // Builds the tableau (variables and constraints)
 void build_model_BASIC(instance* inst, CPXENVptr env, CPXLPptr lp);
 void build_model_MTZ_STATIC(instance* inst, CPXENVptr env, CPXLPptr lp);

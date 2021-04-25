@@ -194,6 +194,7 @@ void print_solution(instance* inst, double* xstar, int symmetric, char* edges_fi
 			for (int j = i + 1; j < inst->nnodes; j++) {
 
 				if (xstar[xpos(i, j, inst)] > 0.5) {
+				//if (xstar[xpos(i, j, inst)] > 0.0) {
 
 					if (inst->verbose >= HIGH) {
 						printf("x(%3d,%3d) = 1\n", i + 1, j + 1);
@@ -529,6 +530,8 @@ static int CPXPUBLIC adv_branch_cut_callback_driver(CPXCALLBACKCONTEXTptr contex
 
 	instance* inst = (instance*)userhandle;
 	if (contextid == CPX_CALLBACKCONTEXT_CANDIDATE) return branch_cut_callback(context, contextid, inst);
+	int mynode = -1; CPXcallbackgetinfoint(context, CPXCALLBACKINFO_NODECOUNT, &mynode);
+	if (mynode != 0) return 0;
 	if (contextid == CPX_CALLBACKCONTEXT_RELAXATION) return adv_branch_cut_callback(context, contextid, inst);
 	print_error("Unknown \"contextid\" in adv_branch_cut_callback_driver");
 	return 1;
@@ -543,8 +546,67 @@ static int CPXPUBLIC adv_branch_cut_callback(CPXCALLBACKCONTEXTptr context, CPXL
 	double objval = CPX_INFBOUND;
 	if (CPXcallbackgetrelaxationpoint(context, xstar, 0, ncols - 1, &objval)) print_error("CPXcallbackgetrelaxationpoint error");
 
-	print_solution(inst, xstar, 0, "../outputs/rnd_inst_1/model_ADV_BRANCH_CUT_edges.dat");
+	print_solution(inst, xstar, 0, "../outputs/berlin52/model_ADV_BRANCH_CUT_edges.dat");
 
+	int ncount = inst->nnodes;
+	int ecount = inst->nnodes * (inst->nnodes - 1) / 2;
+	int* elist = malloc(2 * ecount * sizeof(int));
+	int k = 0;
+	for (int i = 0; i < ncount; i++) {
+		for (int j = i + 1; j < ncount; j++) {
+			elist[k++] = i;
+			elist[k++] = j;
+		}
+	}
+	
+	int ncomp = 0;
+	int* compscount;
+	int* comps;
+	
+	if (CCcut_connect_components(ncount, ecount, elist, xstar, &ncomp, &compscount, &comps)) print_error("Error during concorde connect comps algorithm!");
+	printf("#connected components: %d\n", ncomp);
+
+	int* index = (int*)calloc(ncols, sizeof(int));					// Array of indexes associated to the row variables
+	double* value = (double*)calloc(ncols, sizeof(double));			// Array of row variables coefficients
+
+
+	if (ncomp > 1) {
+
+		for (int n = 0; n < ncomp; n++) {			// n is the index of the current connected component
+
+			double rhs = compscount[n] - 1.0;
+			char sense = 'L';
+			int i_zero = 0;
+			int purgeable = CPX_USECUT_FILTER;
+			int local = 0;
+			int nnz = 0;
+			int pos = 0;
+			for (int i = pos; i < pos + compscount[n]; i++) {
+				for (int j = i + 1; j < pos + compscount[n]; j++) {
+					if (i == j) {
+						continue;
+					}
+					index[nnz] = xpos(comps[i], comps[j], inst);
+					value[nnz] = 1.0;
+					nnz++;
+				}
+			}
+			if (CPXcallbackaddusercuts(context, 1, nnz, &rhs, &sense, &i_zero, index, value, &purgeable, &local)) print_error("CPXcallbackaddusercuts() error");
+		}
+		
+	}
+
+	else if (ncomp == 1) {
+		concorde_instance cc;
+		cc.inst = inst;
+		cc.context = context;
+		cc.local = 0;
+		cc.index = malloc(inst->ncols * sizeof(int));
+		cc.value = calloc(inst->ncols, sizeof(double));
+		if (CCcut_violated_cuts(ncount, ecount, elist, xstar, 2 - 0.1, doit_fn_concorde, &cc)) print_error("Error during concorde violated cuts algorithm!");
+		free(cc.index);
+		free(cc.value);
+	}
 	/*
 	for (int i = 0; i < inst->nnodes; i++) {
 		for (int j = i + 1; j < inst->nnodes; j++) {
@@ -553,13 +615,52 @@ static int CPXPUBLIC adv_branch_cut_callback(CPXCALLBACKCONTEXTptr context, CPXL
 	}
 	*/
 
+	free(index);
+	free(value);
 	free(xstar);
-	system("C:/\"Program Files\"/gnuplot/bin/gnuplot.exe ../outputs/gnuplot_commands.txt");
-	exit(0);
+	free(compscount);
+	free(comps);
+	//system("C:/\"Program Files\"/gnuplot/bin/gnuplot.exe ../outputs/gnuplot_commands.txt");
+	//exit(0);
 
 	return 0;
 }
 
+int doit_fn_concorde(double cutval, int cutcount, int* cut, void* in_param) {
+	concorde_instance* cc = (concorde_instance*)in_param;
+	instance* inst = cc->inst;
+	int* index = cc->index;
+	double* value = cc->value;
+	if (cutcount > 2 && cutcount < inst->nnodes) {
+		int i_zero = 0;
+		char sense = 'G';
+		double rhs = 2.0;
+		int purgeable = CPX_USECUT_FILTER;
+		int nnz = 0;
+		printf("AAAAA\n");
+		for (int i = 0; i < inst->nnodes; i++) {
+			for (int j = 0; j < cutcount; j++) {
+				if (i < cut[j]) {
+					index[nnz] = xpos(i, cut[j], inst);
+					value[nnz] = 1.0;
+					nnz++;
+				}
+			}
+		}
+		
+		if (CPXcallbackaddusercuts(cc->context, 1, nnz, &rhs, &sense, &i_zero, index, value, &purgeable, &cc->local)) print_error("CPXcallbackaddusercuts() error");
+		printf("BBBB\n");
+	}
+
+	
+	printf("cutval %f\n", cutval);
+	printf("cutcount %d\n", cutcount);
+	for (int i = 0; i < cutcount; i++) {
+		printf("%d\n", cut[i]);
+	}
+
+	return 0;
+}
 
 void update_connected_components(const double* xstar, instance* inst, int* succ, int* comp, int* ncomp) {
 

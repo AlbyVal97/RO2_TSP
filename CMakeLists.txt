@@ -19,9 +19,22 @@ add_executable(${PROJECT_NAME}
     src/main.c
     src/tsp.c
     src/tsp_utilities.c
+    src/mincut.c
+    src/connect.c
+    src/util.c
+    src/shrink.c
+    src/cut_st.c
+    src/allocrus.c
+    src/sortrus.c
+    src/urandom.c
     include/tsp.h
     include/tsp_utilities.h
     include/instance.h
+    include/util.h
+    include/machdefs.h
+    include/macrorus.h
+    include/cut.h
+    include/config.h
 )
 
 #target_include_directories(${PROJECT_NAME} PUBLIC ${CPLEX_INCLUDE_DIRS})
