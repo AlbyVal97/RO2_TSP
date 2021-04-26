@@ -1,3 +1,10 @@
+#define _CRT_RAND_S
+#define safe_rand(rval, value) \
+	value = 0; \
+	if (rand_s(&value)) \
+		print_error("Error in random generation\n"); \
+	*rval = ((double)value) / (UINT_MAX); 
+
 #include <stdio.h>
 #include <math.h>
 #include <stdlib.h>
@@ -139,19 +146,20 @@ int TSPopt(instance* inst) {
 			sprintf(edges_file_path, "%s/model_BRANCH_CUT_edges.dat", edges_file_path);
 			break;
 		
-		case ADV_BRANCH_CUT:
+		//case ADV_BRANCH_CUT:
+		default:
 			build_model_BASIC(inst, env, lp);
 			inst->ncols = CPXgetnumcols(env, lp);
 			if (inst->verbose >= LOW) {
-				sprintf(logfile_path, "%s/logfile_ADV_BRANCH_CUT.txt", logfile_path);
+				sprintf(logfile_path, "%s/logfile_%s.txt", logfile_path, models[inst->model_type]);
 				if (CPXsetlogfilename(env, logfile_path, "w")) print_error("CPXsetlogfilename() error in setting logfile name");
 			}
 			solve_adv_branch_cut(inst, env, lp);
-			sprintf(edges_file_path, "%s/model_ADV_BRANCH_CUT_edges.dat", edges_file_path);
+			sprintf(edges_file_path, "%s/model_%s_edges.dat", edges_file_path, models[inst->model_type]);
 			break;
 
-		default:
-			print_error("Choose a correct value for the model to be used!");
+		/*default:
+			print_error("Choose a correct value for the model to be used!");*/
 	}
 
 	if (inst->verbose >= MEDIUM) printf("Complete path for *.dat file: %s\n\n", edges_file_path);
@@ -165,7 +173,7 @@ int TSPopt(instance* inst) {
 
 	// Discern if a model is symmetric (solves the TSP for a directed or an undirected graph)
 	int symmetric = -1;
-	if (inst->model_type == BASIC || inst->model_type == BENDERS || inst->model_type == BRANCH_CUT || inst->model_type == ADV_BRANCH_CUT) symmetric = 0;
+	if (inst->model_type == BASIC || inst->model_type == BENDERS || inst->model_type == BRANCH_CUT || inst->model_type >= ADVBC_STD) symmetric = 0;
 	else if (inst->model_type == MTZ_STATIC || inst->model_type == MTZ_LAZY ||inst->model_type == MTZ_SEC2_STATIC || inst->model_type == MTZ_SEC2_LAZY || inst->model_type == GG) symmetric = 1;
 	
 	// Fill the .dat file with the correctly formatted nodes of the found solution
@@ -530,8 +538,29 @@ static int CPXPUBLIC adv_branch_cut_callback_driver(CPXCALLBACKCONTEXTptr contex
 
 	instance* inst = (instance*)userhandle;
 	if (contextid == CPX_CALLBACKCONTEXT_CANDIDATE) return branch_cut_callback(context, contextid, inst);
-	int mynode = -1; CPXcallbackgetinfoint(context, CPXCALLBACKINFO_NODECOUNT, &mynode);
-	if (mynode != 0) return 0;
+	int mynode = -1;
+	int mydepth = -1;
+	double rval;
+	unsigned int value = 0;
+	switch (inst->model_type) {
+		
+		case ADVBC_ROOT:
+			CPXcallbackgetinfoint(context, CPXCALLBACKINFO_NODECOUNT, &mynode);
+			if (mynode != 0) return 0;
+			break;
+		case ADVBC_DEPTH_5:
+			CPXcallbackgetinfoint(context, CPXCALLBACKINFO_NODEDEPTH, &mydepth);
+			if (mydepth > 5) return 0;
+			break;
+		case ADVBC_PROB_50:
+			safe_rand(&rval, value);
+			if (rval > 0.5) return 0;
+			break;
+		case ADVBC_PROB_10:
+			safe_rand(&rval, value);
+			if (rval > 0.1) return 0;
+			break;
+	}
 	if (contextid == CPX_CALLBACKCONTEXT_RELAXATION) return adv_branch_cut_callback(context, contextid, inst);
 	print_error("Unknown \"contextid\" in adv_branch_cut_callback_driver");
 	return 1;
@@ -545,8 +574,6 @@ static int CPXPUBLIC adv_branch_cut_callback(CPXCALLBACKCONTEXTptr context, CPXL
 	double* xstar = (double*)malloc(inst->ncols * sizeof(double));
 	double objval = CPX_INFBOUND;
 	if (CPXcallbackgetrelaxationpoint(context, xstar, 0, ncols - 1, &objval)) print_error("CPXcallbackgetrelaxationpoint error");
-
-	print_solution(inst, xstar, 0, "../outputs/berlin52/model_ADV_BRANCH_CUT_edges.dat");
 
 	int ncount = inst->nnodes;
 	int ecount = inst->nnodes * (inst->nnodes - 1) / 2;
@@ -564,7 +591,7 @@ static int CPXPUBLIC adv_branch_cut_callback(CPXCALLBACKCONTEXTptr context, CPXL
 	int* comps;
 	
 	if (CCcut_connect_components(ncount, ecount, elist, xstar, &ncomp, &compscount, &comps)) print_error("Error during concorde connect comps algorithm!");
-	printf("#connected components: %d\n", ncomp);
+	if (inst->verbose >= HIGH) printf("#connected components: %d\n", ncomp);
 
 	int* index = (int*)calloc(ncols, sizeof(int));					// Array of indexes associated to the row variables
 	double* value = (double*)calloc(ncols, sizeof(double));			// Array of row variables coefficients
@@ -597,6 +624,7 @@ static int CPXPUBLIC adv_branch_cut_callback(CPXCALLBACKCONTEXTptr context, CPXL
 	}
 
 	else if (ncomp == 1) {
+		
 		concorde_instance cc;
 		cc.inst = inst;
 		cc.context = context;
@@ -607,22 +635,13 @@ static int CPXPUBLIC adv_branch_cut_callback(CPXCALLBACKCONTEXTptr context, CPXL
 		free(cc.index);
 		free(cc.value);
 	}
-	/*
-	for (int i = 0; i < inst->nnodes; i++) {
-		for (int j = i + 1; j < inst->nnodes; j++) {
-			printf("x(%3d,%3d) = %f\n", i + 1, j + 1, xstar[xpos(i, j, inst)]);
-		}
-	}
-	*/
 
 	free(index);
 	free(value);
 	free(xstar);
 	free(compscount);
 	free(comps);
-	//system("C:/\"Program Files\"/gnuplot/bin/gnuplot.exe ../outputs/gnuplot_commands.txt");
-	//exit(0);
-
+	
 	return 0;
 }
 
@@ -637,7 +656,7 @@ int doit_fn_concorde(double cutval, int cutcount, int* cut, void* in_param) {
 		double rhs = 2.0;
 		int purgeable = CPX_USECUT_FILTER;
 		int nnz = 0;
-		printf("AAAAA\n");
+
 		for (int i = 0; i < inst->nnodes; i++) {
 			for (int j = 0; j < cutcount; j++) {
 				if (i < cut[j]) {
@@ -647,17 +666,10 @@ int doit_fn_concorde(double cutval, int cutcount, int* cut, void* in_param) {
 				}
 			}
 		}
-		
 		if (CPXcallbackaddusercuts(cc->context, 1, nnz, &rhs, &sense, &i_zero, index, value, &purgeable, &cc->local)) print_error("CPXcallbackaddusercuts() error");
-		printf("BBBB\n");
 	}
 
-	
-	printf("cutval %f\n", cutval);
-	printf("cutcount %d\n", cutcount);
-	for (int i = 0; i < cutcount; i++) {
-		printf("%d\n", cut[i]);
-	}
+	if (inst->verbose >= HIGH) printf("cutval %f\n", cutval);
 
 	return 0;
 }

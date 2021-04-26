@@ -78,7 +78,7 @@
 #undef HAVE_MATH_H
 
 /* Define if you have the <string.h> header file.  */
-#undef HAVE_STRING_H
+#define HAVE_STRING_H
 
 /* Define if you have the <strings.h> header file.  */
 #undef HAVE_STRINGS_H

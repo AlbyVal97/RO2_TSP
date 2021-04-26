@@ -7,13 +7,15 @@
 #define EPSILON		  		  1e-9		// 1e-9		// very small numerical tolerance 
 #define TICKS_PER_SECOND 	  1000.0  	// cplex's ticks on Intel Core i7 quadcore @2.3GHZ
 
-#define N_MODELS 9
+#define N_MODELS 13
 #define N_VERBOSITIES 4
 #define N_MODES 3
+#define N_ADV_BC_PARAM 5
 
-static const char* models[] = { "BASIC", "MTZ_STATIC", "MTZ_LAZY", "MTZ_SEC2_STATIC", "MTZ_SEC2_LAZY", "GG", "BENDERS", "BRANCH_CUT", "ADV_BRANCH_CUT" };
+static const char* models[] = { "BASIC", "MTZ_STATIC", "MTZ_LAZY", "MTZ_SEC2_STATIC", "MTZ_SEC2_LAZY", "GG", "BENDERS", "BRANCH_CUT", "ADVBC_STD", "ADVBC_ROOT", "ADVBC_DEPTH_5", "ADVBC_PROB_50", "ADVBC_PROB_10" };
 static const char* verbosities[] = { "TEST", "LOW", "MEDIUM", "HIGH" };
 static const char* modes[] = { "DEFAULT", "CREATE_INSTANCES", "RUN_TEST" };
+static const char* adv_bc_param[] = { "STANDARD", "ROOT_NODE_ONLY", "MAX_DEPTH_5", "PROB_50", "PROB_10" };
 
 // Verbosity levels enumeration
 typedef enum {
@@ -33,7 +35,11 @@ typedef enum {
 	GG,
 	BENDERS,
 	BRANCH_CUT,
-	ADV_BRANCH_CUT
+	ADVBC_STD,
+	ADVBC_ROOT,
+	ADVBC_DEPTH_5,
+	ADVBC_PROB_50,
+	ADVBC_PROB_10
 } model_type;
 
 typedef enum {
@@ -42,10 +48,17 @@ typedef enum {
 	RUN_TEST
 } mode;
 
+typedef enum {
+	STANDARD,
+	ROOT_NODE_ONLY,
+	MAX_DEPTH_5,
+	PROB_50,
+	PROB_10
+} adv_branch_cut_param;
+
 // Problem instance data structure
 typedef struct {
 
-	
 	// Input data
 	int nnodes;
 	int ncols;
@@ -78,6 +91,9 @@ typedef struct {
 	int seed;								// internal branching random seed used by Cplex. If fixed, leads to more consistent computational time
 	int first_model;
 	int last_model;
+
+	//ADV_BRANCH_CUT_PARAM
+	int adv_bc_param;
 
 	// global data
 	double zbest;							// value of the best sol. available

@@ -13,6 +13,7 @@ void parse_command_line(int argc, char** argv, instance* inst) {
 	// Set default values for the instance
 	inst->mode = DEFAULT;
 	inst->model_type = BASIC;
+	inst->adv_bc_param = STANDARD;
 	inst->n_instances = 0;
 	inst->n_nodes_per_instance = 0;
 	strcpy(inst->input_file, "NULL\0");
@@ -72,8 +73,11 @@ void parse_command_line(int argc, char** argv, instance* inst) {
 			}
 			continue;
 		}
-
-
+		if (strcmp(argv[i], "-adv_bc") == 0) {
+			inst->adv_bc_param = atoi(argv[++i]);
+			if (inst->adv_bc_param < 0 || inst->adv_bc_param >= N_ADV_BC_PARAM) print_error("Incorrect value of adv_bc_param");
+			continue;
+		}
 		help = 1;
 	}
 
@@ -90,6 +94,8 @@ void parse_command_line(int argc, char** argv, instance* inst) {
 		printf("-f %s\n", inst->input_file);
 		printf("-time_limit %lf\n", inst->timelimit);
 		printf("-model_type %s\n", models[inst->model_type]);
+		/*if (inst->model_type == ADVBC_STD)
+			printf("-adv_bc_param %s\n", adv_bc_param[inst->adv_bc_param]);*/
 		printf("-integer_costs %d\n", inst->integer_costs);
 		printf("-verbose %s\n", verbosities[inst->verbose]);
 		printf("-seed %d\n", inst->seed);
@@ -100,6 +106,8 @@ void parse_command_line(int argc, char** argv, instance* inst) {
 		printf("-f %s\n", inst->input_file);
 		printf("-time_limit %lf\n", inst->timelimit);
 		printf("-model_type %s\n", models[inst->model_type]);
+		/*if (inst->model_type == ADVBC_STD)
+			printf("-adv_bc_param %s\n", adv_bc_param[inst->adv_bc_param]);*/
 		printf("-test %s\n", inst->testname);
 	}
 
