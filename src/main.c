@@ -14,6 +14,7 @@
 // -m 1 -folder test_instances -prefix rnd -n_inst 5 -n_nodes 15
 // -m 1 -folder test_instances_50 -prefix rnd_50 -n_inst 20 -n_nodes 50
 // -m 1 -folder test_instances_200 -prefix rnd_200 -n_inst 20 -n_nodes 200
+// -m 1 -folder test_instances_300 -prefix rnd_300 -n_inst 40 -n_nodes 300
 // -m 1 -folder test_instances_500 -prefix rnd_500 -n_inst 20 -n_nodes 500
 
 // -f ../data/test_instances_200/rnd_200_1.tsp -seed 123456 -model_type 6 -verbose 2 -time_limit 60
@@ -25,7 +26,7 @@
 // -m 2 -test test_compact_models_50 -folder test_instances_50 -n_inst 20 -n_models 5 1 2 3 4 5 -prefix rnd_50 -time_limit 1800
 
 // Command line arguments list for tuning hyperparameters of advanced branch and cut method:
-// -m 2 -test test_tuning_advbc -folder test_instances_500 -n_inst 20 -n_models 5 8 9 10 11 12 -prefix rnd_500 -time_limit 1800
+// -m 2 -test test_tuning_advbc -folder test_instances_300 -n_inst 20 -n_models 5 8 9 10 11 12 -prefix rnd_300 -time_limit 1800
 
 
 void update_csvfile(instance* inst, int first_model, int last_model, double time);
