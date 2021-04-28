@@ -27,6 +27,7 @@ void parse_command_line(int argc, char** argv, instance* inst) {
 	inst->integer_costs = 0;
 	inst->verbose = MEDIUM;
 	inst->seed = 0;
+	inst->z_best = INFINITY;
 
 	int help = 0;
 	if (argc < 1) help = 1;

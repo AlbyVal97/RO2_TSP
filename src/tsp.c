@@ -23,10 +23,10 @@ int TSPopt(instance* inst) {
 	CPXLPptr lp = CPXcreateprob(env, &error, "TSP");
 
 	// Set the timelimit parameter according to user input or default value.
-	if (CPXsetdblparam(env, CPX_PARAM_TILIM, inst->timelimit)) { print_error("CPXsetdblparam() error in setting timelimit"); }
+	if (CPXsetdblparam(env, CPX_PARAM_TILIM, inst->timelimit)) print_error("CPXsetdblparam() error in setting timelimit");
 
 	// Set the seed parameter according to user input or default value.
-	if (CPXsetintparam(env, CPX_PARAM_RANDOMSEED, inst->seed)) { print_error("CPXsetdblparam() error in setting seed"); }
+	if (CPXsetintparam(env, CPX_PARAM_RANDOMSEED, inst->seed)) print_error("CPXsetintparam() error in setting seed");
 
 	char edges_file_path[100];
 	char logfile_path[100];
@@ -146,6 +146,17 @@ int TSPopt(instance* inst) {
 			sprintf(edges_file_path, "%s/model_BRANCH_CUT_edges.dat", edges_file_path);
 			break;
 		
+		case HEUR_HARD_FIX:
+			build_model_BASIC(inst, env, lp);
+			inst->ncols = CPXgetnumcols(env, lp);
+			if (inst->verbose >= LOW) {
+				sprintf(logfile_path, "%s/logfile_HEUR_HARD_FIX.txt", logfile_path);
+				if (CPXsetlogfilename(env, logfile_path, "w")) print_error("CPXsetlogfilename() error in setting logfile name");
+			}
+			solve_heur_hard_fix(inst, env, lp);
+			sprintf(edges_file_path, "%s/model_HEUR_HARD_FIX_edges.dat", edges_file_path);
+			break;
+
 		//case ADV_BRANCH_CUT:
 		default:
 			build_model_BASIC(inst, env, lp);
@@ -636,6 +647,7 @@ static int CPXPUBLIC adv_branch_cut_callback(CPXCALLBACKCONTEXTptr context, CPXL
 		free(cc.value);
 	}
 
+	free(elist);
 	free(index);
 	free(value);
 	free(xstar);
@@ -644,6 +656,7 @@ static int CPXPUBLIC adv_branch_cut_callback(CPXCALLBACKCONTEXTptr context, CPXL
 	
 	return 0;
 }
+
 
 int doit_fn_concorde(double cutval, int cutcount, int* cut, void* in_param) {
 	concorde_instance* cc = (concorde_instance*)in_param;
@@ -673,6 +686,82 @@ int doit_fn_concorde(double cutval, int cutcount, int* cut, void* in_param) {
 
 	return 0;
 }
+
+
+void solve_heur_hard_fix(instance* inst, CPXENVptr env, CPXLPptr lp) {
+
+	double residual_timelimit = inst->timelimit;
+
+	// Build an array of indices of variables/columns x(i,j) of the model
+	int* indices = (int*)calloc(inst->ncols, sizeof(int));
+	int k = 0;
+	for (int i = 0; i < inst->nnodes; i++) {
+		for (int j = i + 1; j < inst->nnodes; j++) {
+			indices[k++] = xpos(i, j, inst);
+		}
+	}
+
+	if (CPXsetintparam(env, CPXPARAM_Advance, 1)) print_error("CPXsetintparam() error in setting CPXPARAM_Advance");
+
+	// Set to solve just the root node: by doing that we will get a feasible solution, but not the optimal one => good as a starting point for heuristics
+	if (CPXsetintparam(env, CPX_PARAM_NODELIM, 0)) print_error("CPXsetintparam() error in setting seed");
+	inst->model_type = ADVBC_ROOT;
+
+	int n_iter = 0;
+	char lu = 'L';
+	int beg = 0;
+	double temp_obj_val = INFINITY;
+	double low_bound_value = 1.0;
+	double* curr_best_sol = (double*)calloc(inst->ncols, sizeof(double));
+	if (CPXsetdblparam(env, CPX_PARAM_TILIM, CPX_INFBOUND)) { print_error("CPXsetdblparam() error in setting timelimit"); }
+	while (1) {
+
+		double t1 = second();
+		solve_adv_branch_cut(inst, env, lp);
+		double t2 = second();
+		if (CPXgetx(env, lp, curr_best_sol, 0, inst->ncols - 1)) print_error("CPXgetx() error");
+
+		if (inst->verbose >= MEDIUM) printf("Time used for iteration number %d: %f\n", n_iter, t2 - t1);
+
+		// Update the amount of time left before timelimit is reached and provide it to Cplex to check
+		residual_timelimit = residual_timelimit - (t2 - t1);
+
+		// If the timelimit is reached for the current iteration => exit the loop
+		if (residual_timelimit <= 0) break;
+
+		CPXgetobjval(env, lp, &temp_obj_val);
+		if (inst->z_best > temp_obj_val) {
+			inst->z_best = temp_obj_val;
+			inst->best_sol = curr_best_sol;
+
+			// Set the feasible solution (not optimal) from which to start with the heuristics
+			//if (CPXcopy(env, lp, inst->ncols, indices, curr_best_sol)) print_error("CPXcopymipstart() error in setting known solution");
+			if (CPXaddmipstarts(env, lp, 1, inst->ncols, &beg, indices, inst->best_sol, CPX_MIPSTART_AUTO, NULL)) print_error("CPXaddmipstarts() error in setting known solution");
+		}
+		if (inst->verbose >= HIGH) printf("inst->z_best: %f\n", inst->z_best);
+
+		int n_fixed_edges = 0;
+		for (int i = 0; i < inst->nnodes; i++) {
+			for (int j = i + 1; j < inst->nnodes; j++) {
+				if (curr_best_sol[xpos(i, j, inst)] > 0.5 && ((double)rand() / RAND_MAX) <= 0.5) {
+					int var_index = xpos(i, j, inst);
+					if (CPXchgbds(env, lp, 1, &var_index, &lu, &low_bound_value)) print_error("CPXchgbds() error in setting edge lower bound");
+					n_fixed_edges++;
+				}
+			}
+		}
+		if (inst->verbose >= HIGH) printf("n_fixed_edges: %d\n", n_fixed_edges);
+
+		// Increment current iteration number
+		n_iter++;
+	}
+
+	free(indices);
+	free(curr_best_sol);
+
+	return;
+}
+
 
 void update_connected_components(const double* xstar, instance* inst, int* succ, int* comp, int* ncomp) {
 

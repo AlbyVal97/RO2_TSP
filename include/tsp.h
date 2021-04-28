@@ -48,6 +48,9 @@ static int CPXPUBLIC adv_branch_cut_callback(CPXCALLBACKCONTEXTptr context, CPXL
 
 int doit_fn_concorde(double cutval, int cutcount, int* cut, void* in_param);
 
+// Apply a heuristic tecnique where some edges are fixed at each iteration
+void solve_heur_hard_fix(instance* inst, CPXENVptr env, CPXLPptr lp);
+
 // Builds the tableau (variables and constraints)
 void build_model_BASIC(instance* inst, CPXENVptr env, CPXLPptr lp);
 void build_model_MTZ_STATIC(instance* inst, CPXENVptr env, CPXLPptr lp);
@@ -61,5 +64,9 @@ void create_lp_file(instance* inst, CPXENVptr env, CPXLPptr lp, const char* mode
 
 // Prints the .dat file with the list of nodes from the optimized solution, with formatting depending on graph symmetry (directed/undirected)
 void print_solution(instance* inst, double* xstar, int symmetric, char* edges_plot_file_name);
+
+extern int CCcut_connect_components(int ncount, int ecount, int* elist, double* x, int* ncomp, int** compscount, int** comps);
+
+extern int CCcut_violated_cuts(int ncount, int ecount, int* elist, double* dlen, double cutoff, int (*doit_fn) (double, int, int*, void*), void* pass_param);
 
 #endif   /* TSP_H_ */ 

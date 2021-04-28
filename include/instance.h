@@ -7,7 +7,7 @@
 #define EPSILON		  		  1e-9		// 1e-9		// very small numerical tolerance 
 #define TICKS_PER_SECOND 	  1000.0  	// cplex's ticks on Intel Core i7 quadcore @2.3GHZ
 
-#define N_MODELS 13
+#define N_MODELS 14
 #define N_VERBOSITIES 4
 #define N_MODES 3
 #define N_ADV_BC_PARAM 5
@@ -39,7 +39,8 @@ typedef enum {
 	ADVBC_ROOT,
 	ADVBC_DEPTH_5,
 	ADVBC_PROB_50,
-	ADVBC_PROB_10
+	ADVBC_PROB_10,
+	HEUR_HARD_FIX
 } model_type;
 
 typedef enum {
@@ -96,7 +97,8 @@ typedef struct {
 	int adv_bc_param;
 
 	// global data
-	double zbest;							// value of the best sol. available
+	double z_best;							// Value/cost of the objective function to minimize
+	double* best_sol;						// Array with the best current integer solution
 
 } instance;
 

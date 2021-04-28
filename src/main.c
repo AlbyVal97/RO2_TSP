@@ -16,9 +16,10 @@
 // -m 1 -folder test_instances_200 -prefix rnd_200 -n_inst 20 -n_nodes 200
 // -m 1 -folder test_instances_300 -prefix rnd_300 -n_inst 40 -n_nodes 300
 // -m 1 -folder test_instances_500 -prefix rnd_500 -n_inst 20 -n_nodes 500
+// -m 1 -folder test_instances_1000 -prefix rnd_1000 -n_inst 20 -n_nodes 1000
 
 // -f ../data/test_instances_200/rnd_200_1.tsp -seed 123456 -model_type 6 -verbose 2 -time_limit 60
-// -f ../data/test_instances_200/rnd_200_3.tsp -seed 123456 -model_type 8 -adv_bc 4 -verbose 1 -time_limit 3600
+// -f ../data/test_instances_200/rnd_200_3.tsp -seed 123456 -model_type 8 -verbose 3 -time_limit 3600
 // -m 2 -test test_adv_bc_example -folder test_instances_200 -n_inst 5 -n_models 5 8 9 10 11 12 -prefix rnd -time_limit 60
 // -m 2 -test test_bend_bc_example -folder test_instances_200 -n_inst 5 -n_models 2 6 7 -prefix rnd -time_limit 60
 
