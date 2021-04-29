@@ -7,12 +7,13 @@
 #define EPSILON		  		  1e-9		// 1e-9		// very small numerical tolerance 
 #define TICKS_PER_SECOND 	  1000.0  	// cplex's ticks on Intel Core i7 quadcore @2.3GHZ
 
-#define N_MODELS 14
+#define N_MODELS 17
 #define N_VERBOSITIES 4
 #define N_MODES 3
 #define N_ADV_BC_PARAM 5
 
-static const char* models[] = { "BASIC", "MTZ_STATIC", "MTZ_LAZY", "MTZ_SEC2_STATIC", "MTZ_SEC2_LAZY", "GG", "BENDERS", "BRANCH_CUT", "ADVBC_STD", "ADVBC_ROOT", "ADVBC_DEPTH_5", "ADVBC_PROB_50", "ADVBC_PROB_10" };
+static const char* models[] = { "BASIC", "MTZ_STATIC", "MTZ_LAZY", "MTZ_SEC2_STATIC", "MTZ_SEC2_LAZY", "GG", "BENDERS", "BRANCH_CUT", "ADVBC_STD", "ADVBC_ROOT", "ADVBC_DEPTH_5", "ADVBC_PROB_50", "ADVBC_PROB_10",
+									"HEUR_HARD_FIX_50",	"HEUR_HARD_FIX_70",	"HEUR_HARD_FIX_90", "HEUR_HARD_FIX_VAR" };
 static const char* verbosities[] = { "TEST", "LOW", "MEDIUM", "HIGH" };
 static const char* modes[] = { "DEFAULT", "CREATE_INSTANCES", "RUN_TEST" };
 static const char* adv_bc_param[] = { "STANDARD", "ROOT_NODE_ONLY", "MAX_DEPTH_5", "PROB_50", "PROB_10" };
@@ -27,20 +28,23 @@ typedef enum {
 
 // Model type enumeration
 typedef enum {
-	BASIC,
-	MTZ_STATIC,
-	MTZ_LAZY,
-	MTZ_SEC2_STATIC,
-	MTZ_SEC2_LAZY,
-	GG,
-	BENDERS,
-	BRANCH_CUT,
-	ADVBC_STD,
-	ADVBC_ROOT,
-	ADVBC_DEPTH_5,
-	ADVBC_PROB_50,
-	ADVBC_PROB_10,
-	HEUR_HARD_FIX
+	BASIC, // 0
+	MTZ_STATIC, // 1
+	MTZ_LAZY, // 2
+	MTZ_SEC2_STATIC, // 3
+	MTZ_SEC2_LAZY, // 4
+	GG, // 5
+	BENDERS, // 6
+	BRANCH_CUT, // 7
+	ADVBC_STD, // 8
+	ADVBC_ROOT, // 9
+	ADVBC_DEPTH_5, // 10
+	ADVBC_PROB_50, // 11
+	ADVBC_PROB_10, // 12
+	HEUR_HARD_FIX_50, // 13
+	HEUR_HARD_FIX_70, // 14
+	HEUR_HARD_FIX_90, // 15
+	HEUR_HARD_FIX_VAR // 16
 } model_type;
 
 typedef enum {
@@ -86,6 +90,7 @@ typedef struct {
 
 	// Command line arguments for DEFAULT mode
 	int model_type;							// model number to be used to solve the instance
+	int tsp_solver;							// model number to be used as TSP solver inside Heuristic methods
 	double timelimit;						// overall time limit, in seconds
 	char input_file[100];		  			// input file name
 	int verbose;							// verbosity value

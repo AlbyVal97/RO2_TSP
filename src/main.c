@@ -16,6 +16,7 @@
 // -m 1 -folder test_instances_200 -prefix rnd_200 -n_inst 20 -n_nodes 200
 // -m 1 -folder test_instances_300 -prefix rnd_300 -n_inst 40 -n_nodes 300
 // -m 1 -folder test_instances_500 -prefix rnd_500 -n_inst 20 -n_nodes 500
+// -m 1 -folder test_instances_750 -prefix rnd_750 -n_inst 40 -n_nodes 750
 // -m 1 -folder test_instances_1000 -prefix rnd_1000 -n_inst 20 -n_nodes 1000
 
 // -f ../data/test_instances_200/rnd_200_1.tsp -seed 123456 -model_type 6 -verbose 2 -time_limit 60
@@ -23,11 +24,14 @@
 // -m 2 -test test_adv_bc_example -folder test_instances_200 -n_inst 5 -n_models 5 8 9 10 11 12 -prefix rnd -time_limit 60
 // -m 2 -test test_bend_bc_example -folder test_instances_200 -n_inst 5 -n_models 2 6 7 -prefix rnd -time_limit 60
 
+// -f ../data/test_instances_750/rnd_750_1.tsp -seed 123456 -model_type 16 -verbose 2 -time_limit 1200
+
 // Command line arguments list for compact models official tests:
 // -m 2 -test test_compact_models_50 -folder test_instances_50 -n_inst 20 -n_models 5 1 2 3 4 5 -prefix rnd_50 -time_limit 1800
 
 // Command line arguments list for tuning hyperparameters of advanced branch and cut method:
-// -m 2 -test test_tuning_advbc -folder test_instances_300 -n_inst 20 -n_models 5 8 9 10 11 12 -prefix rnd_300 -time_limit 1800
+// -m 2 -test test_tuning_advbc -folder test_instances_300_training -n_inst 20 -n_models 5 8 9 10 11 12 -prefix rnd_300 -time_limit 1800
+// -m 2 -test test_benders_bc_models_300 -folder test_instances_300_test -n_inst 20 -n_models 3 6 7 9 -prefix rnd_300 -time_limit 1800
 
 
 void update_csvfile(instance* inst, int first_model, int last_model, double time);

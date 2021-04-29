@@ -49,9 +49,13 @@ int TSPopt(instance* inst) {
 		}
 	}
 
+	// Discern if a model is symmetric (solves the TSP for a directed or an undirected graph)
+	int symmetric = -1;
+
 	switch (inst->model_type) {
 
 		case BASIC:
+			symmetric = 0;
 			build_model_BASIC(inst, env, lp);
 			inst->ncols = CPXgetnumcols(env, lp);
 			printf("inst->ncols: %d\n", inst->ncols);
@@ -66,6 +70,7 @@ int TSPopt(instance* inst) {
 			break;
 
 		case MTZ_STATIC:
+			symmetric = 1;
 			build_model_MTZ_STATIC(inst, env, lp);
 			if (inst->verbose >= LOW) {
 				sprintf(logfile_path, "%s/logfile_MTZ_STATIC.txt", logfile_path);
@@ -78,6 +83,7 @@ int TSPopt(instance* inst) {
 			break;
 
 		case MTZ_LAZY:
+			symmetric = 1;
 			build_model_MTZ_LAZY(inst, env, lp);
 			if (inst->verbose >= LOW) {
 				sprintf(logfile_path, "%s/logfile_MTZ_LAZY.txt", logfile_path);
@@ -90,6 +96,7 @@ int TSPopt(instance* inst) {
 			break;
 
 		case MTZ_SEC2_STATIC:
+			symmetric = 1;
 			build_model_MTZ_SEC2_STATIC(inst, env, lp);
 			if (inst->verbose >= LOW) {
 				sprintf(logfile_path, "%s/logfile_MTZ_SEC2_STATIC.txt", logfile_path);
@@ -102,6 +109,7 @@ int TSPopt(instance* inst) {
 			break;
 
 		case MTZ_SEC2_LAZY:
+			symmetric = 1;
 			build_model_MTZ_SEC2_LAZY(inst, env, lp);
 			if (inst->verbose >= LOW) {
 				sprintf(logfile_path, "%s/logfile_MTZ_SEC2_LAZY.txt", logfile_path);
@@ -114,6 +122,7 @@ int TSPopt(instance* inst) {
 			break;
 
 		case GG:
+			symmetric = 1;
 			build_model_GG(inst, env, lp);
 			if (inst->verbose >= LOW) {
 				sprintf(logfile_path, "%s/logfile_GG.txt", logfile_path);
@@ -125,6 +134,7 @@ int TSPopt(instance* inst) {
 			break;
 
 		case BENDERS:
+			symmetric = 0;
 			build_model_BASIC(inst, env, lp);
 			inst->ncols = CPXgetnumcols(env, lp);
 			if (inst->verbose >= LOW) {
@@ -136,6 +146,7 @@ int TSPopt(instance* inst) {
 			break;
 
 		case BRANCH_CUT:
+			symmetric = 0;
 			build_model_BASIC(inst, env, lp);
 			inst->ncols = CPXgetnumcols(env, lp);
 			if (inst->verbose >= LOW) {
@@ -146,7 +157,11 @@ int TSPopt(instance* inst) {
 			sprintf(edges_file_path, "%s/model_BRANCH_CUT_edges.dat", edges_file_path);
 			break;
 		
-		case HEUR_HARD_FIX:
+		case HEUR_HARD_FIX_50:
+		case HEUR_HARD_FIX_70:
+		case HEUR_HARD_FIX_90:
+		case HEUR_HARD_FIX_VAR:
+			symmetric = 0;
 			build_model_BASIC(inst, env, lp);
 			inst->ncols = CPXgetnumcols(env, lp);
 			if (inst->verbose >= LOW) {
@@ -157,8 +172,12 @@ int TSPopt(instance* inst) {
 			sprintf(edges_file_path, "%s/model_HEUR_HARD_FIX_edges.dat", edges_file_path);
 			break;
 
-		//case ADV_BRANCH_CUT:
-		default:
+		case ADVBC_STD:
+		case ADVBC_ROOT:
+		case ADVBC_DEPTH_5:
+		case ADVBC_PROB_50:
+		case ADVBC_PROB_10:
+			symmetric = 0;
 			build_model_BASIC(inst, env, lp);
 			inst->ncols = CPXgetnumcols(env, lp);
 			if (inst->verbose >= LOW) {
@@ -169,8 +188,8 @@ int TSPopt(instance* inst) {
 			sprintf(edges_file_path, "%s/model_%s_edges.dat", edges_file_path, models[inst->model_type]);
 			break;
 
-		/*default:
-			print_error("Choose a correct value for the model to be used!");*/
+		default:
+			print_error("Choose a correct value for the model to be used!");
 	}
 
 	if (inst->verbose >= MEDIUM) printf("Complete path for *.dat file: %s\n\n", edges_file_path);
@@ -181,11 +200,6 @@ int TSPopt(instance* inst) {
 
 	// Copy the optimal solution from the Cplex environment to the new array "xstar"
 	if (!inst->timelimit_exceeded && CPXgetx(env, lp, xstar, 0, ncols - 1)) print_error("CPXgetx() error");
-
-	// Discern if a model is symmetric (solves the TSP for a directed or an undirected graph)
-	int symmetric = -1;
-	if (inst->model_type == BASIC || inst->model_type == BENDERS || inst->model_type == BRANCH_CUT || inst->model_type >= ADVBC_STD) symmetric = 0;
-	else if (inst->model_type == MTZ_STATIC || inst->model_type == MTZ_LAZY ||inst->model_type == MTZ_SEC2_STATIC || inst->model_type == MTZ_SEC2_LAZY || inst->model_type == GG) symmetric = 1;
 	
 	// Fill the .dat file with the correctly formatted nodes of the found solution
 	if (inst->verbose >= LOW) print_solution(inst, xstar, symmetric, edges_file_path);
@@ -301,6 +315,7 @@ int mip_solved_to_optimality(instance* inst, CPXENVptr env, CPXLPptr lp) {
 			if (inst->verbose >= MEDIUM) printf("\nOptimal solution within epgap or epagap tolerance found.\n");
 			break;
 		case CPXMIP_TIME_LIM_FEAS:
+			if (inst->model_type >= HEUR_HARD_FIX_50) return 0;
 			inst->timelimit_exceeded = 1;
 			if (inst->verbose >= LOW) print_error("Time limit exceeded, integer solution exists.\n");
 			break;
@@ -532,6 +547,9 @@ static int CPXPUBLIC branch_cut_callback(CPXCALLBACKCONTEXTptr context, CPXLONG 
 
 void solve_adv_branch_cut(instance* inst, CPXENVptr env, CPXLPptr lp) {
 
+	if (inst->model_type >= HEUR_HARD_FIX_50) inst->tsp_solver = ADVBC_ROOT;
+	else inst->tsp_solver = inst->model_type;
+
 	// N.B. It is required to install a "lazy constraint" callback to cut infeasible integer solutions (es. found by heuristics) 
 	CPXLONG contextid = CPX_CALLBACKCONTEXT_CANDIDATE | CPX_CALLBACKCONTEXT_RELAXATION;
 	if (CPXcallbacksetfunc(env, lp, contextid, adv_branch_cut_callback_driver, inst)) print_error("CPXcallbacksetfunc() error");
@@ -553,7 +571,7 @@ static int CPXPUBLIC adv_branch_cut_callback_driver(CPXCALLBACKCONTEXTptr contex
 	int mydepth = -1;
 	double rval;
 	unsigned int value = 0;
-	switch (inst->model_type) {
+	switch (inst->tsp_solver) {
 		
 		case ADVBC_ROOT:
 			CPXcallbackgetinfoint(context, CPXCALLBACKINFO_NODECOUNT, &mynode);
@@ -690,7 +708,25 @@ int doit_fn_concorde(double cutval, int cutcount, int* cut, void* in_param) {
 
 void solve_heur_hard_fix(instance* inst, CPXENVptr env, CPXLPptr lp) {
 
+	double param[] = { 0.9, 0.7, 0.5 };
+	int param_id = 0;
+	double prob_param = param[param_id];
+	double temp = prob_param;
+	switch (inst->model_type) {
+
+	case HEUR_HARD_FIX_50:
+		prob_param = param[2];
+		break;
+	case HEUR_HARD_FIX_70:
+		prob_param = param[1];
+		break;
+	case HEUR_HARD_FIX_90:
+		prob_param = param[0];
+		break;
+	}
+
 	double residual_timelimit = inst->timelimit;
+	double small_timelimit = 60.0;
 
 	// Build an array of indices of variables/columns x(i,j) of the model
 	int* indices = (int*)calloc(inst->ncols, sizeof(int));
@@ -705,29 +741,25 @@ void solve_heur_hard_fix(instance* inst, CPXENVptr env, CPXLPptr lp) {
 
 	// Set to solve just the root node: by doing that we will get a feasible solution, but not the optimal one => good as a starting point for heuristics
 	if (CPXsetintparam(env, CPX_PARAM_NODELIM, 0)) print_error("CPXsetintparam() error in setting seed");
-	inst->model_type = ADVBC_ROOT;
+	double t1 = second();
+	solve_adv_branch_cut(inst, env, lp); // solve first time with nodelimit = 0
+	double t2 = second();
 
 	int n_iter = 0;
 	char lu = 'L';
 	int beg = 0;
 	double temp_obj_val = INFINITY;
 	double low_bound_value = 1.0;
+	double low_bound_reset = 0.0;
 	double* curr_best_sol = (double*)calloc(inst->ncols, sizeof(double));
-	if (CPXsetdblparam(env, CPX_PARAM_TILIM, CPX_INFBOUND)) { print_error("CPXsetdblparam() error in setting timelimit"); }
+	
 	while (1) {
 
-		double t1 = second();
-		solve_adv_branch_cut(inst, env, lp);
-		double t2 = second();
+		if (CPXsetintparam(env, CPX_PARAM_NODELIM, 2100000000)) print_error("CPXsetintparam() error in setting seed");
+		
 		if (CPXgetx(env, lp, curr_best_sol, 0, inst->ncols - 1)) print_error("CPXgetx() error");
 
 		if (inst->verbose >= MEDIUM) printf("Time used for iteration number %d: %f\n", n_iter, t2 - t1);
-
-		// Update the amount of time left before timelimit is reached and provide it to Cplex to check
-		residual_timelimit = residual_timelimit - (t2 - t1);
-
-		// If the timelimit is reached for the current iteration => exit the loop
-		if (residual_timelimit <= 0) break;
 
 		CPXgetobjval(env, lp, &temp_obj_val);
 		if (inst->z_best > temp_obj_val) {
@@ -738,19 +770,48 @@ void solve_heur_hard_fix(instance* inst, CPXENVptr env, CPXLPptr lp) {
 			//if (CPXcopy(env, lp, inst->ncols, indices, curr_best_sol)) print_error("CPXcopymipstart() error in setting known solution");
 			if (CPXaddmipstarts(env, lp, 1, inst->ncols, &beg, indices, inst->best_sol, CPX_MIPSTART_AUTO, NULL)) print_error("CPXaddmipstarts() error in setting known solution");
 		}
+		else if (inst->model_type == HEUR_HARD_FIX_VAR) {
+			if (param_id < 2)
+				param_id++;
+			prob_param = param[param_id];
+		}
+
 		if (inst->verbose >= HIGH) printf("inst->z_best: %f\n", inst->z_best);
+		if (inst->verbose == MEDIUM) printf("Iteration: %d, param: %f, best_sol: %f\n", n_iter, temp, inst->z_best);
+		temp = prob_param;
+
+		// If the timelimit is reached for the current iteration => exit the loop
+		if (residual_timelimit <= 0) {
+			if (inst->verbose >= LOW) printf("TOTAL time limit reached\n");
+			break;
+		}
+
+		// Update the amount of time left before timelimit is reached and provide it to Cplex to check
+		residual_timelimit = residual_timelimit - (t2 - t1);
+		if (residual_timelimit <= 0) break;
+		if (residual_timelimit <= small_timelimit) {
+			if (CPXsetdblparam(env, CPX_PARAM_TILIM, residual_timelimit)) { print_error("CPXsetdblparam() error in setting timelimit"); }
+		}
+		else { 
+			if (CPXsetdblparam(env, CPX_PARAM_TILIM, small_timelimit)) { print_error("CPXsetdblparam() error in setting timelimit"); }
+		}
+
+		for (int i = 0; i < inst->ncols; i++) {
+			if (CPXchgbds(env, lp, 1, &i, &lu, &low_bound_reset)) print_error("CPXchgbds() error in setting edge lower bound");
+		}
 
 		int n_fixed_edges = 0;
-		for (int i = 0; i < inst->nnodes; i++) {
-			for (int j = i + 1; j < inst->nnodes; j++) {
-				if (curr_best_sol[xpos(i, j, inst)] > 0.5 && ((double)rand() / RAND_MAX) <= 0.5) {
-					int var_index = xpos(i, j, inst);
-					if (CPXchgbds(env, lp, 1, &var_index, &lu, &low_bound_value)) print_error("CPXchgbds() error in setting edge lower bound");
+		for (int i = 0; i < inst->ncols; i++) {
+				if (curr_best_sol[i] > 0.5 && ((double)rand() / RAND_MAX) <= prob_param) {
+					if (CPXchgbds(env, lp, 1, &i, &lu, &low_bound_value)) print_error("CPXchgbds() error in setting edge lower bound");
 					n_fixed_edges++;
 				}
-			}
 		}
 		if (inst->verbose >= HIGH) printf("n_fixed_edges: %d\n", n_fixed_edges);
+
+		t1 = second();
+		solve_adv_branch_cut(inst, env, lp);
+		t2 = second();
 
 		// Increment current iteration number
 		n_iter++;

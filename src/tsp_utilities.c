@@ -13,6 +13,7 @@ void parse_command_line(int argc, char** argv, instance* inst) {
 	// Set default values for the instance
 	inst->mode = DEFAULT;
 	inst->model_type = BASIC;
+	inst->tsp_solver = ADVBC_ROOT;
 	inst->adv_bc_param = STANDARD;
 	inst->n_instances = 0;
 	inst->n_nodes_per_instance = 0;
