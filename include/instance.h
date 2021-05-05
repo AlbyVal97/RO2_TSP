@@ -7,13 +7,15 @@
 #define EPSILON		  		  1e-9		// 1e-9		// very small numerical tolerance 
 #define TICKS_PER_SECOND 	  1000.0  	// cplex's ticks on Intel Core i7 quadcore @2.3GHZ
 
-#define N_MODELS 17
+#define N_MODELS 22
 #define N_VERBOSITIES 4
 #define N_MODES 3
 #define N_ADV_BC_PARAM 5
 
-static const char* models[] = { "BASIC", "MTZ_STATIC", "MTZ_LAZY", "MTZ_SEC2_STATIC", "MTZ_SEC2_LAZY", "GG", "BENDERS", "BRANCH_CUT", "ADVBC_STD", "ADVBC_ROOT", "ADVBC_DEPTH_5", "ADVBC_PROB_50", "ADVBC_PROB_10",
-									"HEUR_HARD_FIX_50",	"HEUR_HARD_FIX_70",	"HEUR_HARD_FIX_90", "HEUR_HARD_FIX_VAR" };
+static const char* models[] = { "BASIC", "MTZ_STATIC", "MTZ_LAZY", "MTZ_SEC2_STATIC", "MTZ_SEC2_LAZY", "GG",
+								"BENDERS", "BRANCH_CUT", "ADVBC_STD", "ADVBC_ROOT", "ADVBC_DEPTH_5", "ADVBC_PROB_50", "ADVBC_PROB_10",
+								"HEUR_HARD_FIX_50",	"HEUR_HARD_FIX_70",	"HEUR_HARD_FIX_90", "HEUR_HARD_FIX_VAR",
+								"HEUR_SOFT_FIX_3", "HEUR_SOFT_FIX_5", "HEUR_SOFT_FIX_7", "HEUR_SOFT_FIX_9", "HEUR_SOFT_FIX_VAR" };
 static const char* verbosities[] = { "TEST", "LOW", "MEDIUM", "HIGH" };
 static const char* modes[] = { "DEFAULT", "CREATE_INSTANCES", "RUN_TEST" };
 static const char* adv_bc_param[] = { "STANDARD", "ROOT_NODE_ONLY", "MAX_DEPTH_5", "PROB_50", "PROB_10" };
@@ -44,7 +46,12 @@ typedef enum {
 	HEUR_HARD_FIX_50, // 13
 	HEUR_HARD_FIX_70, // 14
 	HEUR_HARD_FIX_90, // 15
-	HEUR_HARD_FIX_VAR // 16
+	HEUR_HARD_FIX_VAR, // 16
+	HEUR_SOFT_FIX_3, // 17
+	HEUR_SOFT_FIX_5, // 18
+	HEUR_SOFT_FIX_7, // 19
+	HEUR_SOFT_FIX_9, // 20
+	HEUR_SOFT_FIX_VAR // 21
 } model_type;
 
 typedef enum {

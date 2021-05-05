@@ -51,6 +51,9 @@ int doit_fn_concorde(double cutval, int cutcount, int* cut, void* in_param);
 // Apply a heuristic tecnique where some edges are fixed at each iteration
 void solve_heur_hard_fix(instance* inst, CPXENVptr env, CPXLPptr lp);
 
+// Apply a heuristic tecnique where some edges are fixed at each iteration
+void solve_heur_soft_fix(instance* inst, CPXENVptr env, CPXLPptr lp);
+
 // Builds the tableau (variables and constraints)
 void build_model_BASIC(instance* inst, CPXENVptr env, CPXLPptr lp);
 void build_model_MTZ_STATIC(instance* inst, CPXENVptr env, CPXLPptr lp);

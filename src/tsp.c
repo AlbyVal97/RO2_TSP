@@ -157,21 +157,6 @@ int TSPopt(instance* inst) {
 			sprintf(edges_file_path, "%s/model_BRANCH_CUT_edges.dat", edges_file_path);
 			break;
 		
-		case HEUR_HARD_FIX_50:
-		case HEUR_HARD_FIX_70:
-		case HEUR_HARD_FIX_90:
-		case HEUR_HARD_FIX_VAR:
-			symmetric = 0;
-			build_model_BASIC(inst, env, lp);
-			inst->ncols = CPXgetnumcols(env, lp);
-			if (inst->verbose >= LOW) {
-				sprintf(logfile_path, "%s/logfile_HEUR_HARD_FIX.txt", logfile_path);
-				if (CPXsetlogfilename(env, logfile_path, "w")) print_error("CPXsetlogfilename() error in setting logfile name");
-			}
-			solve_heur_hard_fix(inst, env, lp);
-			sprintf(edges_file_path, "%s/model_HEUR_HARD_FIX_edges.dat", edges_file_path);
-			break;
-
 		case ADVBC_STD:
 		case ADVBC_ROOT:
 		case ADVBC_DEPTH_5:
@@ -185,6 +170,37 @@ int TSPopt(instance* inst) {
 				if (CPXsetlogfilename(env, logfile_path, "w")) print_error("CPXsetlogfilename() error in setting logfile name");
 			}
 			solve_adv_branch_cut(inst, env, lp);
+			sprintf(edges_file_path, "%s/model_%s_edges.dat", edges_file_path, models[inst->model_type]);
+			break;
+
+		case HEUR_HARD_FIX_50:
+		case HEUR_HARD_FIX_70:
+		case HEUR_HARD_FIX_90:
+		case HEUR_HARD_FIX_VAR:
+			symmetric = 0;
+			build_model_BASIC(inst, env, lp);
+			inst->ncols = CPXgetnumcols(env, lp);
+			if (inst->verbose >= LOW) {
+				sprintf(logfile_path, "%s/logfile_%s.txt", logfile_path, models[inst->model_type]);
+				if (CPXsetlogfilename(env, logfile_path, "w")) print_error("CPXsetlogfilename() error in setting logfile name");
+			}
+			solve_heur_hard_fix(inst, env, lp);
+			sprintf(edges_file_path, "%s/model_%s_edges.dat", edges_file_path, models[inst->model_type]);
+			break;
+
+		case HEUR_SOFT_FIX_3:
+		case HEUR_SOFT_FIX_5:
+		case HEUR_SOFT_FIX_7:
+		case HEUR_SOFT_FIX_9:
+		case HEUR_SOFT_FIX_VAR:
+			symmetric = 0;
+			build_model_BASIC(inst, env, lp);
+			inst->ncols = CPXgetnumcols(env, lp);
+			if (inst->verbose >= LOW) {
+				sprintf(logfile_path, "%s/logfile_%s.txt", logfile_path, models[inst->model_type]);
+				if (CPXsetlogfilename(env, logfile_path, "w")) print_error("CPXsetlogfilename() error in setting logfile name");
+			}
+			solve_heur_soft_fix(inst, env, lp);
 			sprintf(edges_file_path, "%s/model_%s_edges.dat", edges_file_path, models[inst->model_type]);
 			break;
 
@@ -714,15 +730,15 @@ void solve_heur_hard_fix(instance* inst, CPXENVptr env, CPXLPptr lp) {
 	double temp = prob_param;
 	switch (inst->model_type) {
 
-	case HEUR_HARD_FIX_50:
-		prob_param = param[2];
-		break;
-	case HEUR_HARD_FIX_70:
-		prob_param = param[1];
-		break;
-	case HEUR_HARD_FIX_90:
-		prob_param = param[0];
-		break;
+		case HEUR_HARD_FIX_50:
+			prob_param = param[2];
+			break;
+		case HEUR_HARD_FIX_70:
+			prob_param = param[1];
+			break;
+		case HEUR_HARD_FIX_90:
+			prob_param = param[0];
+			break;
 	}
 
 	double residual_timelimit = inst->timelimit;
@@ -741,6 +757,8 @@ void solve_heur_hard_fix(instance* inst, CPXENVptr env, CPXLPptr lp) {
 
 	// Set to solve just the root node: by doing that we will get a feasible solution, but not the optimal one => good as a starting point for heuristics
 	if (CPXsetintparam(env, CPX_PARAM_NODELIM, 0)) print_error("CPXsetintparam() error in setting seed");
+
+	// Run TSP solver (which is the branch and cut with fractional subtour elimination constraints only applied on the root node)
 	double t1 = second();
 	solve_adv_branch_cut(inst, env, lp); // solve first time with nodelimit = 0
 	double t2 = second();
@@ -767,10 +785,10 @@ void solve_heur_hard_fix(instance* inst, CPXENVptr env, CPXLPptr lp) {
 			inst->best_sol = curr_best_sol;
 
 			// Set the feasible solution (not optimal) from which to start with the heuristics
-			//if (CPXcopy(env, lp, inst->ncols, indices, curr_best_sol)) print_error("CPXcopymipstart() error in setting known solution");
 			if (CPXaddmipstarts(env, lp, 1, inst->ncols, &beg, indices, inst->best_sol, CPX_MIPSTART_AUTO, NULL)) print_error("CPXaddmipstarts() error in setting known solution");
 		}
 		else if (inst->model_type == HEUR_HARD_FIX_VAR) {
+			// If there has been no improvement in the last iteration and we are using HARD_FIX heuristics with variable prob_param, then decrease prob_param value
 			if (param_id < 2)
 				param_id++;
 			prob_param = param[param_id];
@@ -780,15 +798,14 @@ void solve_heur_hard_fix(instance* inst, CPXENVptr env, CPXLPptr lp) {
 		if (inst->verbose == MEDIUM) printf("Iteration: %d, param: %f, best_sol: %f\n", n_iter, temp, inst->z_best);
 		temp = prob_param;
 
+		// Update the amount of time left before timelimit is reached and provide it to Cplex to check
+		residual_timelimit = residual_timelimit - (t2 - t1);
 		// If the timelimit is reached for the current iteration => exit the loop
 		if (residual_timelimit <= 0) {
 			if (inst->verbose >= LOW) printf("TOTAL time limit reached\n");
 			break;
 		}
 
-		// Update the amount of time left before timelimit is reached and provide it to Cplex to check
-		residual_timelimit = residual_timelimit - (t2 - t1);
-		if (residual_timelimit <= 0) break;
 		if (residual_timelimit <= small_timelimit) {
 			if (CPXsetdblparam(env, CPX_PARAM_TILIM, residual_timelimit)) { print_error("CPXsetdblparam() error in setting timelimit"); }
 		}
@@ -802,13 +819,14 @@ void solve_heur_hard_fix(instance* inst, CPXENVptr env, CPXLPptr lp) {
 
 		int n_fixed_edges = 0;
 		for (int i = 0; i < inst->ncols; i++) {
-				if (curr_best_sol[i] > 0.5 && ((double)rand() / RAND_MAX) <= prob_param) {
-					if (CPXchgbds(env, lp, 1, &i, &lu, &low_bound_value)) print_error("CPXchgbds() error in setting edge lower bound");
-					n_fixed_edges++;
-				}
+			if (curr_best_sol[i] > 0.5 && ((double)rand() / RAND_MAX) <= prob_param) {
+				if (CPXchgbds(env, lp, 1, &i, &lu, &low_bound_value)) print_error("CPXchgbds() error in setting edge lower bound");
+				n_fixed_edges++;
+			}
 		}
 		if (inst->verbose >= HIGH) printf("n_fixed_edges: %d\n", n_fixed_edges);
 
+		// Run TSP solver (which is the branch and cut with fractional subtour elimination constraints only applied on the root node)
 		t1 = second();
 		solve_adv_branch_cut(inst, env, lp);
 		t2 = second();
@@ -819,6 +837,143 @@ void solve_heur_hard_fix(instance* inst, CPXENVptr env, CPXLPptr lp) {
 
 	free(indices);
 	free(curr_best_sol);
+
+	return;
+}
+
+
+void solve_heur_soft_fix(instance* inst, CPXENVptr env, CPXLPptr lp) {
+
+	int param[] = { 3, 5, 7, 9 };
+	int K = param[0];
+	int temp = K;
+	switch (inst->model_type) {
+
+		case HEUR_SOFT_FIX_3:
+			K = param[0];
+			break;
+		case HEUR_SOFT_FIX_5:
+			K = param[1];
+			break;
+		case HEUR_SOFT_FIX_7:
+			K = param[2];
+			break;
+		case HEUR_SOFT_FIX_9:
+			K = param[3];
+			break;
+	}
+
+	double residual_timelimit = inst->timelimit;
+	double small_timelimit = 60.0;
+
+	// Build an array of indices of variables/columns x(i,j) of the model
+	int* indices = (int*)calloc(inst->ncols, sizeof(int));
+	int k = 0;
+	for (int i = 0; i < inst->nnodes; i++) {
+		for (int j = i + 1; j < inst->nnodes; j++) {
+			indices[k++] = xpos(i, j, inst);
+		}
+	}
+
+	if (CPXsetintparam(env, CPXPARAM_Advance, 1)) print_error("CPXsetintparam() error in setting CPXPARAM_Advance");
+
+	// Set to solve just the root node: by doing that we will get a feasible solution, but not the optimal one => good as a starting point for heuristics
+	if (CPXsetintparam(env, CPX_PARAM_NODELIM, 0)) print_error("CPXsetintparam() error in setting seed");
+
+	// Run TSP solver (which is the branch and cut with fractional subtour elimination constraints only applied on the root node)
+	double t1 = second();
+	solve_adv_branch_cut(inst, env, lp);											// solve first time with nodelimit = 0
+	double t2 = second();
+
+	int n_iter = 0;
+	int beg = 0;
+	double temp_obj_val = INFINITY;
+	double* curr_best_sol = (double*)calloc(inst->ncols, sizeof(double));
+
+	int* index = (int*)calloc(inst->nnodes, sizeof(int));							// Array of indexes associated to the row variables
+	double* value = (double*)calloc(inst->nnodes, sizeof(double));					// Array of row variables coefficients
+	char** cname = (char**)calloc(1, sizeof(char*));								// (char **) required by cplex...
+	cname[0] = (char*)calloc(100, sizeof(char));
+
+	while (1) {
+
+		if (CPXsetintparam(env, CPX_PARAM_NODELIM, 2100000000)) print_error("CPXsetintparam() error in setting seed");
+
+		if (CPXgetx(env, lp, curr_best_sol, 0, inst->ncols - 1)) print_error("CPXgetx() error");
+
+		if (inst->verbose >= MEDIUM) printf("Time used for iteration number %d: %f\n", n_iter, t2 - t1);
+
+		CPXgetobjval(env, lp, &temp_obj_val);
+		if (inst->z_best > temp_obj_val) {
+			inst->z_best = temp_obj_val;
+			inst->best_sol = curr_best_sol;
+
+			// Set the feasible solution (not optimal) from which to start with the heuristics
+			if (CPXaddmipstarts(env, lp, 1, inst->ncols, &beg, indices, inst->best_sol, CPX_MIPSTART_AUTO, NULL)) print_error("CPXaddmipstarts() error in setting known solution");
+		}
+		else if (inst->model_type == HEUR_SOFT_FIX_VAR) {
+			// If there has been no improvement in the last iteration and we are using SOFT_FIX heuristics with variable K, then increase K value up to 10
+			if (K < 10) K++;
+		}
+
+		if (inst->verbose >= HIGH) printf("inst->z_best: %f\n", inst->z_best);
+		if (inst->verbose == MEDIUM) printf("Iteration: %d, K: %d, best_sol: %f\n", n_iter, temp, inst->z_best);
+		temp = K;
+
+		// Update the amount of time left before timelimit is reached and provide it to Cplex to check
+		residual_timelimit = residual_timelimit - (t2 - t1);
+		// If the timelimit is reached for the current iteration => exit the loop
+		if (residual_timelimit <= 0) {
+			if (inst->verbose >= LOW) printf("TOTAL time limit reached\n");
+			break;
+		}
+
+		if (residual_timelimit <= small_timelimit) {
+			if (CPXsetdblparam(env, CPX_PARAM_TILIM, residual_timelimit)) { print_error("CPXsetdblparam() error in setting timelimit"); }
+		}
+		else {
+			if (CPXsetdblparam(env, CPX_PARAM_TILIM, small_timelimit)) { print_error("CPXsetdblparam() error in setting timelimit"); }
+		}
+
+		// After the first iteration, remove the previous local branching constraint
+		if (n_iter >= 1) {
+			if (CPXdelrows(env, lp, inst->nnodes, inst->nnodes)) print_error("wrong CPXdelrows() in deleting local branching constraints!");
+		}
+
+		// Add the new local branching constraint
+		int i_zero = 0;
+		double rhs = inst->nnodes - K;														// "rhs" = right-hand side of the degree constraints
+		char sense = 'G';																	// 'G' for greater-or-equal constraint
+		int nnz = inst->nnodes;																// number of cells != 0 in the row
+		sprintf(cname[0], "local_branching_constraint_(%d)", n_iter);						// Set a name for the new row/constraint
+		int j = 0;
+		for (int i = 0; i < inst->ncols; i++) {
+			if (curr_best_sol[i] > 0.5) {
+				index[j] = i;
+				value[j++] = 1.0;
+			}
+		}
+		if (CPXaddrows(env, lp, 0, 1, nnz, &rhs, &sense, &i_zero, index, value, NULL, cname)) print_error("wrong CPXaddrows() in adding local branching constraints!");
+
+		// Uncomment the following to debug adding/removing local branching constraints:
+		//char lp_temp_name[50];
+		//sprintf(lp_temp_name, "DEBUG_SOFT_FIX_%d", n_iter);
+		//create_lp_file(inst, env, lp, lp_temp_name);
+
+		// Run TSP solver (which is the branch and cut with fractional subtour elimination constraints only applied on the root node)
+		t1 = second();
+		solve_adv_branch_cut(inst, env, lp);
+		t2 = second();
+
+		n_iter++;
+	}
+
+	free(index);
+	free(value);
+	free(cname[0]);
+	free(cname);
+	free(curr_best_sol);
+	free(indices);
 
 	return;
 }
