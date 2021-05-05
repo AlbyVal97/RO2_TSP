@@ -25,6 +25,9 @@
 // -m 2 -test test_bend_bc_example -folder test_instances_200 -n_inst 5 -n_models 2 6 7 -prefix rnd -time_limit 60
 
 // -f ../data/test_instances_750/rnd_750_1.tsp -seed 123456 -model_type 16 -verbose 2 -time_limit 1200
+// 
+// LESSON
+// -f ../data/test_instances_500/rnd_500_6.tsp -seed 123456 -model_type 18 -verbose 2 -time_limit 120
 
 // Command line arguments list for compact models official tests:
 // -m 2 -test test_compact_models_50 -folder test_instances_50 -n_inst 20 -n_models 5 1 2 3 4 5 -prefix rnd_50 -time_limit 1800

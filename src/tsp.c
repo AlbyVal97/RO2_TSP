@@ -851,15 +851,19 @@ void solve_heur_soft_fix(instance* inst, CPXENVptr env, CPXLPptr lp) {
 
 		case HEUR_SOFT_FIX_3:
 			K = param[0];
+			temp = K;
 			break;
 		case HEUR_SOFT_FIX_5:
 			K = param[1];
+			temp = K;
 			break;
 		case HEUR_SOFT_FIX_7:
 			K = param[2];
+			temp = K;
 			break;
 		case HEUR_SOFT_FIX_9:
 			K = param[3];
+			temp = K;
 			break;
 	}
 
@@ -956,9 +960,9 @@ void solve_heur_soft_fix(instance* inst, CPXENVptr env, CPXLPptr lp) {
 		if (CPXaddrows(env, lp, 0, 1, nnz, &rhs, &sense, &i_zero, index, value, NULL, cname)) print_error("wrong CPXaddrows() in adding local branching constraints!");
 
 		// Uncomment the following to debug adding/removing local branching constraints:
-		//char lp_temp_name[50];
-		//sprintf(lp_temp_name, "DEBUG_SOFT_FIX_%d", n_iter);
-		//create_lp_file(inst, env, lp, lp_temp_name);
+		char lp_temp_name[50];
+		sprintf(lp_temp_name, "DEBUG_SOFT_FIX_%d", n_iter);
+		create_lp_file(inst, env, lp, lp_temp_name);
 
 		// Run TSP solver (which is the branch and cut with fractional subtour elimination constraints only applied on the root node)
 		t1 = second();
