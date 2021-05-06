@@ -954,7 +954,8 @@ void solve_heur_soft_fix(instance* inst, CPXENVptr env, CPXLPptr lp) {
 		for (int i = 0; i < inst->ncols; i++) {
 			if (curr_best_sol[i] > 0.5) {
 				index[j] = i;
-				value[j++] = 1.0;
+				value[j] = 1.0;
+				j++;
 			}
 		}
 		if (CPXaddrows(env, lp, 0, 1, nnz, &rhs, &sense, &i_zero, index, value, NULL, cname)) print_error("wrong CPXaddrows() in adding local branching constraints!");
