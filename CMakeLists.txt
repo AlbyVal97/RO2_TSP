@@ -19,6 +19,12 @@ add_executable(${PROJECT_NAME}
     src/main.c
     src/tsp.c
     src/tsp_utilities.c
+    include/tsp.h
+    include/tsp_utilities.h
+    include/instance.h
+)
+
+add_library(${PROJECT_NAME}_concorde_lib
     src/mincut.c
     src/connect.c
     src/util.c
@@ -27,14 +33,15 @@ add_executable(${PROJECT_NAME}
     src/allocrus.c
     src/sortrus.c
     src/urandom.c
-    include/tsp.h
-    include/tsp_utilities.h
-    include/instance.h
     include/util.h
     include/machdefs.h
     include/macrorus.h
     include/cut.h
     include/config.h
+)
+
+target_link_libraries(${PROJECT_NAME}
+    ${PROJECT_NAME}_concorde_lib
 )
 
 #target_include_directories(${PROJECT_NAME} PUBLIC ${CPLEX_INCLUDE_DIRS})
