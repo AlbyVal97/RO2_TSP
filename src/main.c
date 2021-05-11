@@ -81,10 +81,10 @@ int main(int argc, char **argv) {
 
 	if (inst.verbose == TEST) {	
 		if (inst.timelimit_exceeded == 1) {
-			update_csvfile(&inst, inst.first_model, inst.last_model, 10.0 * inst.timelimit);
+			update_csvfile(&inst, inst.first_model, inst.last_model, 10.0 * inst.timelimit, inst.z_best);
 		}
 		else {
-			update_csvfile(&inst, inst.first_model, inst.last_model, t2 - t1);
+			update_csvfile(&inst, inst.first_model, inst.last_model, t2 - t1, inst.z_best);
 		}
 	}
 
@@ -94,13 +94,12 @@ int main(int argc, char **argv) {
 	free_instance(&inst);
 
 	return 0;
-
 }
 
 
 void run_test(instance* inst) {
 	printf("*** RUN %s ***\n\n", inst->testname);
-	printf("Istances from folder %s\n", inst->folder_istances);
+	printf("Istances from folder %s\n", inst->folder_instances);
 	printf("Models used:\n");
 	for (int j = 0; j < inst->n_models_test; j++)
 		printf("%s\n", models[inst->models_to_test[j]]);
@@ -134,7 +133,7 @@ void run_test(instance* inst) {
 	for (int i = 0; i < inst->n_instances; i++) {
 		for (int j = 0; j < inst->n_models_test; j++) {
 
-			fprintf(bat_file, ".\\Release\\tsp -f ../data/%s/%s_%d.tsp -test %s -model_type %d -first %d -last %d -verbose 0 -seed 123456 -time_limit %f -end\n", inst->folder_istances, inst->instance_prefix_name, i+1, inst->testname, inst->models_to_test[j], inst->models_to_test[0], inst->models_to_test[inst->n_models_test-1], inst->timelimit);
+			fprintf(bat_file, ".\\Release\\tsp -f ../data/%s/%s_%d.tsp -test %s -model_type %d -first %d -last %d -verbose 0 -seed 123456 -time_limit %f -end\n", inst->folder_instances, inst->instance_prefix_name, i+1, inst->testname, inst->models_to_test[j], inst->models_to_test[0], inst->models_to_test[inst->n_models_test-1], inst->timelimit);
 		}
 	}
 	fprintf(bat_file, "@echo *** TEST ENDED ***\n");
@@ -146,25 +145,44 @@ void run_test(instance* inst) {
 
 	sprintf(bat_pathname, "..\\outputs\\%s.bat", inst->testname);
 	system(bat_pathname);
+
+	return;
 }
 
 
-void update_csvfile(instance* inst, int first_model, int last_model, double time) {
-	char csv_path[100];
+void update_csvfile(instance* inst, int first_model, int last_model, double time, double z_best) {
+	char csv_path[120];
+	if (strcmp(inst->testname, "NULL\0") == 0) print_error("Using TEST verbosity not in RUN_TEST mode: no testname is provided!");
 	sprintf(csv_path, "../outputs/%s.csv", inst->testname);
 	FILE* csv_file = fopen(csv_path, "a");
-	if (csv_file == NULL) print_error("csv file file not found inside \"outputs\" folder!");
+	if (csv_file == NULL) print_error("csv file not found inside \"outputs\" folder!");
 
-	if (inst->model_type == first_model) {						// Print the instance name just for the first test execution (on the first model)
-		fprintf(csv_file, "%s, %f, ", inst->inst_name, time);
-	}
-	else if (inst->model_type == last_model) {					// Go to next line only when the last test (on the last model) has been executed
-		fprintf(csv_file, "%f\n", time);
+	// If the method to test is a heuristic (inst->model_type >= 13), then the .csv file must report the final value of the objective function
+	// instead of the computational time, which is fixed since they all run until timelimit is reached
+	if (inst->model_type <= 12) {
+		if (inst->model_type == first_model) {						// Print the instance name only before the test on the first model
+			fprintf(csv_file, "%s, %f, ", inst->inst_name, time);
+		}
+		else if (inst->model_type == last_model) {					// Go to next line only after the test on the last model has been executed
+			fprintf(csv_file, "%f\n", time);
+		}
+		else {
+			fprintf(csv_file, "%f, ", time);
+		}
 	}
 	else {
-		fprintf(csv_file, "%f, ", time);
+		if (inst->model_type == first_model) {						// Print the instance name only before the test on the first model
+			fprintf(csv_file, "%s, %f, ", inst->inst_name, z_best);
+		}
+		else if (inst->model_type == last_model) {					// Go to next line only after the test on the last model has been executed
+			fprintf(csv_file, "%f\n", z_best);
+		}
+		else {
+			fprintf(csv_file, "%f, ", z_best);
+		}
 	}
 
 	fclose(csv_file);
 	
+	return;
 }
