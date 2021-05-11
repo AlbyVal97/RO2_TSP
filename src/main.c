@@ -76,10 +76,10 @@ int main(int argc, char **argv) {
 
 	if (inst.verbose == TEST) {	
 		if (inst.timelimit_exceeded == 1) {
-			update_csvfile(&inst, inst.first_model, inst.last_model, 10.0 * inst.timelimit);
+			update_csvfile(&inst, inst.first_model, inst.last_model, 10.0 * inst.timelimit, inst.z_best);
 		}
 		else {
-			update_csvfile(&inst, inst.first_model, inst.last_model, t2 - t1);
+			update_csvfile(&inst, inst.first_model, inst.last_model, t2 - t1, inst.z_best);
 		}
 	}
 
@@ -89,7 +89,6 @@ int main(int argc, char **argv) {
 	free_instance(&inst);
 
 	return 0;
-
 }
 
 
@@ -141,26 +140,44 @@ void run_test(instance* inst) {
 
 	sprintf(bat_pathname, "..\\outputs\\%s.bat", inst->testname);
 	system(bat_pathname);
+
+	return;
 }
 
 
-void update_csvfile(instance* inst, int first_model, int last_model, double time) {
-	char csv_path[100];
+void update_csvfile(instance* inst, int first_model, int last_model, double time, double z_best) {
+	char csv_path[120];
 	if (strcmp(inst->testname, "NULL\0") == 0) print_error("Using TEST verbosity not in RUN_TEST mode: no testname is provided!");
 	sprintf(csv_path, "../outputs/%s.csv", inst->testname);
 	FILE* csv_file = fopen(csv_path, "a");
 	if (csv_file == NULL) print_error("csv file not found inside \"outputs\" folder!");
 
-	if (inst->model_type == first_model) {						// Print the instance name just for the first test execution (on the first model)
-		fprintf(csv_file, "%s, %f, ", inst->inst_name, time);
-	}
-	else if (inst->model_type == last_model) {					// Go to next line only when the last test (on the last model) has been executed
-		fprintf(csv_file, "%f\n", time);
+	// If the method to test is a heuristic (inst->model_type >= 13), then the .csv file must report the final value of the objective function
+	// instead of the computational time, which is fixed since they all run until timelimit is reached
+	if (inst->model_type <= 12) {
+		if (inst->model_type == first_model) {						// Print the instance name only before the test on the first model
+			fprintf(csv_file, "%s, %f, ", inst->inst_name, time);
+		}
+		else if (inst->model_type == last_model) {					// Go to next line only after the test on the last model has been executed
+			fprintf(csv_file, "%f\n", time);
+		}
+		else {
+			fprintf(csv_file, "%f, ", time);
+		}
 	}
 	else {
-		fprintf(csv_file, "%f, ", time);
+		if (inst->model_type == first_model) {						// Print the instance name only before the test on the first model
+			fprintf(csv_file, "%s, %f, ", inst->inst_name, z_best);
+		}
+		else if (inst->model_type == last_model) {					// Go to next line only after the test on the last model has been executed
+			fprintf(csv_file, "%f\n", z_best);
+		}
+		else {
+			fprintf(csv_file, "%f, ", z_best);
+		}
 	}
 
 	fclose(csv_file);
 	
+	return;
 }
