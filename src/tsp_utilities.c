@@ -26,7 +26,9 @@ void parse_command_line(int argc, char** argv, instance* inst) {
 	inst->timelimit = CPX_INFBOUND;
 	inst->timelimit_exceeded = 0;
 	inst->integer_costs = 0;
-	inst->seed = 0;
+	inst->first_model = 0;
+	inst->last_model = 0;
+	inst->seed = 123456;
 	inst->z_best = INFINITY;
 
 	int help = 0;

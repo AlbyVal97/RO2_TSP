@@ -95,45 +95,45 @@ typedef struct {
 	int timelimit_exceeded;					// Flag to check if timelimit has been reached while solving the instance (=0, default)
 
 	// Command line parameters list
-	int mode;								// Working mode of the program
+	int mode;								// Working mode of the application
 
 	// Command line arguments for CREATE_INSTANCES mode
 	int n_instances;						// Number of new random instances to generate
 	int n_nodes_per_instance;				// Number of nodes (fixed) of the instances to generate
 
-	char folder_istances[100];				// Name of folder inside "/data" where to find the instances that are created in CREATE_INSTANCES mode or tested in RUN_TEST mode
-	char instance_prefix_name[20];			// Prefix of each instance file name (used both in CREATE_INSTANCES and RUN_TEST modes)
-
 	// Command line arguments for TEST mode
-	char testname[100];
-	int n_models_test;
-	int* models_to_test;
+	char testname[100];						// Names of the .bat and .csv files of a single test session 
+	int n_models_test;						// Number of models/approaches to test
+	int* models_to_test;					// Array of integers (see "model_type" struct) specifying which models/approaches are tested
+	int first_model;						// Integer associated to the first model/approach of the test session. The .bat script sets it automatically
+	int last_model;							// Integer associated to the last model/approach of the test session. The .bat script sets it automatically
+
+	// Command line arguments both for CREATE_INSTANCES and TEST mode
+	char folder_istances[100];				// Name of folder inside "/data" where to find the instances that are created in CREATE_INSTANCES mode or tested in RUN_TEST mode
+	char instance_prefix_name[20];			// Prefix of each instance file name. For example, if the instance file name is "rnd_200_1.tsp", then the prefix will be "rnd_200"
 
 	// Command line arguments for DEFAULT mode
-	int model_type;							// model number to be used to solve the instance
-	int tsp_solver;							// model number to be used as TSP solver inside Heuristic methods
-	double timelimit;						// overall time limit, in seconds
-	char input_file[100];		  			// input file name
-	int verbose;							// verbosity value
-	int seed;								// internal branching random seed used by Cplex. If fixed, leads to more consistent computational time
-	int first_model;
-	int last_model;
+	int model_type;							// Integer associated to the model/approach (see "model_type" struct) that is used to solve the instance
+	int tsp_solver;							// Integer associated to the model/approach to be used as main TSP solver inside Heuristic methods
+	double timelimit;						// The overall time limit (in seconds), that should be set by the user
+	char input_file[100];		  			// Path to the input instance file (for example: "../data/test_instances_200/rnd_200_1.tsp")
+	int verbose;							// Verbosity level integer value (see "verbose" struct)
+	int seed;								// Internal branching integer random seed used by Cplex. When fixed, leads to more consistent computational times
 
-	//ADV_BRANCH_CUT_PARAM
-	int adv_bc_param;
-
-	// global data
+	// Global data related to the instance
 	double z_best;							// Value/cost of the objective function to minimize
-	double* best_sol;						// Array with the best current integer solution
+	double* best_sol;						// Array with the best current integer (or almost integer) solution.
+											// It can be seen as a list of 1s and 0s indicating if any potential edge of the graph is part of the solution or not, respectively.
 
 } instance;
 
+// Concorde struct used to pass information to the doit_fn_concorde callback (used for ADVBC methods)
 typedef struct {
-	instance* inst;
-	CPXCALLBACKCONTEXTptr context;
-	int* index;
-	double* value;
-	int local;
+	instance* inst;							// Pointer to the "instance" struct
+	CPXCALLBACKCONTEXTptr context;			// Pointer to Cplex callback context, defining the context in which a generic callback is invoked
+	int* index;								// Array of indexes associated to the variables of a constraint/cut
+	double* value;							// Array of coefficients associated to the variables of a constraint/cut
+	int local;								// Flag to indicate if a cut is valid only in current node (=1) or is globally valid (=0, like SECs)
 } concorde_instance;
 
 #endif   /* INSTANCE_H_ */

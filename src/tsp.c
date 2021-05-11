@@ -634,6 +634,8 @@ static int CPXPUBLIC adv_branch_cut_callback(CPXCALLBACKCONTEXTptr context, CPXL
 	int* compscount;
 	int* comps;
 	
+	// Returns the connected components of the graph given by the edgeset.
+	// More details (look for "CCcut_connect_components") can be found here: http://www.math.uwaterloo.ca/tsp/concorde/DOC/cut.html
 	if (CCcut_connect_components(ncount, ecount, elist, xstar, &ncomp, &compscount, &comps)) print_error("Error during concorde connect comps algorithm!");
 	if (inst->verbose >= HIGH) printf("#connected components: %d\n", ncomp);
 
@@ -664,9 +666,7 @@ static int CPXPUBLIC adv_branch_cut_callback(CPXCALLBACKCONTEXTptr context, CPXL
 			}
 			if (CPXcallbackaddusercuts(context, 1, nnz, &rhs, &sense, &i_zero, index, value, &purgeable, &local)) print_error("CPXcallbackaddusercuts() error");
 		}
-		
 	}
-
 	else if (ncomp == 1) {
 		
 		concorde_instance cc;
@@ -675,6 +675,8 @@ static int CPXPUBLIC adv_branch_cut_callback(CPXCALLBACKCONTEXTptr context, CPXL
 		cc.local = 0;
 		cc.index = malloc(inst->ncols * sizeof(int));
 		cc.value = calloc(inst->ncols, sizeof(double));
+		// Computes the global minimum cut, but calls the doit_fn_concorde function for any cut the algorithm encounters that has capacity at most cutoff.
+		// More details (look for "CCcut_violated_cuts") can be found here: http://www.math.uwaterloo.ca/tsp/concorde/DOC/cut.html
 		if (CCcut_violated_cuts(ncount, ecount, elist, xstar, 2 - 0.1, doit_fn_concorde, &cc)) print_error("Error during concorde violated cuts algorithm!");
 		free(cc.index);
 		free(cc.value);
