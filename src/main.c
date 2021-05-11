@@ -95,7 +95,7 @@ int main(int argc, char **argv) {
 
 void run_test(instance* inst) {
 	printf("*** RUN %s ***\n\n", inst->testname);
-	printf("Istances from folder %s\n", inst->folder_istances);
+	printf("Istances from folder %s\n", inst->folder_instances);
 	printf("Models used:\n");
 	for (int j = 0; j < inst->n_models_test; j++)
 		printf("%s\n", models[inst->models_to_test[j]]);
@@ -129,7 +129,7 @@ void run_test(instance* inst) {
 	for (int i = 0; i < inst->n_instances; i++) {
 		for (int j = 0; j < inst->n_models_test; j++) {
 
-			fprintf(bat_file, ".\\Release\\tsp -f ../data/%s/%s_%d.tsp -test %s -model_type %d -first %d -last %d -verbose 0 -seed 123456 -time_limit %f -end\n", inst->folder_istances, inst->instance_prefix_name, i+1, inst->testname, inst->models_to_test[j], inst->models_to_test[0], inst->models_to_test[inst->n_models_test-1], inst->timelimit);
+			fprintf(bat_file, ".\\Release\\tsp -f ../data/%s/%s_%d.tsp -test %s -model_type %d -first %d -last %d -verbose 0 -seed 123456 -time_limit %f -end\n", inst->folder_instances, inst->instance_prefix_name, i+1, inst->testname, inst->models_to_test[j], inst->models_to_test[0], inst->models_to_test[inst->n_models_test-1], inst->timelimit);
 		}
 	}
 	fprintf(bat_file, "@echo *** TEST ENDED ***\n");

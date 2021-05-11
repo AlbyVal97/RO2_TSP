@@ -3,13 +3,14 @@
 #define INSTANCE_H_
 
 // Hard-wired parameters
-#define XSMALL		  		  1e-5 		// Tolerance used to decide ingerality of 0-1 var.s
-#define EPSILON		  		  1e-9		// Very small numerical tolerance 
-#define TICKS_PER_SECOND 	  1000.0  	// Cplex's ticks (depends on CPU)
+#define XSMALL				1e-5 		// Tolerance used to decide ingerality of 0-1 var.s
+#define EPSILON				1e-9		// Very small numerical tolerance 
+#define TICKS_PER_SECOND	1000.0  	// Cplex's ticks (depends on CPU)
+#define SECONDS_PER_DAY		86400		// Number of seconds in a day
 
-#define N_MODELS 22						// Total number of TSP models/approaches implemented to date = |models[]|
-#define N_VERBOSITIES 4					// Total number of verbosity levels considered = |verbosities[]|
-#define N_MODES 3						// Total number of working modes of the program = |modes[]|
+#define N_MODELS			22			// Total number of TSP models/approaches implemented to date = |models[]|
+#define N_VERBOSITIES		4			// Total number of verbosity levels considered = |verbosities[]|
+#define N_MODES				3			// Total number of working modes of the program = |modes[]|
 
 
 // List of the TSP models/approaches names implemented to date
@@ -95,7 +96,7 @@ typedef struct {
 	int timelimit_exceeded;					// Flag to check if timelimit has been reached while solving the instance (=0, default)
 
 	// Command line parameters list
-	int mode;								// Working mode of the application
+	int mode;								// Working mode of the program
 
 	// Command line arguments for CREATE_INSTANCES mode
 	int n_instances;						// Number of new random instances to generate
@@ -109,7 +110,7 @@ typedef struct {
 	int last_model;							// Integer associated to the last model/approach of the test session. The .bat script sets it automatically
 
 	// Command line arguments both for CREATE_INSTANCES and TEST mode
-	char folder_istances[100];				// Name of folder inside "/data" where to find the instances that are created in CREATE_INSTANCES mode or tested in RUN_TEST mode
+	char folder_instances[100];				// Name of folder inside "/data" where to find the instances that are created in CREATE_INSTANCES mode or tested in RUN_TEST mode
 	char instance_prefix_name[20];			// Prefix of each instance file name. For example, if the instance file name is "rnd_200_1.tsp", then the prefix will be "rnd_200"
 
 	// Command line arguments for DEFAULT mode
