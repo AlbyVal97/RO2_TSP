@@ -33,8 +33,13 @@
 // -m 2 -test test_compact_models_50 -folder test_instances_50 -n_inst 20 -n_models 5 1 2 3 4 5 -prefix rnd_50 -time_limit 1800
 
 // Command line arguments list for tuning hyperparameters of advanced branch and cut method:
-// -m 2 -test test_tuning_advbc -folder test_instances_300_training -n_inst 20 -n_models 5 8 9 10 11 12 -prefix rnd_300 -time_limit 1800
-// -m 2 -test test_benders_bc_models_300 -folder test_instances_300_test -n_inst 20 -n_models 3 6 7 9 -prefix rnd_300 -time_limit 1800
+// -m 2 -test test_tuning_advbc -folder test_instances_300_tuning -n_inst 20 -n_models 5 8 9 10 11 12 -prefix rnd_300 -time_limit 1800
+
+// Command line arguments for Benders + B&C + advB&C methods official tests:
+// -m 2 -test test_benders_bc_models_300 -folder test_instances_300 -n_inst 20 -n_models 3 6 7 9 -prefix rnd_300 -time_limit 1800
+
+// Command line arguments list for tuning hyperparameters of hard fix heuristics (only on 10 instances because each run takes exactly 15 minutes):
+// -m 2 -test test_tuning_hard_fix -folder test_instances_750_tuning -n_inst 10 -n_models 4 13 14 15 16 -prefix rnd_750 -time_limit 900
 
 
 void update_csvfile(instance* inst, int first_model, int last_model, double time);
