@@ -243,7 +243,6 @@ void print_solution(instance* inst, double* xstar, int symmetric, char* edges_fi
 			for (int j = i + 1; j < inst->nnodes; j++) {
 
 				if (xstar[xpos(i, j, inst)] > 0.5) {
-				//if (xstar[xpos(i, j, inst)] > 0.0) {
 
 					if (inst->verbose >= HIGH) {
 						printf("x(%3d,%3d) = 1\n", i + 1, j + 1);

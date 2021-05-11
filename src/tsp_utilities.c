@@ -13,8 +13,8 @@ void parse_command_line(int argc, char** argv, instance* inst) {
 	// Set default values for the instance
 	inst->mode = DEFAULT;
 	inst->model_type = BASIC;
+	inst->verbose = MEDIUM;
 	inst->tsp_solver = ADVBC_ROOT;
-	inst->adv_bc_param = STANDARD;
 	inst->n_instances = 0;
 	inst->n_nodes_per_instance = 0;
 	strcpy(inst->input_file, "NULL\0");
@@ -26,7 +26,6 @@ void parse_command_line(int argc, char** argv, instance* inst) {
 	inst->timelimit = CPX_INFBOUND;
 	inst->timelimit_exceeded = 0;
 	inst->integer_costs = 0;
-	inst->verbose = MEDIUM;
 	inst->seed = 0;
 	inst->z_best = INFINITY;
 
@@ -35,7 +34,7 @@ void parse_command_line(int argc, char** argv, instance* inst) {
 	for (int i = 1; i < argc; i++) {
 
 		if (strcmp(argv[i], "-end") == 0) break;
-		if (strcmp(argv[i], "-m") == 0) {																	// working mode
+		if (strcmp(argv[i], "-m") == 0) {																	// Working mode
 			inst->mode = atoi(argv[++i]); 
 			if (inst->mode < 0 || inst->mode >= N_MODES) print_error("Incorrect value of Mode");
 			continue;
@@ -43,7 +42,7 @@ void parse_command_line(int argc, char** argv, instance* inst) {
 		if (strcmp(argv[i], "-folder") == 0) { strcpy(inst->folder_istances, argv[++i]); continue; }
 		if (strcmp(argv[i], "-prefix") == 0) { strcpy(inst->instance_prefix_name, argv[++i]); continue; }
 		if (strcmp(argv[i], "-test") == 0) { strcpy(inst->testname, argv[++i]); continue; }
-		if (strcmp(argv[i], "-n_inst") == 0) { inst->n_instances = atoi(argv[++i]); continue; }				// instances to generate
+		if (strcmp(argv[i], "-n_inst") == 0) { inst->n_instances = atoi(argv[++i]); continue; }				// Number of nstances to generate in CREATE_INSTANCES mode
 		if (strcmp(argv[i], "-n_nodes") == 0) { inst->n_nodes_per_instance = atoi(argv[++i]); continue; }	// nodes for each instance
 		if (strcmp(argv[i], "-f") == 0) { strcpy(inst->input_file, argv[++i]); continue; } 					// input file
 		if (strcmp(argv[i], "-time_limit") == 0) { inst->timelimit = atof(argv[++i]); continue; }			// total time limit
@@ -73,11 +72,6 @@ void parse_command_line(int argc, char** argv, instance* inst) {
 				if (temp < 0 || temp >= N_MODELS) print_error("Incorrect value of one model in the list");
 				inst->models_to_test[j] = temp;
 			}
-			continue;
-		}
-		if (strcmp(argv[i], "-adv_bc") == 0) {
-			inst->adv_bc_param = atoi(argv[++i]);
-			if (inst->adv_bc_param < 0 || inst->adv_bc_param >= N_ADV_BC_PARAM) print_error("Incorrect value of adv_bc_param");
 			continue;
 		}
 		help = 1;

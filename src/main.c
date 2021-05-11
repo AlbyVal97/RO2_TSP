@@ -146,9 +146,10 @@ void run_test(instance* inst) {
 
 void update_csvfile(instance* inst, int first_model, int last_model, double time) {
 	char csv_path[100];
+	if (strcmp(inst->testname, "NULL\0") == 0) print_error("Using TEST verbosity not in RUN_TEST mode: no testname is provided!");
 	sprintf(csv_path, "../outputs/%s.csv", inst->testname);
 	FILE* csv_file = fopen(csv_path, "a");
-	if (csv_file == NULL) print_error("csv file file not found inside \"outputs\" folder!");
+	if (csv_file == NULL) print_error("csv file not found inside \"outputs\" folder!");
 
 	if (inst->model_type == first_model) {						// Print the instance name just for the first test execution (on the first model)
 		fprintf(csv_file, "%s, %f, ", inst->inst_name, time);
