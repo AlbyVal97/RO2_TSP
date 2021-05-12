@@ -204,6 +204,20 @@ int TSPopt(instance* inst) {
 			sprintf(edges_file_path, "%s/model_%s_edges.dat", edges_file_path, models[inst->model_type]);
 			break;
 
+		case HEUR_GREEDY:
+			symmetric = 0;
+			build_model_BASIC(inst, env, lp);
+			inst->ncols = CPXgetnumcols(env, lp);
+			if (inst->verbose >= LOW) {
+				sprintf(logfile_path, "%s/logfile_%s.txt", logfile_path, models[inst->model_type]);
+				if (CPXsetlogfilename(env, logfile_path, "w")) print_error("CPXsetlogfilename() error in setting logfile name");
+			}
+			double* x = (double*)calloc(inst->ncols, sizeof(double));
+			solve_heur_greedy(inst, x);
+			sprintf(edges_file_path, "%s/model_%s_edges.dat", edges_file_path, models[inst->model_type]);
+			print_solution(inst, x, symmetric, edges_file_path);
+			break;
+
 		default:
 			print_error("Choose a correct value for the model to be used!");
 	}
@@ -214,11 +228,13 @@ int TSPopt(instance* inst) {
 	int ncols = CPXgetnumcols(env, lp);
 	double* xstar = (double*)calloc(ncols, sizeof(double));
 
-	// Copy the optimal solution from the Cplex environment to the new array "xstar"
-	if (!inst->timelimit_exceeded && CPXgetx(env, lp, xstar, 0, ncols - 1)) print_error("CPXgetx() error");
-	
-	// Fill the .dat file with the correctly formatted nodes of the found solution
-	if (inst->verbose >= LOW) print_solution(inst, xstar, symmetric, edges_file_path);
+	if (inst->model_type != HEUR_GREEDY) {
+		// Copy the optimal solution from the Cplex environment to the new array "xstar"
+		if (!inst->timelimit_exceeded && CPXgetx(env, lp, xstar, 0, ncols - 1)) print_error("CPXgetx() error");
+
+		// Fill the .dat file with the correctly formatted nodes of the found solution
+		if (inst->verbose >= LOW) print_solution(inst, xstar, symmetric, edges_file_path);
+	}
 	
 	// Free allocated memory and close Cplex model
 	free(xstar);
@@ -985,6 +1001,66 @@ void solve_heur_soft_fix(instance* inst, CPXENVptr env, CPXLPptr lp) {
 }
 
 
+void solve_heur_greedy(instance* inst, double* x) {
+
+	// Array with all precomputed edges length = distances between nodes
+	double* edges_length = (double*)malloc(inst->ncols * sizeof(double));			
+	int k = 0;
+	for (int i = 0; i < inst->nnodes; i++) {
+		for (int j = i + 1; j < inst->nnodes; j++) {
+			edges_length[k++] = dist(i, j, inst);
+		}
+	}
+
+	// Array to record which nodes have already been visited
+	int* nodes_visited = (int*)calloc(inst->nnodes, sizeof(int));				
+
+	double curr_dist = 0.0;
+	int min_edge_index = -1;
+	for (int start_node = 0; start_node < 1; start_node++) {					// Try starting from all possible nodes
+
+		// Restore the array of visited nodes before starting the new run (since now the starting node is different)
+		for (int j = 0; j < inst->nnodes; j++) nodes_visited[j] = 0;
+
+		// Get the greedy solution associated to the current start_node
+		int i = start_node;
+		int next_node_index = -1;
+		for (int n = 0; n < inst->nnodes; n++) {								// Repeat until inst->nnodes edges are found
+
+			double curr_min_dist = INFINITY;									// Reset the minimum distance as the highest possibile value
+			for (int j = 0; j < inst->nnodes; j++) {							// Try all possible "landing nodes" from node i
+				if (i != j && nodes_visited[j] == 0) {							// Avoid loop edges and check that the new node has not already been visited
+					curr_dist = edges_length[xpos(i, j, inst)];					// Retrieve the distance between the two current nodes from the array computed before
+					if (curr_dist < curr_min_dist) {
+						curr_min_dist = curr_dist;
+						next_node_index = j;									// After the last iteration, next_node_index will be the best candidate node to move on
+					}
+				}
+			}
+			//printf("i = %d / j = %d\n", i, next_node_index);
+			nodes_visited[next_node_index] = 1;									// Set the node on which we just landed as visited
+			min_edge_index = xpos(i, next_node_index, inst);
+			x[min_edge_index] = 1.0;											// Set the edge just found as part of the solution
+
+			i = next_node_index;												// Now we move to the next node and start searching again from it
+		}
+	}
+
+	/*
+	for (int i = 0; i < 1000; i++) {
+		// Choose randomly from which node we should start
+		int start_node = (int)(rand() % inst->nnodes);
+		printf("Start node: %d ", start_node);
+	}
+	*/
+
+	free(nodes_visited);
+	free(edges_length);
+
+	return;
+}
+
+
 void update_connected_components(const double* xstar, instance* inst, int* succ, int* comp, int* ncomp) {
 
 	// Start with 0 connected components
@@ -1038,7 +1114,7 @@ void build_model_BASIC(instance* inst, CPXENVptr env, CPXLPptr lp) {
 	for (int i = 0; i < inst->nnodes; i++) {
 		for (int j = i + 1; j < inst->nnodes; j++) {
 			sprintf(cname[0], "x(%d,%d)", i + 1, j + 1);		// Set a name for the new column/varible
-			double obj = dist(i, j, inst); // cost == distance   
+			double obj = dist(i, j, inst);						// cost == distance   
 			double lb = 0.0;
 			double ub = 1.0;
 			if (CPXnewcols(env, lp, 1, &obj, &lb, &ub, &binary, cname)) { print_error("Wrong CPXnewcols on x variables"); }
