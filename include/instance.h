@@ -18,7 +18,7 @@ static const char* models[] = { "BASIC", "MTZ_STATIC", "MTZ_LAZY", "MTZ_SEC2_STA
 								"BENDERS",																							// Benders-like solution scheme using SECs
 								"BRANCH_CUT", "ADVBC_STD", "ADVBC_ROOT", "ADVBC_DEPTH_5", "ADVBC_PROB_50", "ADVBC_PROB_10",			// SEC separation using Cplex's callbacks
 								"HEUR_HARD_FIX_50",	"HEUR_HARD_FIX_70",	"HEUR_HARD_FIX_90", "HEUR_HARD_FIX_VAR",					// Hard-fix heuristics variants
-								"HEUR_SOFT_FIX_3", "HEUR_SOFT_FIX_5", "HEUR_SOFT_FIX_7", "HEUR_SOFT_FIX_9", "HEUR_SOFT_FIX_VAR"		// Soft-fix heuristics variants
+								"HEUR_SOFT_FIX_3", "HEUR_SOFT_FIX_5", "HEUR_SOFT_FIX_7", "HEUR_SOFT_FIX_9", "HEUR_SOFT_FIX_VAR",	// Soft-fix heuristics variants
 								"HEUR_GREEDY" };																					// Constructive heuristics
 
 // List of verbosity levels considered, indicating which and how many details have to be shown on the console
