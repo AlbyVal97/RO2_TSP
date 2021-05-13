@@ -54,8 +54,11 @@ void solve_heur_hard_fix(instance* inst, CPXENVptr env, CPXLPptr lp);
 // Apply a heuristic tecnique where some edges are fixed at each iteration
 void solve_heur_soft_fix(instance* inst, CPXENVptr env, CPXLPptr lp);
 
-// Apply a constructive heuristic tecnique which builds a feasible solution in a greedy manner
+// Apply a constructive heuristic tecnique which builds a feasible solution in a greedy manner, so always ends up with local optimal solution
 void solve_heur_greedy(instance* inst, double* x);
+
+// Apply a variant of greedy heuristic which includes random choices to improve probability of finding global optimal solution
+void solve_heur_grasp(instance* inst, double* x, int n_runs);
 
 // Builds the tableau (variables and constraints)
 void build_model_BASIC(instance* inst, CPXENVptr env, CPXLPptr lp);

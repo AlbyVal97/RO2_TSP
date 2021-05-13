@@ -29,6 +29,7 @@ void parse_command_line(int argc, char** argv, instance* inst) {
 	inst->first_model = 0;
 	inst->last_model = 0;
 	inst->seed = 123456;
+	inst->n_runs = 10000;
 	inst->z_best = INFINITY;
 
 	// Chech if at least one command line argument is provided
@@ -106,6 +107,11 @@ void parse_command_line(int argc, char** argv, instance* inst) {
 			if (inst->seed < 0 || inst->seed > CPX_BIGINT) print_error("Value of -seed (Cplex internal seed) must an integer in the interval [0, BIGINT]!");
 			continue;
 		}
+		if (strcmp(argv[i], "-n_runs") == 0) {
+			inst->n_runs = atoi(argv[++i]);
+			if (inst->n_runs < 0 || inst->n_runs > 10000000) print_error("Value of -n_runs for (meta) heuristics must an integer in the interval [0, 10000000]!");
+			continue;
+		}
 		if (strcmp(argv[i], "-help") == 0) { help = 1; continue; }
 		if (strcmp(argv[i], "--help") == 0) { help = 1; continue; }
 
@@ -145,6 +151,7 @@ void parse_command_line(int argc, char** argv, instance* inst) {
 		printf("-integer_costs %d\n", inst->integer_costs);
 		printf("-verbose %s\n", verbosities[inst->verbose]);
 		printf("-seed %d\n", inst->seed);
+		printf("-n_runs %d\n", inst->n_runs);
 		printf("\nEnter -help or --help for help\n");
 		printf("----------------------------------------------------------------------------------------------\n");
 	}

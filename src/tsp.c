@@ -207,10 +207,21 @@ int TSPopt(instance* inst) {
 		case HEUR_GREEDY:
 			symmetric = 0;
 			inst->ncols = (inst->nnodes * (inst->nnodes - 1)) / 2;
-			double* x = (double*)calloc(inst->ncols, sizeof(double));
-			solve_heur_greedy(inst, x);
+			double* x_greedy = (double*)calloc(inst->ncols, sizeof(double));
+			solve_heur_greedy(inst, x_greedy);
 			sprintf(edges_file_path, "%s/model_%s_edges.dat", edges_file_path, models[inst->model_type]);
-			print_solution(inst, x, symmetric, edges_file_path);
+			print_solution(inst, x_greedy, symmetric, edges_file_path);
+			free(x_greedy);
+			break;
+
+		case HEUR_GRASP:
+			symmetric = 0;
+			inst->ncols = (inst->nnodes * (inst->nnodes - 1)) / 2;
+			double* x_grasp = (double*)calloc(inst->ncols, sizeof(double));
+			solve_heur_grasp(inst, x_grasp, inst->n_runs);
+			sprintf(edges_file_path, "%s/model_%s_edges.dat", edges_file_path, models[inst->model_type]);
+			print_solution(inst, x_grasp, symmetric, edges_file_path);
+			free(x_grasp);
 			break;
 
 		default:
@@ -223,7 +234,7 @@ int TSPopt(instance* inst) {
 	int ncols = CPXgetnumcols(env, lp);
 	double* xstar = (double*)calloc(ncols, sizeof(double));
 
-	if (inst->model_type != HEUR_GREEDY) {
+	if (inst->model_type < HEUR_GREEDY) {
 		// Copy the optimal solution from the Cplex environment to the new array "xstar"
 		if (!inst->timelimit_exceeded && CPXgetx(env, lp, xstar, 0, ncols - 1)) print_error("CPXgetx() error");
 
@@ -234,9 +245,9 @@ int TSPopt(instance* inst) {
 	// Free allocated memory and close Cplex model
 	free(xstar);
 
-	if (CPXsetlogfilename(env, NULL, NULL)) { print_error("CPXsetlogfilename() error"); }
-	if (CPXfreeprob(env, &lp)) { print_error("CPXfreeprob() error"); }
-	if (CPXcloseCPLEX(&env)) { print_error("CPXcloseCPLEX() error"); }
+	if (CPXsetlogfilename(env, NULL, NULL)) print_error("CPXsetlogfilename() error");
+	if (CPXfreeprob(env, &lp)) print_error("CPXfreeprob() error");
+	if (CPXcloseCPLEX(&env)) print_error("CPXcloseCPLEX() error");
 
 	return 0;
 }
@@ -1052,7 +1063,7 @@ void solve_heur_greedy(instance* inst, double* x) {
 		curr_sol_cost += edges_length[last_edge_index];							// Add up the cost of the last "closing loop" edge
 		temp_x[last_edge_index] = 1.0;											// Add the last "closing loop" edge manually
 
-		if (inst->verbose >= HIGH) printf("Cost of the solution with starting node #%d : %f\n\n", start_node + 1, curr_sol_cost);
+		if (inst->verbose >= HIGH) printf("Cost of the solution with starting node #%d : %f\n", start_node + 1, curr_sol_cost);
 
 		// Compare the new solution cost with the (currently) best one, then memorize the best solution and the start_node that lead to it
 		if (curr_sol_cost < min_sol_cost) {
@@ -1062,7 +1073,122 @@ void solve_heur_greedy(instance* inst, double* x) {
 		}
 	}
 
-	if (inst->verbose >= MEDIUM) printf("Cost of the best solution: %f\nStarting node of the best solution: %d\n\n", min_sol_cost, best_start_node + 1);
+	if (inst->verbose >= MEDIUM) printf("\nCost of the best solution: %f\nStarting node of the best solution: %d\n\n", min_sol_cost, best_start_node + 1);
+
+	free(temp_x);
+	free(nodes_visited);
+	free(edges_length);
+
+	return;
+}
+
+
+void solve_heur_grasp(instance* inst, double* x, int n_runs) {
+
+	// Array with all precomputed edges length = distances between all pairs of nodes
+	double* edges_length = (double*)malloc(inst->ncols * sizeof(double));
+	int k = 0;
+	for (int i = 0; i < inst->nnodes; i++) {
+		for (int j = i + 1; j < inst->nnodes; j++) {
+			edges_length[k++] = dist(i, j, inst);
+		}
+	}
+
+	// Array to record which nodes have already been visited
+	int* nodes_visited = (int*)calloc(inst->nnodes, sizeof(int));
+
+	// Array to memorize temporarily the new solution before comparing it to the best one (collected in array x)
+	double* temp_x = (double*)calloc(inst->ncols, sizeof(double));
+
+	int best_start_node = -1;
+	double min_sol_cost = INFINITY;
+	for (int run_count = 1; run_count <= n_runs; run_count++) {					// Try as many runs as indicated by n_runs parameter
+
+		int start_node = rand() % inst->nnodes;									// Choose randomly a starting node
+		if (inst->verbose >= HIGH) printf("\nStarting node selected for run #%d : %d\n", run_count, start_node + 1);
+
+		double curr_sol_cost = 0.0;												// Restore the cost of the current solution before starting the new run
+		for (int j = 0; j < inst->nnodes; j++) nodes_visited[j] = 0;			// Restore the array of visited nodes before starting the new run
+		for (int j = 0; j < inst->ncols; j++) temp_x[j] = 0.0;					// Restore the array that will contain the new solution before starting the new run
+
+		// Get a greedy solution (collected in array temp_x) associated to the current start_node and to the random decisions taken during the building of the solution
+		int i = start_node;
+		nodes_visited[start_node] = 1;											// Set the starting node as visited => it will not be reached automatically by the algorithm
+		int next_node_index = -1;
+		int curr_edge_index = -1;
+		for (int n = 0; n < inst->nnodes - 1; n++) {							// Repeat until all edges apart from the "closing loop" one are found
+
+			int first_refused_node = -1;
+			int second_refused_node = -1;
+			int node_accepted = 0;												// Flag to indicate if the candidate node found hat to be accepted or not
+			while (!node_accepted) {											// Repeat until the candidate node (either the 1st, 2nd, 3rd best one) is accepted	
+
+				double min_dist = INFINITY;										// Reset the minimum distance as the highest possibile value
+				for (int j = 0; j < inst->nnodes; j++) {						// Try all possible "landing nodes" from node i
+					if (i != j &&
+						first_refused_node != j &&
+						second_refused_node != j &&
+						nodes_visited[j] == 0) {								// Avoid loop edges and check that the new node has not already been visited
+
+						double curr_dist = edges_length[xpos(i, j, inst)];		// Retrieve the distance between the two current nodes from the array computed before
+						if (curr_dist < min_dist) {
+							min_dist = curr_dist;
+							next_node_index = j;								// After the last iteration, next_node_index will be the best candidate node to move on
+						}
+					}
+				}
+
+				// Once the best candidate node to move on is found, choose randomly to accept it or to choose the second or third best candidate
+				if (first_refused_node == -1) {									// If the first candidate node has not been refused, refuse it with 10% probability
+					if (((double)rand() / RAND_MAX) <= 0.1) {
+						first_refused_node = next_node_index;
+						node_accepted = 0;
+					}
+					else {														// With 90% probability just accept the first candidate node
+						node_accepted = 1;
+						if (inst->verbose >= HIGH) printf("First candidate node has been accepted!\n");
+					}
+				}
+				else {															// If the first candidate node has already been refused...
+					if (second_refused_node == -1) {							// ...then if the second candidate node has not been refused, refuse it with 10% probability
+						if (((double)rand() / RAND_MAX) <= 0.1) {
+							second_refused_node = next_node_index;
+							node_accepted = 0;
+						}
+						else {													// With 90% probability just accept the second candidate node
+							node_accepted = 1;
+							if (inst->verbose >= HIGH) printf("Second candidate node has been accepted!\n");
+						}
+					}
+					else {														// If even the second candidate node has already been refused...
+						node_accepted = 1;										// ...then just accept the third candidate node
+						if (inst->verbose >= HIGH) printf("Third candidate node has been accepted!\n");
+					}
+				}
+			}
+
+			if (inst->verbose >= HIGH) printf("Edge #%d : [ %d -> %d ]\n", n, i + 1, next_node_index + 1);
+
+			nodes_visited[next_node_index] = 1;									// Set the node on which we just landed as visited
+			curr_edge_index = xpos(i, next_node_index, inst);
+			curr_sol_cost += edges_length[curr_edge_index];						// Add up the cost of the edge just found
+			temp_x[curr_edge_index] = 1.0;										// Set the edge just found as part of the solution
+
+			i = next_node_index;												// Move to the next node and start searching again from it
+		}
+
+		int last_edge_index = xpos(i, start_node, inst);
+		curr_sol_cost += edges_length[last_edge_index];							// Add up the cost of the last "closing loop" edge
+		temp_x[last_edge_index] = 1.0;											// Add the last "closing loop" edge manually
+
+		// Compare the new solution cost with the (currently) best one, then memorize the best solution
+		if (curr_sol_cost < min_sol_cost) {
+			min_sol_cost = curr_sol_cost;
+			for (int j = 0; j < inst->ncols; j++) x[j] = temp_x[j];
+		}
+	}
+
+	if (inst->verbose >= MEDIUM) printf("\nCost of the best solution: %f\n\n", min_sol_cost);
 
 	free(temp_x);
 	free(nodes_visited);
