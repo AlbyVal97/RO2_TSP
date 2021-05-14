@@ -8,7 +8,7 @@
 #define TICKS_PER_SECOND	1000.0  	// Cplex's ticks (depends on CPU)
 #define SECONDS_PER_DAY		86400		// Number of seconds in a day
 
-#define N_MODELS			24			// Total number of TSP models/approaches implemented to date = |models[]|
+#define N_MODELS			25			// Total number of TSP models/approaches implemented to date = |models[]|
 #define N_VERBOSITIES		4			// Total number of verbosity levels considered = |verbosities[]|
 #define N_MODES				3			// Total number of working modes of the program = |modes[]|
 
@@ -19,7 +19,7 @@ static const char* models[] = { "BASIC", "MTZ_STATIC", "MTZ_LAZY", "MTZ_SEC2_STA
 								"BRANCH_CUT", "ADVBC_STD", "ADVBC_ROOT", "ADVBC_DEPTH_5", "ADVBC_PROB_50", "ADVBC_PROB_10",			// SEC separation using Cplex's callbacks
 								"HEUR_HARD_FIX_50",	"HEUR_HARD_FIX_70",	"HEUR_HARD_FIX_90", "HEUR_HARD_FIX_VAR",					// Hard-fix heuristics variants
 								"HEUR_SOFT_FIX_3", "HEUR_SOFT_FIX_5", "HEUR_SOFT_FIX_7", "HEUR_SOFT_FIX_9", "HEUR_SOFT_FIX_VAR",	// Soft-fix heuristics variants
-								"HEUR_GREEDY", "HEUR_GRASP" };																		// Constructive heuristics
+								"HEUR_GREEDY", "HEUR_GRASP", "HEUR_EXTRA_MILEAGE" };												// Constructive heuristics
 
 // List of verbosity levels considered, indicating which and how many details have to be shown on the console
 static const char* verbosities[] = { "TEST",		// Prints only summary of input parameters and total time required;
@@ -75,7 +75,8 @@ typedef enum {
 	HEUR_SOFT_FIX_9, // 20
 	HEUR_SOFT_FIX_VAR, // 21
 	HEUR_GREEDY, // 22
-	HEUR_GRASP // 23
+	HEUR_GRASP, // 23
+	HEUR_EXTRA_MILEAGE // 24
 } model_type;
 
 // Working modes enumeration

@@ -19,9 +19,11 @@ add_executable(${PROJECT_NAME}
     src/main.c
     src/tsp.c
     src/tsp_utilities.c
+	src/convex_hull.c
     include/tsp.h
     include/tsp_utilities.h
     include/instance.h
+	include/convex_hull.h
 )
 
 add_library(${PROJECT_NAME}_concorde_lib

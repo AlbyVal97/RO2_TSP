@@ -60,6 +60,9 @@ void solve_heur_greedy(instance* inst, double* x);
 // Apply a variant of greedy heuristic which includes random choices to improve probability of finding global optimal solution
 void solve_heur_grasp(instance* inst, double* x, int n_runs);
 
+// Apply the extra mileage insertion heuristics starting from the convex hull of the instance nodes
+void solve_heur_extra_mileage(instance* inst, double* x);
+
 // Builds the tableau (variables and constraints)
 void build_model_BASIC(instance* inst, CPXENVptr env, CPXLPptr lp);
 void build_model_MTZ_STATIC(instance* inst, CPXENVptr env, CPXLPptr lp);

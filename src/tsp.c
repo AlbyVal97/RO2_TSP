@@ -13,6 +13,7 @@
 //#include <gnuplot_c.h>
 
 #include "tsp.h"
+#include "convex_hull.h"
 
 
 int TSPopt(instance* inst) {
@@ -222,6 +223,16 @@ int TSPopt(instance* inst) {
 			sprintf(edges_file_path, "%s/model_%s_edges.dat", edges_file_path, models[inst->model_type]);
 			print_solution(inst, x_grasp, symmetric, edges_file_path);
 			free(x_grasp);
+			break;
+
+		case HEUR_EXTRA_MILEAGE:
+			symmetric = 0;
+			inst->ncols = (inst->nnodes * (inst->nnodes - 1)) / 2;
+			double* x_extra_mileage = (double*)calloc(inst->ncols, sizeof(double));
+			solve_heur_extra_mileage(inst, x_extra_mileage);
+			sprintf(edges_file_path, "%s/model_%s_edges.dat", edges_file_path, models[inst->model_type]);
+			print_solution(inst, x_extra_mileage, symmetric, edges_file_path);
+			free(x_extra_mileage);
 			break;
 
 		default:
@@ -1193,6 +1204,41 @@ void solve_heur_grasp(instance* inst, double* x, int n_runs) {
 	free(temp_x);
 	free(nodes_visited);
 	free(edges_length);
+
+	return;
+}
+
+
+void solve_heur_extra_mileage(instance* inst, double* x) {
+
+	// Fill the following data structure with the coordinates of nodes from the instance
+	Point* instance_nodes = (Point*)calloc(inst->nnodes, sizeof(Point));
+	for (int i = 0; i < inst->nnodes; i++) {
+		instance_nodes[i].id = i;
+		instance_nodes[i].x = inst->xcoord[i];
+		instance_nodes[i].y = inst->ycoord[i];
+	}
+	
+	// Compute the convex hull of the set of nodes
+	int hull_size;
+	Point* hull = convexHull(instance_nodes, inst->nnodes, &hull_size);
+
+	if (inst->verbose >= HIGH) {
+		printf("Nodes of the convex hull: ");
+		printPoints(hull, hull_size);
+		printf("\n");
+	}
+
+	// Since the convex hull is returned as a list of consecutive nodes arranged counter-clockwise,
+	// we just needed to connect all of them to get the first part of the solution.
+	for (int i = 0; i < hull_size - 1; i++) {
+		x[xpos(hull[i].id, hull[i + 1].id, inst)] = 1.0;				// Add all the edges connecting the nodes of the hull, apart from the one from last to first node
+	}
+	x[xpos(hull[hull_size - 1].id, hull[0].id, inst)] = 1.0;			// Then add the last edge from the last to the first node
+
+	free(hull);
+
+	// Now we start inserting, one after the other, the nodes which are the closest to the existent edges
 
 	return;
 }
