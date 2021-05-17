@@ -235,26 +235,38 @@ int TSPopt(instance* inst) {
 			free(x_extra_mileage);
 			break;
 
+		case HEUR_2_OPT:
+			symmetric = 0;
+			inst->ncols = (inst->nnodes * (inst->nnodes - 1)) / 2;
+			double* x_2_opt = (double*)calloc(inst->ncols, sizeof(double));
+			solve_heur_grasp(inst, x_2_opt, inst->n_runs);
+			solve_heur_2_opt(inst, x_2_opt);
+			sprintf(edges_file_path, "%s/model_%s_edges.dat", edges_file_path, models[inst->model_type]);
+			print_solution(inst, x_2_opt, symmetric, edges_file_path);
+			free(x_2_opt);
+			break;
+
 		default:
 			print_error("Choose a correct value for the model to be used!");
 	}
 
 	if (inst->verbose >= MEDIUM) printf("Complete path for *.dat file: %s\n\n", edges_file_path);
-	
-	// Allocate memory for the optimal solution array
-	int ncols = CPXgetnumcols(env, lp);
-	double* xstar = (double*)calloc(ncols, sizeof(double));
 
 	if (inst->model_type < HEUR_GREEDY) {
+
+		// Allocate memory for the optimal solution array
+		int ncols = CPXgetnumcols(env, lp);
+		double* xstar = (double*)calloc(ncols, sizeof(double));
+
 		// Copy the optimal solution from the Cplex environment to the new array "xstar"
 		if (!inst->timelimit_exceeded && CPXgetx(env, lp, xstar, 0, ncols - 1)) print_error("CPXgetx() error");
 
 		// Fill the .dat file with the correctly formatted nodes of the found solution
 		if (inst->verbose >= LOW) print_solution(inst, xstar, symmetric, edges_file_path);
+
+		// Free allocated memory and close Cplex model
+		free(xstar);
 	}
-	
-	// Free allocated memory and close Cplex model
-	free(xstar);
 
 	if (CPXsetlogfilename(env, NULL, NULL)) print_error("CPXsetlogfilename() error");
 	if (CPXfreeprob(env, &lp)) print_error("CPXfreeprob() error");
@@ -330,8 +342,7 @@ int xpos(int i, int j, instance* inst) {
 
 int xpos_compact(int i, int j, instance* inst) {
 
-	int pos = i * inst->nnodes + j;
-	return pos;
+	return i * inst->nnodes + j;
 }
 
 
@@ -343,9 +354,13 @@ int upos_compact(int i, instance* inst) {
 
 int ypos_compact(int i, int j, instance* inst) {
 
-	int pos = (inst->nnodes) * (inst->nnodes) + i * (inst->nnodes) + j;
+	return (inst->nnodes) * (inst->nnodes) + i * (inst->nnodes) + j;
+}
 
-	return pos;
+
+double extra_mileage(int i, int j, int new_node, instance* inst) {
+
+	return dist(i, new_node, inst) + dist(new_node, j, inst) - dist(i, j, inst);
 }
 
 
@@ -1200,6 +1215,7 @@ void solve_heur_grasp(instance* inst, double* x, int n_runs) {
 	}
 
 	if (inst->verbose >= MEDIUM) printf("\nCost of the best solution: %f\n\n", min_sol_cost);
+	inst->z_best = min_sol_cost;
 
 	free(temp_x);
 	free(nodes_visited);
@@ -1229,16 +1245,216 @@ void solve_heur_extra_mileage(instance* inst, double* x) {
 		printf("\n");
 	}
 
+	/*
 	// Since the convex hull is returned as a list of consecutive nodes arranged counter-clockwise,
 	// we just needed to connect all of them to get the first part of the solution.
-	for (int i = 0; i < hull_size - 1; i++) {
+	for (int i = 0; i <= hull_size - 2; i++) {
 		x[xpos(hull[i].id, hull[i + 1].id, inst)] = 1.0;				// Add all the edges connecting the nodes of the hull, apart from the one from last to first node
 	}
 	x[xpos(hull[hull_size - 1].id, hull[0].id, inst)] = 1.0;			// Then add the last edge from the last to the first node
+	*/
+	
 
+	/*
+	// Get the list of nodes which have already been inserted to the final local optimal solution (which at the moment are those belonging to the convex hull)
+	int* nodes_inserted = (int*)calloc(inst->nnodes, sizeof(int));
+	for (int i = 0; i < inst->nnodes; i++) {
+		for (int j = 0; j < hull_size; j++) {
+			if (i == hull[j].id) nodes_inserted[i] = 1;					// Node already inserted = 1 / Node not inserted yet = 0
+			break;
+		}
+	}
+	*/
+
+	// Build the list of "successors" of each node. If a node is not part of the solution yet, then its successor will be -1
+	int* succ = (int*)malloc(inst->nnodes * sizeof(int));
+	for (int i = 0; i < inst->nnodes; i++) succ[i] = -1;
+	for (int i = 0; i <= hull_size - 2; i++) succ[hull[i].id] = hull[i + 1].id;
+	succ[hull[hull_size - 1].id] = hull[0].id;
+
+	if (inst->verbose >= HIGH) {
+		printf("List of successors: [ ");
+		for (int i = 0; i <= inst->nnodes - 2; i++) printf("%d->%d, ", i, succ[i]);
+		printf("%d->%d ]\n", inst->nnodes - 1, succ[inst->nnodes - 1]);
+	}
+
+	/*
+	// Get the list of nodes which are still to be inserted to the final local optimal solution
+	int n_nodes_to_insert = inst->nnodes - hull_size;
+	int* nodes_left = (int*)malloc(n_nodes_to_insert * sizeof(int));
+	int k = 0;
+	int i_belongs_to_hull = 0;											// Flag to indicate that node i of the following loop is part of the convex hull or not
+	for (int i = 0; i < inst->nnodes; i++) {
+		i_belongs_to_hull = 0;
+		for (int j = 0; j < hull_size; j++) {							// Check if node i is part of the convex hull...
+			if (i == hull[j].id) {
+				i_belongs_to_hull = 1;
+				break;
+			}
+		}
+		if (!i_belongs_to_hull) nodes_left[k++] = i;					// ...if not, then add node i to nodes_left								
+	}
+
+	if (inst->verbose >= HIGH) {
+		printf("Nodes still to insert: [ ");
+		for (int i = 0; i <= n_nodes_to_insert - 2; i++) printf("%d, ", nodes_left[i]);
+		printf("%d ]\n", nodes_left[n_nodes_to_insert - 1]);
+	}
+	*/
+
+	// Now we start inserting to the partial solution, at each iteration, the node which lead to the lowest "extra mileage" (as a locally optimal choice)
+	int n_nodes_to_insert = inst->nnodes - hull_size;
+	for (int n_iter = 1; n_iter <= n_nodes_to_insert; n_iter++) {
+
+		int curr_node_index = -1;
+		int next_node_index = -1;
+		for (int i = 0; i < inst->nnodes; i++) {
+			if (succ[i] != -1) {										// The node i has already been inserted => edge (i, succ[i]) good candidate to be removed
+
+				double min_x_mil = INFINITY;
+				for (int j = 0; j < inst->nnodes; j++) {
+					if (succ[j] == -1) {								// The node j has not been inserted yet => good candidate node to be inserted
+
+						double x_mil = extra_mileage(i, succ[i], j, inst);
+						if (x_mil < min_x_mil) {
+							min_x_mil = x_mil;
+							curr_node_index = i;
+							next_node_index = j;						// After the last iteration, next_node_index will be the best candidate node to insert
+						}
+					}
+				}
+			}
+		}
+
+		// Update the successors list accordingly
+		succ[next_node_index] = succ[curr_node_index];
+		succ[curr_node_index] = next_node_index;
+	}
+
+	if (inst->verbose >= HIGH) {
+		printf("FINAL list of successors: [ ");
+		for (int i = 0; i <= inst->nnodes - 2; i++) printf("%d->%d, ", i, succ[i]);
+		printf("%d->%d ]\n", inst->nnodes - 1, succ[inst->nnodes - 1]);
+	}
+
+	for (int i = 0; i <= inst->nnodes - 1; i++) {
+		x[xpos(i, succ[i], inst)] = 1.0;
+	}
+
+	free(succ);
 	free(hull);
+	free(instance_nodes);
 
-	// Now we start inserting, one after the other, the nodes which are the closest to the existent edges
+	return;
+}
+
+
+void solve_heur_2_opt(instance* inst, double* x) {
+
+	// Compute the list of successors from the solution provided by GRASP constructive heuristic
+	int* succ = (int*)malloc(inst->nnodes * sizeof(int));
+	for (int i = 0; i < inst->nnodes; i++) succ[i] = -1;
+	int i = 0;
+	for (int k = 0; k < inst->nnodes - 1; k++) {
+		for (int j = 1; j < inst->nnodes; j++) {
+			if (i != j && succ[j] == -1 && x[xpos(i, j, inst)] > 0.5) {
+				succ[i] = j;
+				i = j;
+				break;
+			}
+		}
+	}
+	succ[i] = 0;
+
+	// Retrieve the cost of the solution provided by GRASP (to be updated)
+	double curr_col_cost = inst->z_best;
+
+	if (inst->verbose >= HIGH) {
+		printf("STARTING list of successors: [ ");
+		for (int i = 0; i <= inst->nnodes - 2; i++) printf("%d->%d, ", i, succ[i]);
+		printf("%d->%d ]\n", inst->nnodes - 1, succ[inst->nnodes - 1]);
+	}
+
+	// Find the pair of edges (associated to their two starting nodes a and b) whose substitution leads to 
+	// the maximum "cut" in current solution cost, which correspond to the most negative value of curr_delta_cost
+	int n_iter = 1;
+	while (1) {
+
+		if (inst->verbose >= HIGH) printf("n_iter: %d\n", n_iter);
+
+		int best_a = -1;
+		int best_b = -1;
+		double min_delta_cost = INFINITY;
+		for (int a = 0; a < inst->nnodes; a++) {
+			for (int b = 0; b < inst->nnodes; b++) {
+
+				// The two selected nodes must be non-consecutive
+				if (a != b && b != succ[a] && a != succ[b]) {
+					double curr_delta_cost = (dist(a, b, inst) + dist(succ[a], succ[b], inst)) - (dist(a, succ[a], inst) + dist(b, succ[b], inst));
+					if (curr_delta_cost < min_delta_cost) {
+						min_delta_cost = curr_delta_cost;
+						best_a = a;
+						best_b = b;
+					}
+				}
+			}
+		}
+
+		// When the new solution cost is no longer able to become lower => local optimal solution achieved!
+		if (min_delta_cost >= 0) break;
+
+		// If min_delta_cost is negative, lower the current solution cost by its value
+		curr_col_cost += min_delta_cost;
+
+		if (inst->verbose >= HIGH) {
+			printf("best_a: %d\n", best_a);
+			printf("best_b: %d\n", best_b);
+		}
+
+		// Since the successors of best_a and best_b will soon be updated, memorize the original ones for later use
+		int old_succ_a = succ[best_a];
+		int old_succ_b = succ[best_b];
+
+		// Change verse to all edges between nodes old_succ_a and b
+		int temp_curr = old_succ_a;										// Start from node old_succ_a
+		int temp_succ = -1;
+		while (temp_curr != best_b) {									// Continue until node best_b is reached
+			if (temp_succ == -1) temp_succ = succ[temp_curr];			// N.B. both successor (temp_succ) and successor of successor (temp_succ_succ)
+			int temp_succ_succ = succ[temp_succ];						// of temp_curr have to be memorized for the next iteration!
+
+			succ[temp_succ] = temp_curr;								// Change the verse of the edge (temp_curr -> temp_succ)
+
+			temp_curr = temp_succ;										// Shift one position towards node best_b
+			temp_succ = temp_succ_succ;
+		}
+
+		// Rearrange the connections between nodes a and b
+		succ[old_succ_a] = old_succ_b;
+		succ[best_a] = best_b;
+
+		if (inst->verbose >= HIGH) {
+			printf("IMPROVED list of successors: [ ");
+			for (int i = 0; i <= inst->nnodes - 2; i++) printf("%d->%d, ", i, succ[i]);
+			printf("%d->%d ]\n", inst->nnodes - 1, succ[inst->nnodes - 1]);
+		}
+
+		n_iter++;
+	}
+	
+	if (inst->verbose >= HIGH) {
+		printf("FINAL list of successors: [ ");
+		for (int i = 0; i <= inst->nnodes - 2; i++) printf("%d->%d, ", i, succ[i]);
+		printf("%d->%d ]\n", inst->nnodes - 1, succ[inst->nnodes - 1]);
+	}
+
+	// Remove the values of the solution provided by GRASP and insert the 2-opt improved one
+	for (int i = 0; i < inst->ncols; i++) x[i] = 0.0;
+	for (int i = 0; i <= inst->nnodes - 1; i++) {
+		x[xpos(i, succ[i], inst)] = 1.0;
+	}
+
+	if (inst->verbose >= MEDIUM) printf("Cost of the best solution (after 2-opt refinement): %f\n\n", curr_col_cost);
+	inst->z_best = curr_col_cost;
 
 	return;
 }

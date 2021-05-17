@@ -19,6 +19,9 @@ int upos_compact(int i, instance* inst);
 // Computes the position of variable y associated to edge (i, j) inside the Cplex tableau
 int ypos_compact(int i, int j, instance* inst);
 
+// Computes the "extra mileage" in which we incur if we connected nodes i and j passing through new_node
+double extra_mileage(int i, int j, int new_node, instance* inst);
+
 // Returns if the results are from an optimal solution or not (es. timelimit has been reached)
 int mip_solved_to_optimality(instance* inst, CPXENVptr env, CPXLPptr lp);
 
@@ -62,6 +65,9 @@ void solve_heur_grasp(instance* inst, double* x, int n_runs);
 
 // Apply the extra mileage insertion heuristics starting from the convex hull of the instance nodes
 void solve_heur_extra_mileage(instance* inst, double* x);
+
+// Apply 2-opt moves to the solution obtained by HEUR_GRASP
+void solve_heur_2_opt(instance* inst, double* x);
 
 // Builds the tableau (variables and constraints)
 void build_model_BASIC(instance* inst, CPXENVptr env, CPXLPptr lp);

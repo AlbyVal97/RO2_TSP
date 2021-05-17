@@ -63,7 +63,7 @@ void parse_command_line(int argc, char** argv, instance* inst) {
 		}
 		if (strcmp(argv[i], "-n_inst") == 0) {
 			inst->n_instances = atoi(argv[++i]);
-			if (inst->n_instances > 100) print_error("Values of -n_inst greater than 100 instances are not supported!");
+			if (inst->n_instances <= 0 || inst->n_instances > 100) print_error("Values of -n_inst must an integer in the interval [1, 100]!");
 			continue;
 		}
 		if (strcmp(argv[i], "-n_nodes") == 0) {

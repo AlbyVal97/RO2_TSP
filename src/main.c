@@ -12,6 +12,7 @@
 // -f ../data/test_instances_50/rnd_50_1.tsp -seed 123456 -model_type 7 -verbose 2 -time_limit 60
 
 // -m 1 -folder test_instances -prefix rnd -n_inst 5 -n_nodes 15
+// -m 1 -folder test_instances_10 -prefix rnd_10 -n_inst 20 -n_nodes 10
 // -m 1 -folder test_instances_50 -prefix rnd_50 -n_inst 20 -n_nodes 50
 // -m 1 -folder test_instances_200 -prefix rnd_200 -n_inst 20 -n_nodes 200
 // -m 1 -folder test_instances_300 -prefix rnd_300 -n_inst 40 -n_nodes 300
