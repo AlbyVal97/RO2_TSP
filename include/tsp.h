@@ -66,8 +66,11 @@ void solve_heur_grasp(instance* inst, double* x, int n_runs);
 // Apply the extra mileage insertion heuristics starting from the convex hull of the instance nodes
 void solve_heur_extra_mileage(instance* inst, double* x);
 
-// Apply 2-opt moves to the solution obtained by HEUR_GRASP
+// Apply 2-opt moves to the solution provided by HEUR_GRASP
 void solve_heur_2_opt(instance* inst, double* x);
+
+// Apply 2-opt refinement heuristic to multiple starting solutions provided by HEUR_GRASP, until timelimit is reached
+void solve_heur_multi_start(instance* inst, double* x);
 
 // Builds the tableau (variables and constraints)
 void build_model_BASIC(instance* inst, CPXENVptr env, CPXLPptr lp);

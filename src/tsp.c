@@ -246,6 +246,16 @@ int TSPopt(instance* inst) {
 			free(x_2_opt);
 			break;
 
+		case HEUR_MULTI_START:
+			symmetric = 0;
+			inst->ncols = (inst->nnodes * (inst->nnodes - 1)) / 2;
+			double* x_multi_start = (double*)calloc(inst->ncols, sizeof(double));
+			solve_heur_multi_start(inst, x_multi_start);
+			sprintf(edges_file_path, "%s/model_%s_edges.dat", edges_file_path, models[inst->model_type]);
+			print_solution(inst, x_multi_start, symmetric, edges_file_path);
+			free(x_multi_start);
+			break;
+
 		default:
 			print_error("Choose a correct value for the model to be used!");
 	}
@@ -1214,7 +1224,7 @@ void solve_heur_grasp(instance* inst, double* x, int n_runs) {
 		}
 	}
 
-	if (inst->verbose >= MEDIUM) printf("\nCost of the best solution: %f\n\n", min_sol_cost);
+	if (inst->verbose >= MEDIUM) printf("\nHEUR_GRASP -> Cost of the best solution: %f\n\n", min_sol_cost);
 	inst->z_best = min_sol_cost;
 
 	free(temp_x);
@@ -1254,18 +1264,6 @@ void solve_heur_extra_mileage(instance* inst, double* x) {
 	x[xpos(hull[hull_size - 1].id, hull[0].id, inst)] = 1.0;			// Then add the last edge from the last to the first node
 	*/
 	
-
-	/*
-	// Get the list of nodes which have already been inserted to the final local optimal solution (which at the moment are those belonging to the convex hull)
-	int* nodes_inserted = (int*)calloc(inst->nnodes, sizeof(int));
-	for (int i = 0; i < inst->nnodes; i++) {
-		for (int j = 0; j < hull_size; j++) {
-			if (i == hull[j].id) nodes_inserted[i] = 1;					// Node already inserted = 1 / Node not inserted yet = 0
-			break;
-		}
-	}
-	*/
-
 	// Build the list of "successors" of each node. If a node is not part of the solution yet, then its successor will be -1
 	int* succ = (int*)malloc(inst->nnodes * sizeof(int));
 	for (int i = 0; i < inst->nnodes; i++) succ[i] = -1;
@@ -1277,30 +1275,6 @@ void solve_heur_extra_mileage(instance* inst, double* x) {
 		for (int i = 0; i <= inst->nnodes - 2; i++) printf("%d->%d, ", i, succ[i]);
 		printf("%d->%d ]\n", inst->nnodes - 1, succ[inst->nnodes - 1]);
 	}
-
-	/*
-	// Get the list of nodes which are still to be inserted to the final local optimal solution
-	int n_nodes_to_insert = inst->nnodes - hull_size;
-	int* nodes_left = (int*)malloc(n_nodes_to_insert * sizeof(int));
-	int k = 0;
-	int i_belongs_to_hull = 0;											// Flag to indicate that node i of the following loop is part of the convex hull or not
-	for (int i = 0; i < inst->nnodes; i++) {
-		i_belongs_to_hull = 0;
-		for (int j = 0; j < hull_size; j++) {							// Check if node i is part of the convex hull...
-			if (i == hull[j].id) {
-				i_belongs_to_hull = 1;
-				break;
-			}
-		}
-		if (!i_belongs_to_hull) nodes_left[k++] = i;					// ...if not, then add node i to nodes_left								
-	}
-
-	if (inst->verbose >= HIGH) {
-		printf("Nodes still to insert: [ ");
-		for (int i = 0; i <= n_nodes_to_insert - 2; i++) printf("%d, ", nodes_left[i]);
-		printf("%d ]\n", nodes_left[n_nodes_to_insert - 1]);
-	}
-	*/
 
 	// Now we start inserting to the partial solution, at each iteration, the node which lead to the lowest "extra mileage" (as a locally optimal choice)
 	int n_nodes_to_insert = inst->nnodes - hull_size;
@@ -1453,8 +1427,56 @@ void solve_heur_2_opt(instance* inst, double* x) {
 		x[xpos(i, succ[i], inst)] = 1.0;
 	}
 
-	if (inst->verbose >= MEDIUM) printf("Cost of the best solution (after 2-opt refinement): %f\n\n", curr_col_cost);
+	if (inst->verbose >= MEDIUM) printf("HEUR_2_OPT -> Cost of the best solution (after 2-opt refinement): %f\n\n", curr_col_cost);
 	inst->z_best = curr_col_cost;
+
+	free(succ);
+
+	return;
+}
+
+
+void solve_heur_multi_start(instance* inst, double* x) {
+
+	double residual_timelimit = inst->timelimit;
+	int n_runs = 10000;
+	double best_sol_cost = INFINITY;
+
+	// Array to memorize temporarily the new solution before comparing it to the best one (collected in array x)
+	double* temp_x = (double*)calloc(inst->ncols, sizeof(double));
+
+	int n_iter = 1;
+	while (1) {
+
+		double t1 = second();
+		solve_heur_grasp(inst, temp_x, n_runs);					// First let GRASP find an always different reference solution (no need to reset solution array temp_x)
+		solve_heur_2_opt(inst, temp_x);							// Then use 2-opt refinement heuristic to improve the reference solution
+		double t2 = second();
+
+		// Keep the best solution found up to now
+		if (inst->z_best < best_sol_cost) {
+			best_sol_cost = inst->z_best;
+			for (int j = 0; j < inst->ncols; j++) x[j] = temp_x[j];
+		}
+
+		if (inst->verbose >= MEDIUM) printf("Time used for iteration number %d (HEUR_GRASP with %d iterations + HEUR_2_OPT): %f\n", n_iter, n_runs, t2 - t1);
+
+		// Update the amount of time left before timelimit is reached and provide it to Cplex to check
+		residual_timelimit = residual_timelimit - (t2 - t1);
+		// If the timelimit is reached for the current iteration => exit the loop
+		if (residual_timelimit <= 0) {
+			if (inst->verbose >= LOW) printf("TOTAL time limit reached\n");
+			break;
+		}
+
+		n_runs += 10000;
+		n_iter++;
+	}
+
+	if (inst->verbose >= MEDIUM) printf("HEUR_MULTI_START -> Cost of the best solution: %f\n\n", best_sol_cost);
+	inst->z_best = best_sol_cost;
+
+	free(temp_x);
 
 	return;
 }

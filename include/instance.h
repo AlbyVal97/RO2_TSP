@@ -8,7 +8,7 @@
 #define TICKS_PER_SECOND	1000.0  	// Cplex's ticks (depends on CPU)
 #define SECONDS_PER_DAY		86400		// Number of seconds in a day
 
-#define N_MODELS			26			// Total number of TSP models/approaches implemented to date = |models[]|
+#define N_MODELS			27			// Total number of TSP models/approaches implemented to date = |models[]|
 #define N_VERBOSITIES		4			// Total number of verbosity levels considered = |verbosities[]|
 #define N_MODES				3			// Total number of working modes of the program = |modes[]|
 
@@ -78,7 +78,8 @@ typedef enum {
 	HEUR_GREEDY, // 22
 	HEUR_GRASP, // 23
 	HEUR_EXTRA_MILEAGE, // 24
-	HEUR_2_OPT // 25
+	HEUR_2_OPT, // 25
+	HEUR_MULTI_START // 26
 } model_type;
 
 // Working modes enumeration
