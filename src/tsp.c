@@ -1341,7 +1341,7 @@ void solve_heur_2_opt(instance* inst, double* x) {
 	succ[i] = 0;
 
 	// Retrieve the cost of the solution provided by GRASP (to be updated)
-	double curr_col_cost = inst->z_best;
+	double curr_sol_cost = inst->z_best;
 
 	if (inst->verbose >= HIGH) {
 		printf("STARTING list of successors: [ ");
@@ -1378,7 +1378,7 @@ void solve_heur_2_opt(instance* inst, double* x) {
 		if (min_delta_cost >= 0) break;
 
 		// If min_delta_cost is negative, lower the current solution cost by its value
-		curr_col_cost += min_delta_cost;
+		curr_sol_cost += min_delta_cost;
 
 		if (inst->verbose >= HIGH) {
 			printf("best_a: %d\n", best_a);
@@ -1427,8 +1427,8 @@ void solve_heur_2_opt(instance* inst, double* x) {
 		x[xpos(i, succ[i], inst)] = 1.0;
 	}
 
-	if (inst->verbose >= MEDIUM) printf("HEUR_2_OPT -> Cost of the best solution (after 2-opt refinement): %f\n\n", curr_col_cost);
-	inst->z_best = curr_col_cost;
+	if (inst->verbose >= MEDIUM) printf("HEUR_2_OPT -> Cost of the best solution (after 2-opt refinement): %f\n\n", curr_sol_cost);
+	inst->z_best = curr_sol_cost;
 
 	free(succ);
 
