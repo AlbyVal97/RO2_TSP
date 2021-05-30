@@ -256,6 +256,18 @@ int TSPopt(instance* inst) {
 			free(x_multi_start);
 			break;
 
+		case HEUR_VNS:
+			symmetric = 0;
+			inst->ncols = (inst->nnodes * (inst->nnodes - 1)) / 2;
+			double* x_vns = (double*)calloc(inst->ncols, sizeof(double));
+
+			solve_heur_vns(inst, x_vns);
+
+			sprintf(edges_file_path, "%s/model_%s_edges.dat", edges_file_path, models[inst->model_type]);
+			print_solution(inst, x_vns, symmetric, edges_file_path);
+			free(x_vns);
+			break;
+
 		default:
 			print_error("Choose a correct value for the model to be used!");
 	}
@@ -1325,6 +1337,10 @@ void solve_heur_extra_mileage(instance* inst, double* x) {
 
 void solve_heur_2_opt(instance* inst, double* x) {
 
+	int count = 0;
+	
+	
+
 	// Compute the list of successors from the solution provided by GRASP constructive heuristic
 	int* succ = (int*)malloc(inst->nnodes * sizeof(int));
 	for (int i = 0; i < inst->nnodes; i++) succ[i] = -1;
@@ -1334,10 +1350,13 @@ void solve_heur_2_opt(instance* inst, double* x) {
 			if (i != j && succ[j] == -1 && x[xpos(i, j, inst)] > 0.5) {
 				succ[i] = j;
 				i = j;
+				count++;
 				break;
 			}
 		}
 	}
+	printf("count: %d\n", count);
+	printf("i: %d\n", i);
 	succ[i] = 0;
 
 	// Retrieve the cost of the solution provided by GRASP (to be updated)
@@ -1348,7 +1367,7 @@ void solve_heur_2_opt(instance* inst, double* x) {
 		for (int i = 0; i <= inst->nnodes - 2; i++) printf("%d->%d, ", i, succ[i]);
 		printf("%d->%d ]\n", inst->nnodes - 1, succ[inst->nnodes - 1]);
 	}
-
+	
 	// Find the pair of edges (associated to their two starting nodes a and b) whose substitution leads to 
 	// the maximum "cut" in current solution cost, which correspond to the most negative value of curr_delta_cost
 	int n_iter = 1;
@@ -1373,7 +1392,7 @@ void solve_heur_2_opt(instance* inst, double* x) {
 				}
 			}
 		}
-
+		printf("bbb\n");
 		// When the new solution cost is no longer able to become lower => local optimal solution achieved!
 		if (min_delta_cost >= 0) break;
 
@@ -1388,30 +1407,32 @@ void solve_heur_2_opt(instance* inst, double* x) {
 		// Since the successors of best_a and best_b will soon be updated, memorize the original ones for later use
 		int old_succ_a = succ[best_a];
 		int old_succ_b = succ[best_b];
-
+		printf("\n");
 		// Change verse to all edges between nodes old_succ_a and b
 		int temp_curr = old_succ_a;										// Start from node old_succ_a
+		printf("temp_curr = %d\n", temp_curr);
 		int temp_succ = -1;
 		while (temp_curr != best_b) {									// Continue until node best_b is reached
 			if (temp_succ == -1) temp_succ = succ[temp_curr];			// N.B. both successor (temp_succ) and successor of successor (temp_succ_succ)
 			int temp_succ_succ = succ[temp_succ];						// of temp_curr have to be memorized for the next iteration!
-
+			
 			succ[temp_succ] = temp_curr;								// Change the verse of the edge (temp_curr -> temp_succ)
-
+			
 			temp_curr = temp_succ;										// Shift one position towards node best_b
 			temp_succ = temp_succ_succ;
+			
 		}
-
+		
 		// Rearrange the connections between nodes a and b
 		succ[old_succ_a] = old_succ_b;
 		succ[best_a] = best_b;
-
+		
 		if (inst->verbose >= HIGH) {
 			printf("IMPROVED list of successors: [ ");
 			for (int i = 0; i <= inst->nnodes - 2; i++) printf("%d->%d, ", i, succ[i]);
 			printf("%d->%d ]\n", inst->nnodes - 1, succ[inst->nnodes - 1]);
 		}
-
+		
 		n_iter++;
 	}
 	
@@ -1479,6 +1500,130 @@ void solve_heur_multi_start(instance* inst, double* x) {
 	free(temp_x);
 
 	return;
+}
+
+
+void solve_heur_vns(instance* inst, double* x) {
+
+	double residual_timelimit = inst->timelimit;
+	int n_runs = 10000;
+	double best_sol_cost = INFINITY;
+
+	double t1 = second();
+
+	solve_heur_grasp(inst, x, inst->n_runs);
+
+	printf("Starting incumbent cost: %f\n\n", inst->z_best);
+
+	int* succ = (int*)malloc(inst->nnodes * sizeof(int));
+
+	//while (1) {
+	for (int l=0; l<100; l++) {
+		if (residual_timelimit <= 0) break;
+
+
+		solve_heur_2_opt(inst, x);
+		printf("Local Optimum reached: %f\n", inst->z_best);
+		int count = 0;
+		
+		
+		// Compute the list of successors from the local optimum solution 
+		
+		for (int i = 0; i < inst->nnodes; i++) succ[i] = -1;
+		int i = 0;
+		for (int k = 0; k < inst->nnodes - 1; k++) {
+			for (int j = 1; j < inst->nnodes; j++) {
+				if (i != j && succ[j] == -1 && x[xpos(i, j, inst)] > 0.5) {
+					succ[i] = j;
+					i = j;
+					break;
+				}
+			}
+		}
+		succ[i] = 0;
+		printf("count: %d\n", count);
+
+		double cost = 0.0;
+		/*for (int i = 0; i < inst->nnodes; i++) {
+			cost += dist(i, succ[i], inst);
+		}*/
+
+		//printf("COST: %f\n", cost);
+
+		//select three random edges to be removed 
+		int a = rand() % inst->nnodes;
+		int b = -1;
+		while ((b = rand() % inst->nnodes) == a);
+		int c = -1;
+		while ((c = rand() % inst->nnodes) == a || c==b);
+
+		printf("a = %d, b = %d, c = %d\n", a, b, c);
+		printf("succ_a = %d, succ_b = %d, succ_c = %d\n", succ[a], succ[b], succ[c]);
+
+		/*x[xpos(a, succ[a], inst)] = 0.0;
+		x[xpos(b, succ[b], inst)] = 0.0;
+		x[xpos(c, succ[c], inst)] = 0.0;*/
+
+		int temp_a = succ[a];
+		succ[a] = succ[b];
+		int temp_c = succ[c];
+		succ[c] = temp_a;
+		succ[b] = temp_c;
+		printf("a = %d, b = %d, c = %d\n", a, b, c);
+		printf("succ_a = %d, succ_b = %d, succ_c = %d\n", succ[a], succ[b], succ[c]);
+
+		for (int i = 0; i < inst->ncols; i++) x[i] = 0.0;
+		for (int i = 0; i < inst->nnodes; i++) {
+			
+			x[xpos(i, succ[i], inst)] = 1.0;
+		}
+		
+		printf("list of successors: [ ");
+		for (int i = 0; i <= inst->nnodes - 2; i++) printf("%d->%d, ", i, succ[i]);
+		printf("%d->%d ]\n", inst->nnodes - 1, succ[inst->nnodes - 1]);
+
+		/*x[xpos(a, succ[a], inst)] = 1.0;
+		x[xpos(b, succ[b], inst)] = 1.0;
+		x[xpos(c, succ[c], inst)] = 1.0;*/
+
+		cost = 0.0;
+		for (int i = 0; i < inst->nnodes; i++) {
+			cost += dist(i, succ[i], inst);
+		}
+
+		printf("COST after a 3-opt kick: %f\n\n", cost);
+		//print_solution(inst, x, 0, "prova");
+
+		// Compute the list of successors from the local optimum solution
+
+		count = 0;
+		for (int i = 0; i < inst->nnodes; i++) succ[i] = -1;
+		i = 0;
+		for (int k = 0; k < inst->nnodes - 1; k++) {
+			for (int j = 1; j < inst->nnodes; j++) {
+				if (i != j && x[xpos(i, j, inst)] > 0.5) {printf("node: %d, yes\n", i); count++;
+			}
+				
+				if (i != j && succ[j] == -1 && x[xpos(i, j, inst)] > 0.5) {
+					succ[i] = j;
+					i = j;
+					
+					break;
+				}
+			}
+		}
+		succ[i] = 0;
+		printf("countAA: %d\n", count);
+
+	}
+
+
+
+
+	
+	double t2 = second();
+
+	free(succ);
 }
 
 

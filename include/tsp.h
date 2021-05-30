@@ -72,6 +72,9 @@ void solve_heur_2_opt(instance* inst, double* x);
 // Apply 2-opt refinement heuristic to multiple starting solutions provided by HEUR_GRASP, until timelimit is reached
 void solve_heur_multi_start(instance* inst, double* x);
 
+// Apply vns meta heuristic, until timelimit is reached
+void solve_heur_vns(instance* inst, double* x);
+
 // Builds the tableau (variables and constraints)
 void build_model_BASIC(instance* inst, CPXENVptr env, CPXLPptr lp);
 void build_model_MTZ_STATIC(instance* inst, CPXENVptr env, CPXLPptr lp);
