@@ -219,7 +219,7 @@ int TSPopt(instance* inst) {
 			symmetric = 0;
 			inst->ncols = (inst->nnodes * (inst->nnodes - 1)) / 2;
 			double* x_grasp = (double*)calloc(inst->ncols, sizeof(double));
-			solve_heur_grasp(inst, x_grasp, inst->n_runs);
+			solve_heur_grasp(inst, x_grasp, inst->timelimit);
 			sprintf(edges_file_path, "%s/model_%s_edges.dat", edges_file_path, models[inst->model_type]);
 			print_solution(inst, x_grasp, symmetric, edges_file_path);
 			free(x_grasp);
@@ -239,7 +239,7 @@ int TSPopt(instance* inst) {
 			symmetric = 0;
 			inst->ncols = (inst->nnodes * (inst->nnodes - 1)) / 2;
 			double* x_2_opt = (double*)calloc(inst->ncols, sizeof(double));
-			solve_heur_grasp(inst, x_2_opt, inst->n_runs);
+			solve_heur_grasp(inst, x_2_opt, inst->timelimit / 10);
 			solve_heur_2_opt(inst, x_2_opt);
 			sprintf(edges_file_path, "%s/model_%s_edges.dat", edges_file_path, models[inst->model_type]);
 			print_solution(inst, x_2_opt, symmetric, edges_file_path);
@@ -1131,7 +1131,9 @@ void solve_heur_greedy(instance* inst, double* x) {
 }
 
 
-void solve_heur_grasp(instance* inst, double* x, int n_runs) {
+void solve_heur_grasp(instance* inst, double* x, double max_time) {
+
+	double residual_timelimit = max_time;
 
 	// Array with all precomputed edges length = distances between all pairs of nodes
 	double* edges_length = (double*)malloc(inst->ncols * sizeof(double));
@@ -1150,10 +1152,11 @@ void solve_heur_grasp(instance* inst, double* x, int n_runs) {
 
 	int best_start_node = -1;
 	double min_sol_cost = INFINITY;
-	for (int run_count = 1; run_count <= n_runs; run_count++) {					// Try as many runs as indicated by n_runs parameter
+	while(1) {																	// Try as many runs as mad possible by max_time timelimit
+
+		double t1 = second();
 
 		int start_node = rand() % inst->nnodes;									// Choose randomly a starting node
-		if (inst->verbose >= HIGH) printf("\nStarting node selected for run #%d : %d\n", run_count, start_node + 1);
 
 		double curr_sol_cost = 0.0;												// Restore the cost of the current solution before starting the new run
 		for (int j = 0; j < inst->nnodes; j++) nodes_visited[j] = 0;			// Restore the array of visited nodes before starting the new run
@@ -1234,6 +1237,12 @@ void solve_heur_grasp(instance* inst, double* x, int n_runs) {
 			min_sol_cost = curr_sol_cost;
 			for (int j = 0; j < inst->ncols; j++) x[j] = temp_x[j];
 		}
+
+		double t2 = second();
+
+		// Update the residual timelimit and check if it has been reached (if so, stop generating new solutions and keep the best one found up to now)
+		residual_timelimit = residual_timelimit - (t2 - t1);
+		if (residual_timelimit <= 0) break;
 	}
 
 	if (inst->verbose >= MEDIUM) printf("\nHEUR_GRASP -> Cost of the best solution: %f\n\n", min_sol_cost);
@@ -1337,10 +1346,6 @@ void solve_heur_extra_mileage(instance* inst, double* x) {
 
 void solve_heur_2_opt(instance* inst, double* x) {
 
-	int count = 0;
-	
-	
-
 	// Compute the list of successors from the solution provided by GRASP constructive heuristic
 	int* succ = (int*)malloc(inst->nnodes * sizeof(int));
 	for (int i = 0; i < inst->nnodes; i++) succ[i] = -1;
@@ -1350,16 +1355,13 @@ void solve_heur_2_opt(instance* inst, double* x) {
 			if (i != j && succ[j] == -1 && x[xpos(i, j, inst)] > 0.5) {
 				succ[i] = j;
 				i = j;
-				count++;
 				break;
 			}
 		}
 	}
-	printf("count: %d\n", count);
-	printf("i: %d\n", i);
 	succ[i] = 0;
 
-	// Retrieve the cost of the solution provided by GRASP (to be updated)
+	// Retrieve the cost of the solution provided by GRASP or by an iteration of VNS
 	double curr_sol_cost = inst->z_best;
 
 	if (inst->verbose >= HIGH) {
@@ -1392,7 +1394,6 @@ void solve_heur_2_opt(instance* inst, double* x) {
 				}
 			}
 		}
-		printf("bbb\n");
 		// When the new solution cost is no longer able to become lower => local optimal solution achieved!
 		if (min_delta_cost >= 0) break;
 
@@ -1407,10 +1408,8 @@ void solve_heur_2_opt(instance* inst, double* x) {
 		// Since the successors of best_a and best_b will soon be updated, memorize the original ones for later use
 		int old_succ_a = succ[best_a];
 		int old_succ_b = succ[best_b];
-		printf("\n");
 		// Change verse to all edges between nodes old_succ_a and b
 		int temp_curr = old_succ_a;										// Start from node old_succ_a
-		printf("temp_curr = %d\n", temp_curr);
 		int temp_succ = -1;
 		while (temp_curr != best_b) {									// Continue until node best_b is reached
 			if (temp_succ == -1) temp_succ = succ[temp_curr];			// N.B. both successor (temp_succ) and successor of successor (temp_succ_succ)
@@ -1460,7 +1459,6 @@ void solve_heur_2_opt(instance* inst, double* x) {
 void solve_heur_multi_start(instance* inst, double* x) {
 
 	double residual_timelimit = inst->timelimit;
-	int n_runs = 10000;
 	double best_sol_cost = INFINITY;
 
 	// Array to memorize temporarily the new solution before comparing it to the best one (collected in array x)
@@ -1469,8 +1467,10 @@ void solve_heur_multi_start(instance* inst, double* x) {
 	int n_iter = 1;
 	while (1) {
 
+		double grasp_timelimit = (double)(((double)rand() / RAND_MAX) * 10.0);
+
 		double t1 = second();
-		solve_heur_grasp(inst, temp_x, n_runs);					// First let GRASP find an always different reference solution (no need to reset solution array temp_x)
+		solve_heur_grasp(inst, temp_x, grasp_timelimit);		// First let GRASP find an always different reference solution (no need to reset solution array temp_x)
 		solve_heur_2_opt(inst, temp_x);							// Then use 2-opt refinement heuristic to improve the reference solution
 		double t2 = second();
 
@@ -1480,7 +1480,7 @@ void solve_heur_multi_start(instance* inst, double* x) {
 			for (int j = 0; j < inst->ncols; j++) x[j] = temp_x[j];
 		}
 
-		if (inst->verbose >= MEDIUM) printf("Time used for iteration number %d (HEUR_GRASP with %d iterations + HEUR_2_OPT): %f\n", n_iter, n_runs, t2 - t1);
+		if (inst->verbose >= MEDIUM) printf("Time used for iteration number %d (HEUR_GRASP + HEUR_2_OPT): %f\n", n_iter, t2 - t1);
 
 		// Update the amount of time left before timelimit is reached and provide it to Cplex to check
 		residual_timelimit = residual_timelimit - (t2 - t1);
@@ -1490,7 +1490,6 @@ void solve_heur_multi_start(instance* inst, double* x) {
 			break;
 		}
 
-		n_runs += 10000;
 		n_iter++;
 	}
 
@@ -1506,29 +1505,39 @@ void solve_heur_multi_start(instance* inst, double* x) {
 void solve_heur_vns(instance* inst, double* x) {
 
 	double residual_timelimit = inst->timelimit;
-	int n_runs = 10000;
-	double best_sol_cost = INFINITY;
+	double min_sol_cost = INFINITY;
 
+	// Use GRASP to generate the reference solution, allowing it to use up to 1/10 of the total timelimit
 	double t1 = second();
+	solve_heur_grasp(inst, x, residual_timelimit / 10);
+	double t2 = second();
 
-	solve_heur_grasp(inst, x, inst->n_runs);
+	residual_timelimit = residual_timelimit - (t2 - t1);
 
-	printf("Starting incumbent cost: %f\n\n", inst->z_best);
+	if (inst->verbose >= MEDIUM) printf("Starting incumbent cost: %f\n\n", inst->z_best);
 
 	int* succ = (int*)malloc(inst->nnodes * sizeof(int));
 
-	//while (1) {
-	for (int l=0; l<100; l++) {
-		if (residual_timelimit <= 0) break;
-
+	t1 = second();
+	while (1) {
 
 		solve_heur_2_opt(inst, x);
-		printf("Local Optimum reached: %f\n", inst->z_best);
-		int count = 0;
+		t2 = second();
+
+		double curr_sol_cost = inst->z_best;
+		if (inst->verbose >= MEDIUM) printf("Local Optimum reached: %f\n", inst->z_best);
 		
+		// Compare the new solution cost with the (currently) best one, then memorize the best solution
+		if (curr_sol_cost < min_sol_cost) {
+			min_sol_cost = curr_sol_cost;
+		}
+
+		residual_timelimit = residual_timelimit - (t2 - t1);
+		if (residual_timelimit <= 0) break;
 		
+		t1 = second();
+
 		// Compute the list of successors from the local optimum solution 
-		
 		for (int i = 0; i < inst->nnodes; i++) succ[i] = -1;
 		int i = 0;
 		for (int k = 0; k < inst->nnodes - 1; k++) {
@@ -1541,87 +1550,60 @@ void solve_heur_vns(instance* inst, double* x) {
 			}
 		}
 		succ[i] = 0;
-		printf("count: %d\n", count);
 
-		double cost = 0.0;
-		/*for (int i = 0; i < inst->nnodes; i++) {
-			cost += dist(i, succ[i], inst);
-		}*/
-
-		//printf("COST: %f\n", cost);
-
-		//select three random edges to be removed 
+		// Select three random edges to be removed 
 		int a = rand() % inst->nnodes;
 		int b = -1;
 		while ((b = rand() % inst->nnodes) == a);
 		int c = -1;
 		while ((c = rand() % inst->nnodes) == a || c==b);
 
-		printf("a = %d, b = %d, c = %d\n", a, b, c);
-		printf("succ_a = %d, succ_b = %d, succ_c = %d\n", succ[a], succ[b], succ[c]);
+		if (inst->verbose >= HIGH) printf("a = %d, b = %d, c = %d\n", a, b, c);
+		if (inst->verbose >= HIGH) printf("succ_a = %d, succ_b = %d, succ_c = %d\n", succ[a], succ[b], succ[c]);
 
-		/*x[xpos(a, succ[a], inst)] = 0.0;
-		x[xpos(b, succ[b], inst)] = 0.0;
-		x[xpos(c, succ[c], inst)] = 0.0;*/
+		// Assure that a, b, c are chosen in this order inside the succ data structure
+		int n_nodes_chosen = 0;
+		int temp_a = a;
+		int temp_b = b;
+		int temp_c = c;
+		int curr_node = 0;
+		for (int i = 0; i < inst->nnodes; i++) {
+			int is_curr_node_chosen = (curr_node == temp_a || curr_node == temp_b || curr_node == temp_c);
+			if (n_nodes_chosen == 0 && is_curr_node_chosen) {
+				a = curr_node;
+				n_nodes_chosen++;
+			}
+			else if (n_nodes_chosen == 1 && is_curr_node_chosen) {
+				b = curr_node;
+				n_nodes_chosen++;
+			}
+			else if (n_nodes_chosen == 2 && is_curr_node_chosen) {
+				c = curr_node;
+			}
+			curr_node = succ[curr_node];
+		}
 
-		int temp_a = succ[a];
+		int temp_succ_a = succ[a];
 		succ[a] = succ[b];
-		int temp_c = succ[c];
-		succ[c] = temp_a;
-		succ[b] = temp_c;
-		printf("a = %d, b = %d, c = %d\n", a, b, c);
-		printf("succ_a = %d, succ_b = %d, succ_c = %d\n", succ[a], succ[b], succ[c]);
+		int temp_succ_c = succ[c];
+		succ[c] = temp_succ_a;
+		succ[b] = temp_succ_c;
+		if (inst->verbose >= HIGH) printf("a = %d, b = %d, c = %d\n", a, b, c);
+		if (inst->verbose >= HIGH) printf("succ_a = %d, succ_b = %d, succ_c = %d\n", succ[a], succ[b], succ[c]);
 
 		for (int i = 0; i < inst->ncols; i++) x[i] = 0.0;
-		for (int i = 0; i < inst->nnodes; i++) {
-			
-			x[xpos(i, succ[i], inst)] = 1.0;
-		}
-		
-		printf("list of successors: [ ");
-		for (int i = 0; i <= inst->nnodes - 2; i++) printf("%d->%d, ", i, succ[i]);
-		printf("%d->%d ]\n", inst->nnodes - 1, succ[inst->nnodes - 1]);
+		for (int i = 0; i < inst->nnodes; i++) x[xpos(i, succ[i], inst)] = 1.0;
 
-		/*x[xpos(a, succ[a], inst)] = 1.0;
-		x[xpos(b, succ[b], inst)] = 1.0;
-		x[xpos(c, succ[c], inst)] = 1.0;*/
+		curr_sol_cost = 0.0;
+		for (int i = 0; i < inst->nnodes; i++) curr_sol_cost += dist(i, succ[i], inst);
 
-		cost = 0.0;
-		for (int i = 0; i < inst->nnodes; i++) {
-			cost += dist(i, succ[i], inst);
-		}
-
-		printf("COST after a 3-opt kick: %f\n\n", cost);
-		//print_solution(inst, x, 0, "prova");
-
-		// Compute the list of successors from the local optimum solution
-
-		count = 0;
-		for (int i = 0; i < inst->nnodes; i++) succ[i] = -1;
-		i = 0;
-		for (int k = 0; k < inst->nnodes - 1; k++) {
-			for (int j = 1; j < inst->nnodes; j++) {
-				if (i != j && x[xpos(i, j, inst)] > 0.5) {printf("node: %d, yes\n", i); count++;
-			}
-				
-				if (i != j && succ[j] == -1 && x[xpos(i, j, inst)] > 0.5) {
-					succ[i] = j;
-					i = j;
-					
-					break;
-				}
-			}
-		}
-		succ[i] = 0;
-		printf("countAA: %d\n", count);
+		printf("COST after a 3-opt kick: %f\n\n", curr_sol_cost);
+		inst->z_best = curr_sol_cost;
 
 	}
 
-
-
-
-	
-	double t2 = second();
+	if (inst->verbose >= MEDIUM) printf("HEUR_VNS -> Cost of the best solution: %f\n\n", min_sol_cost);
+	inst->z_best = min_sol_cost;
 
 	free(succ);
 }

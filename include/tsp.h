@@ -61,7 +61,7 @@ void solve_heur_soft_fix(instance* inst, CPXENVptr env, CPXLPptr lp);
 void solve_heur_greedy(instance* inst, double* x);
 
 // Apply a variant of greedy heuristic which includes random choices to improve probability of finding global optimal solution
-void solve_heur_grasp(instance* inst, double* x, int n_runs);
+void solve_heur_grasp(instance* inst, double* x, double max_time);
 
 // Apply the extra mileage insertion heuristics starting from the convex hull of the instance nodes
 void solve_heur_extra_mileage(instance* inst, double* x);
