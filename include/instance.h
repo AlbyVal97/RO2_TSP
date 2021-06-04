@@ -8,7 +8,7 @@
 #define TICKS_PER_SECOND	1000.0  	// Cplex's ticks (depends on CPU)
 #define SECONDS_PER_DAY		86400		// Number of seconds in a day
 
-#define N_MODELS			28			// Total number of TSP models/approaches implemented to date = |models[]|
+#define N_MODELS			29			// Total number of TSP models/approaches implemented to date = |models[]|
 #define N_VERBOSITIES		4			// Total number of verbosity levels considered = |verbosities[]|
 #define N_MODES				3			// Total number of working modes of the program = |modes[]|
 
@@ -21,7 +21,7 @@ static const char* models[] = { "BASIC", "MTZ_STATIC", "MTZ_LAZY", "MTZ_SEC2_STA
 								"HEUR_SOFT_FIX_3", "HEUR_SOFT_FIX_5", "HEUR_SOFT_FIX_7", "HEUR_SOFT_FIX_9", "HEUR_SOFT_FIX_VAR",	// Soft-fix heuristics variants
 								"HEUR_GREEDY", "HEUR_GRASP", "HEUR_EXTRA_MILEAGE",													// Constructive heuristics
 								"HEUR_2_OPT", "HEUR_MULTI_START", 													                // Refinement heuristics
-								"HEUR_VNS" };																						// Meta heuristics
+								"HEUR_VNS", "HEUR_TABU" };																						// Meta heuristics
 
 // List of verbosity levels considered, indicating which and how many details have to be shown on the console
 static const char* verbosities[] = { "TEST",		// Prints only summary of input parameters and total time required;
@@ -81,7 +81,8 @@ typedef enum {
 	HEUR_EXTRA_MILEAGE, // 24
 	HEUR_2_OPT, // 25
 	HEUR_MULTI_START, // 26
-	HEUR_VNS // 27
+	HEUR_VNS, // 27
+	HEUR_TABU // 28
 } model_type;
 
 // Working modes enumeration

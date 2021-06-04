@@ -75,6 +75,13 @@ void solve_heur_multi_start(instance* inst, double* x);
 // Apply vns meta heuristic, until timelimit is reached
 void solve_heur_vns(instance* inst, double* x);
 
+// Apply tabu search meta heuristic, until timelimit is reached
+void solve_heur_tabu(instance* inst, double* x);
+
+void _2opt_move(instance * inst, int a, int b, int* succ);
+void compute_best_node(instance* inst, int* succ, int* best_a, int* best_b, double* min_cost);
+void compute_succ(instance* inst, double* x, int* succ);
+
 // Builds the tableau (variables and constraints)
 void build_model_BASIC(instance* inst, CPXENVptr env, CPXLPptr lp);
 void build_model_MTZ_STATIC(instance* inst, CPXENVptr env, CPXLPptr lp);

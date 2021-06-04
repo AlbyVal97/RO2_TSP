@@ -268,6 +268,18 @@ int TSPopt(instance* inst) {
 			free(x_vns);
 			break;
 
+		case HEUR_TABU:
+			symmetric = 0;
+			inst->ncols = (inst->nnodes * (inst->nnodes - 1)) / 2;
+			double* x_tabu = (double*)calloc(inst->ncols, sizeof(double));
+
+			solve_heur_tabu(inst, x_tabu);
+
+			sprintf(edges_file_path, "%s/model_%s_edges.dat", edges_file_path, models[inst->model_type]);
+			print_solution(inst, x_tabu, symmetric, edges_file_path);
+			free(x_tabu);
+			break;
+
 		default:
 			print_error("Choose a correct value for the model to be used!");
 	}
@@ -1343,11 +1355,8 @@ void solve_heur_extra_mileage(instance* inst, double* x) {
 	return;
 }
 
+void compute_succ(instance* inst, double* x, int* succ) {
 
-void solve_heur_2_opt(instance* inst, double* x) {
-
-	// Compute the list of successors from the solution provided by GRASP constructive heuristic
-	int* succ = (int*)malloc(inst->nnodes * sizeof(int));
 	for (int i = 0; i < inst->nnodes; i++) succ[i] = -1;
 	int i = 0;
 	for (int k = 0; k < inst->nnodes - 1; k++) {
@@ -1360,6 +1369,68 @@ void solve_heur_2_opt(instance* inst, double* x) {
 		}
 	}
 	succ[i] = 0;
+}
+
+void compute_best_node(instance* inst, int* succ, int* best_a, int* best_b, double* min_delta_cost) {
+
+	for (int a = 0; a < inst->nnodes; a++) {
+		for (int b = 0; b < inst->nnodes; b++) {
+
+			// The two selected nodes must be non-consecutive
+			if (a != b && b != succ[a] && a != succ[b]) {
+				double curr_delta_cost = (dist(a, b, inst) + dist(succ[a], succ[b], inst)) - (dist(a, succ[a], inst) + dist(b, succ[b], inst));
+				if (curr_delta_cost < *min_delta_cost) {
+					*min_delta_cost = curr_delta_cost;
+					*best_a = a;
+					*best_b = b;
+				}
+			}
+		}
+	}
+}
+
+void _2opt_move(instance* inst, int a, int b, int* succ) {
+
+	// Since the successors of best_a and best_b will soon be updated, memorize the original ones for later use
+	int old_succ_a = succ[a];
+	int old_succ_b = succ[b];
+	// Change verse to all edges between nodes old_succ_a and b
+	int temp_curr = old_succ_a;										// Start from node old_succ_a
+	int temp_succ = -1;
+	while (temp_curr != b) {									// Continue until node best_b is reached
+		if (temp_succ == -1) temp_succ = succ[temp_curr];			// N.B. both successor (temp_succ) and successor of successor (temp_succ_succ)
+		int temp_succ_succ = succ[temp_succ];						// of temp_curr have to be memorized for the next iteration!
+
+		succ[temp_succ] = temp_curr;								// Change the verse of the edge (temp_curr -> temp_succ)
+
+		temp_curr = temp_succ;										// Shift one position towards node best_b
+		temp_succ = temp_succ_succ;
+
+	}
+
+	// Rearrange the connections between nodes a and b
+	succ[old_succ_a] = old_succ_b;
+	succ[a] = b;
+
+}
+
+void solve_heur_2_opt(instance* inst, double* x) {
+
+	// Compute the list of successors from the solution provided by GRASP constructive heuristic
+	int* succ = (int*)malloc(inst->nnodes * sizeof(int));
+	compute_succ(inst, x, succ);
+	/*for (int i = 0; i < inst->nnodes; i++) succ[i] = -1;
+	int i = 0;
+	for (int k = 0; k < inst->nnodes - 1; k++) {
+		for (int j = 1; j < inst->nnodes; j++) {
+			if (i != j && succ[j] == -1 && x[xpos(i, j, inst)] > 0.5) {
+				succ[i] = j;
+				i = j;
+				break;
+			}
+		}
+	}
+	succ[i] = 0;*/
 
 	// Retrieve the cost of the solution provided by GRASP or by an iteration of VNS
 	double curr_sol_cost = inst->z_best;
@@ -1380,7 +1451,10 @@ void solve_heur_2_opt(instance* inst, double* x) {
 		int best_a = -1;
 		int best_b = -1;
 		double min_delta_cost = INFINITY;
-		for (int a = 0; a < inst->nnodes; a++) {
+
+		compute_best_node(inst, succ, &best_a, &best_b, &min_delta_cost);
+
+		/*for (int a = 0; a < inst->nnodes; a++) {
 			for (int b = 0; b < inst->nnodes; b++) {
 
 				// The two selected nodes must be non-consecutive
@@ -1393,7 +1467,7 @@ void solve_heur_2_opt(instance* inst, double* x) {
 					}
 				}
 			}
-		}
+		}*/
 		// When the new solution cost is no longer able to become lower => local optimal solution achieved!
 		if (min_delta_cost >= 0) break;
 
@@ -1406,7 +1480,7 @@ void solve_heur_2_opt(instance* inst, double* x) {
 		}
 
 		// Since the successors of best_a and best_b will soon be updated, memorize the original ones for later use
-		int old_succ_a = succ[best_a];
+		/*int old_succ_a = succ[best_a];
 		int old_succ_b = succ[best_b];
 		// Change verse to all edges between nodes old_succ_a and b
 		int temp_curr = old_succ_a;										// Start from node old_succ_a
@@ -1424,7 +1498,9 @@ void solve_heur_2_opt(instance* inst, double* x) {
 		
 		// Rearrange the connections between nodes a and b
 		succ[old_succ_a] = old_succ_b;
-		succ[best_a] = best_b;
+		succ[best_a] = best_b;*/
+
+		void _2opt_move(inst, best_a, best_b, succ);
 		
 		if (inst->verbose >= HIGH) {
 			printf("IMPROVED list of successors: [ ");
@@ -1606,6 +1682,101 @@ void solve_heur_vns(instance* inst, double* x) {
 	inst->z_best = min_sol_cost;
 
 	free(succ);
+}
+
+void solve_heur_tabu(instance* inst, double* x) {
+
+	double residual_timelimit = inst->timelimit;
+	double min_sol_cost = INFINITY;
+	int tenure = 100;
+
+	// Use GRASP to generate the reference solution, allowing it to use up to 1/10 of the total timelimit
+	double t1 = second();
+	solve_heur_grasp(inst, x, residual_timelimit / 10);
+	double t2 = second();
+
+	residual_timelimit = residual_timelimit - (t2 - t1);
+
+	if (inst->verbose >= MEDIUM) printf("Starting incumbent cost: %f\n\n", inst->z_best);
+
+	int* succ = (int*)malloc(inst->nnodes * sizeof(int));
+	compute_succ(inst, x, succ);
+
+	int* tabu = malloc(inst->nnodes * sizeof(int));
+	for (int i = 0; i < inst->nnodes; i++) tabu[i] = -1;
+
+	int n_iter = 0;
+	double curr_cost = inst->z_best;
+
+	t1 = second();
+	while (1) {
+		
+		while (1) {
+			int a, b;
+			double min_cost = INFINITY;
+			
+			compute_best_node(inst, succ, &a, &b, &min_cost);
+			printf("%f\n", min_cost);
+			if (tabu[a] != -1 && n_iter - tabu[a] <= tenure) {
+				printf("NODE a is tabu!\n");
+				break;
+			}
+			if (tabu[b] != -1 && n_iter - tabu[b] <= tenure) {
+				printf("NODE b is tabu!\n");
+				break;
+			}
+			if (min_cost >= 0) {
+				printf("LOCAL optimum reached: %f\n", curr_cost);
+				min_sol_cost = curr_cost;
+				break;
+			}
+			//tabu[a] = n_iter;
+			//tabu[b] = n_iter;
+			curr_cost += min_cost;
+			_2opt_move(inst, a, b, succ);
+
+			n_iter++;
+
+		}
+
+		t2 = second();
+		residual_timelimit = residual_timelimit - (t2 - t1);
+		if (residual_timelimit <= 0) break;
+
+		t1 = second();
+		//2-opt random kick to avoid loop
+		int node_a, node_b;
+		while (1) {
+			node_a = rand() % inst->nnodes;
+			while ((node_b = rand() % inst->nnodes) == succ[node_a]);
+			printf("a: %d, b: %d\n", node_a, node_b);
+			/*if (tabu[node_a] != -1 && n_iter - tabu[node_a] <= tenure)
+				printf("NODE a is tabu!\n");
+			else if (tabu[node_b] != -1 && n_iter - tabu[node_b] <= tenure)
+				printf("NODE b is tabu!\n");*/
+			{
+				//worsening move
+				double worse_cost = (dist(node_a, node_b, inst) + dist(succ[node_a], succ[node_b], inst)) - (dist(node_a, succ[node_a], inst) + dist(node_b, succ[node_b], inst));
+				curr_cost = min_sol_cost + worse_cost;
+				tabu[node_a] = n_iter;
+				tabu[node_b] = n_iter;
+				_2opt_move(inst, node_a, node_b, succ);
+				printf("Cost after 2-OPT kick: %f\n", curr_cost);
+				n_iter++;
+				break;
+			}
+		}
+
+	}
+	
+	for (int i = 0; i < inst->ncols; i++) x[i] = 0.0;
+	for (int i = 0; i <= inst->nnodes - 1; i++) {
+		x[xpos(i, succ[i], inst)] = 1.0;
+	}
+
+	free(succ);
+	free(tabu);
+
 }
 
 
