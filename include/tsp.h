@@ -78,9 +78,18 @@ void solve_heur_vns(instance* inst, double* x);
 // Apply tabu search meta heuristic, until timelimit is reached
 void solve_heur_tabu(instance* inst, double* x);
 
+// Apply genetic algorithm meta heuristic, until timelimit is reached
+void solve_heur_genetic(instance* inst, double* x, int pop_size);
+
 void _2opt_move(instance * inst, int a, int b, int* succ);
 void compute_best_node(instance* inst, int* succ, int* best_a, int* best_b, double* min_cost);
 void compute_succ(instance* inst, double* x, int* succ);
+
+// Generates a random feasible solution (used to generate the starting population of solutions for HEUR_GENETIC)
+void generate_random_solution(instance* inst, double* x);
+
+// Generates a random list of nodes corresponding to a feasible solution (used as chromosome in HEUR_GENETIC)
+void _generate_feasible_nodes_list(instance* inst, int* nodes_list);
 
 // Builds the tableau (variables and constraints)
 void build_model_BASIC(instance* inst, CPXENVptr env, CPXLPptr lp);

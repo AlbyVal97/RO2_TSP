@@ -201,7 +201,9 @@ int TSPopt(instance* inst) {
 				sprintf(logfile_path, "%s/logfile_%s.txt", logfile_path, models[inst->model_type]);
 				if (CPXsetlogfilename(env, logfile_path, "w")) print_error("CPXsetlogfilename() error in setting logfile name");
 			}
+
 			solve_heur_soft_fix(inst, env, lp);
+
 			sprintf(edges_file_path, "%s/model_%s_edges.dat", edges_file_path, models[inst->model_type]);
 			break;
 
@@ -209,7 +211,9 @@ int TSPopt(instance* inst) {
 			symmetric = 0;
 			inst->ncols = (inst->nnodes * (inst->nnodes - 1)) / 2;
 			double* x_greedy = (double*)calloc(inst->ncols, sizeof(double));
+
 			solve_heur_greedy(inst, x_greedy);
+
 			sprintf(edges_file_path, "%s/model_%s_edges.dat", edges_file_path, models[inst->model_type]);
 			print_solution(inst, x_greedy, symmetric, edges_file_path);
 			free(x_greedy);
@@ -219,7 +223,9 @@ int TSPopt(instance* inst) {
 			symmetric = 0;
 			inst->ncols = (inst->nnodes * (inst->nnodes - 1)) / 2;
 			double* x_grasp = (double*)calloc(inst->ncols, sizeof(double));
+
 			solve_heur_grasp(inst, x_grasp, inst->timelimit);
+
 			sprintf(edges_file_path, "%s/model_%s_edges.dat", edges_file_path, models[inst->model_type]);
 			print_solution(inst, x_grasp, symmetric, edges_file_path);
 			free(x_grasp);
@@ -229,7 +235,9 @@ int TSPopt(instance* inst) {
 			symmetric = 0;
 			inst->ncols = (inst->nnodes * (inst->nnodes - 1)) / 2;
 			double* x_extra_mileage = (double*)calloc(inst->ncols, sizeof(double));
+
 			solve_heur_extra_mileage(inst, x_extra_mileage);
+
 			sprintf(edges_file_path, "%s/model_%s_edges.dat", edges_file_path, models[inst->model_type]);
 			print_solution(inst, x_extra_mileage, symmetric, edges_file_path);
 			free(x_extra_mileage);
@@ -239,8 +247,10 @@ int TSPopt(instance* inst) {
 			symmetric = 0;
 			inst->ncols = (inst->nnodes * (inst->nnodes - 1)) / 2;
 			double* x_2_opt = (double*)calloc(inst->ncols, sizeof(double));
+
 			solve_heur_grasp(inst, x_2_opt, inst->timelimit / 10);
 			solve_heur_2_opt(inst, x_2_opt);
+
 			sprintf(edges_file_path, "%s/model_%s_edges.dat", edges_file_path, models[inst->model_type]);
 			print_solution(inst, x_2_opt, symmetric, edges_file_path);
 			free(x_2_opt);
@@ -250,7 +260,9 @@ int TSPopt(instance* inst) {
 			symmetric = 0;
 			inst->ncols = (inst->nnodes * (inst->nnodes - 1)) / 2;
 			double* x_multi_start = (double*)calloc(inst->ncols, sizeof(double));
+
 			solve_heur_multi_start(inst, x_multi_start);
+
 			sprintf(edges_file_path, "%s/model_%s_edges.dat", edges_file_path, models[inst->model_type]);
 			print_solution(inst, x_multi_start, symmetric, edges_file_path);
 			free(x_multi_start);
@@ -278,6 +290,18 @@ int TSPopt(instance* inst) {
 			sprintf(edges_file_path, "%s/model_%s_edges.dat", edges_file_path, models[inst->model_type]);
 			print_solution(inst, x_tabu, symmetric, edges_file_path);
 			free(x_tabu);
+			break;
+
+		case HEUR_GENETIC:
+			symmetric = 0;
+			inst->ncols = (inst->nnodes * (inst->nnodes - 1)) / 2;
+			double* x_genetic = (double*)calloc(inst->ncols, sizeof(double));
+
+			solve_heur_genetic(inst, x_genetic, 1000);
+
+			sprintf(edges_file_path, "%s/model_%s_edges.dat", edges_file_path, models[inst->model_type]);
+			print_solution(inst, x_genetic, symmetric, edges_file_path);
+			free(x_genetic);
 			break;
 
 		default:
@@ -1355,6 +1379,7 @@ void solve_heur_extra_mileage(instance* inst, double* x) {
 	return;
 }
 
+
 void compute_succ(instance* inst, double* x, int* succ) {
 
 	for (int i = 0; i < inst->nnodes; i++) succ[i] = -1;
@@ -1370,6 +1395,7 @@ void compute_succ(instance* inst, double* x, int* succ) {
 	}
 	succ[i] = 0;
 }
+
 
 void compute_best_node(instance* inst, int* succ, int* best_a, int* best_b, double* min_delta_cost) {
 
@@ -1389,6 +1415,7 @@ void compute_best_node(instance* inst, int* succ, int* best_a, int* best_b, doub
 	}
 }
 
+
 void _2opt_move(instance* inst, int a, int b, int* succ) {
 
 	// Since the successors of best_a and best_b will soon be updated, memorize the original ones for later use
@@ -1397,7 +1424,7 @@ void _2opt_move(instance* inst, int a, int b, int* succ) {
 	// Change verse to all edges between nodes old_succ_a and b
 	int temp_curr = old_succ_a;										// Start from node old_succ_a
 	int temp_succ = -1;
-	while (temp_curr != b) {									// Continue until node best_b is reached
+	while (temp_curr != b) {										// Continue until node best_b is reached
 		if (temp_succ == -1) temp_succ = succ[temp_curr];			// N.B. both successor (temp_succ) and successor of successor (temp_succ_succ)
 		int temp_succ_succ = succ[temp_succ];						// of temp_curr have to be memorized for the next iteration!
 
@@ -1414,12 +1441,14 @@ void _2opt_move(instance* inst, int a, int b, int* succ) {
 
 }
 
+
 void solve_heur_2_opt(instance* inst, double* x) {
 
 	// Compute the list of successors from the solution provided by GRASP constructive heuristic
 	int* succ = (int*)malloc(inst->nnodes * sizeof(int));
-	compute_succ(inst, x, succ);
-	/*for (int i = 0; i < inst->nnodes; i++) succ[i] = -1;
+
+	//compute_succ(inst, x, succ);
+	for (int i = 0; i < inst->nnodes; i++) succ[i] = -1;
 	int i = 0;
 	for (int k = 0; k < inst->nnodes - 1; k++) {
 		for (int j = 1; j < inst->nnodes; j++) {
@@ -1430,7 +1459,7 @@ void solve_heur_2_opt(instance* inst, double* x) {
 			}
 		}
 	}
-	succ[i] = 0;*/
+	succ[i] = 0;
 
 	// Retrieve the cost of the solution provided by GRASP or by an iteration of VNS
 	double curr_sol_cost = inst->z_best;
@@ -1452,9 +1481,9 @@ void solve_heur_2_opt(instance* inst, double* x) {
 		int best_b = -1;
 		double min_delta_cost = INFINITY;
 
-		compute_best_node(inst, succ, &best_a, &best_b, &min_delta_cost);
+		//compute_best_node(inst, succ, &best_a, &best_b, &min_delta_cost);
 
-		/*for (int a = 0; a < inst->nnodes; a++) {
+		for (int a = 0; a < inst->nnodes; a++) {
 			for (int b = 0; b < inst->nnodes; b++) {
 
 				// The two selected nodes must be non-consecutive
@@ -1467,7 +1496,7 @@ void solve_heur_2_opt(instance* inst, double* x) {
 					}
 				}
 			}
-		}*/
+		}
 		// When the new solution cost is no longer able to become lower => local optimal solution achieved!
 		if (min_delta_cost >= 0) break;
 
@@ -1480,7 +1509,7 @@ void solve_heur_2_opt(instance* inst, double* x) {
 		}
 
 		// Since the successors of best_a and best_b will soon be updated, memorize the original ones for later use
-		/*int old_succ_a = succ[best_a];
+		int old_succ_a = succ[best_a];
 		int old_succ_b = succ[best_b];
 		// Change verse to all edges between nodes old_succ_a and b
 		int temp_curr = old_succ_a;										// Start from node old_succ_a
@@ -1498,9 +1527,9 @@ void solve_heur_2_opt(instance* inst, double* x) {
 		
 		// Rearrange the connections between nodes a and b
 		succ[old_succ_a] = old_succ_b;
-		succ[best_a] = best_b;*/
+		succ[best_a] = best_b;
 
-		void _2opt_move(inst, best_a, best_b, succ);
+		//void _2opt_move(inst, best_a, best_b, succ);
 		
 		if (inst->verbose >= HIGH) {
 			printf("IMPROVED list of successors: [ ");
@@ -1684,6 +1713,7 @@ void solve_heur_vns(instance* inst, double* x) {
 	free(succ);
 }
 
+
 void solve_heur_tabu(instance* inst, double* x) {
 
 	double residual_timelimit = inst->timelimit;
@@ -1777,6 +1807,377 @@ void solve_heur_tabu(instance* inst, double* x) {
 	free(succ);
 	free(tabu);
 
+}
+
+
+void generate_random_solution(instance* inst, double* x) {
+
+	int* nodes_list = (int*)malloc(inst->nnodes * sizeof(int));				// List of node indexes from which we draw randomly the nodes
+	for (int i = 0; i < inst->nnodes; i++) nodes_list[i] = i;
+
+	int max_index = inst->nnodes - 1;										// max_index is the max value of node index we want to draw at each iteration
+	int start_node_index = rand() % max_index;								// Chooose a random starting node
+	int start_node = nodes_list[start_node_index];
+
+	int temp_node = nodes_list[max_index];									// Every time we draw an index from nodes_list, we swap the node value with the last node
+	nodes_list[max_index] = start_node;										// of the list and we lower max_index, so that the same node cannot be drawn multiple times
+	nodes_list[start_node_index] = temp_node;
+
+	max_index--;															
+
+	//for (int i = 0; i < inst->nnodes; i++) printf("nodes_list[%d]: %d\n", i, nodes_list[i]);
+
+	int last_node = start_node;
+	int curr_edge_index = -1;
+	int next_node_index = -1;
+	int next_node = -1;
+	double curr_sol_cost = 0.0;
+	int n_edges = 0;
+	while (max_index >= 0) {												// Repeat until all edges apart from the "closing loop" one are found
+
+		if (max_index != 0) next_node_index = rand() % max_index;			// Generate a random node index between 0 and max_index. If max_index is 0, just take node at index 0
+		else next_node_index = 0;
+		next_node = nodes_list[next_node_index];
+
+		curr_edge_index = xpos(last_node, next_node, inst);
+		curr_sol_cost += dist(last_node, next_node, inst);					// Add up the cost of the edge just found
+		x[curr_edge_index] = 1.0;											// Set the edge just found as part of the solution
+
+		//if (inst->verbose >= HIGH) printf("Edge #%d : [ %d -> %d ]\n", n_edges, last_node, next_node);
+		
+		temp_node = nodes_list[max_index];									// Every time we draw an index from nodes_list, we swap the node value with the last node
+		nodes_list[max_index] = next_node;									// of the list and we lower max_index, so that the same node cannot be drawn multiple times
+		nodes_list[next_node_index] = temp_node;
+
+		last_node = next_node;												// Move to the next node
+		max_index--;
+		n_edges++;
+	}												
+
+	int last_edge_index = xpos(last_node, start_node, inst);				// The node last_node is the last picked from the list
+	curr_sol_cost += dist(last_node, start_node, inst);						// Add up the cost of the last "closing loop" edge
+	x[last_edge_index] = 1.0;
+
+	//if (inst->verbose >= HIGH) printf("Edge #%d : [ %d -> %d ]\n", n_edges, last_node, start_node);
+
+	inst->z_best = curr_sol_cost;											// Memorize the cost of the generated solution
+
+	if (inst->verbose >= MEDIUM) printf("Cost of the random solution (before 2-opt refinement): %f\n", curr_sol_cost);
+
+	return;
+}
+
+
+void _generate_feasible_nodes_list(instance* inst, int* nodes_list) {
+
+	int* all_nodes_list = (int*)malloc(inst->nnodes * sizeof(int));			// List of node indexes from which we draw randomly the nodes
+	for (int i = 0; i < inst->nnodes; i++) all_nodes_list[i] = i;
+
+	int max_index = inst->nnodes - 1;										// max_index is the max value of node index we want to draw at each iteration
+	int start_node_index = rand() % max_index;								// Chooose a random starting node
+	int start_node = all_nodes_list[start_node_index];
+
+	int last_node_index = 0;
+	nodes_list[last_node_index] = start_node;								// Insert the first node into the final solution nodes list
+	//printf("nodes_list[%d]: %d\n", last_node_index, nodes_list[last_node_index]);
+	last_node_index++;
+
+	int temp_node = all_nodes_list[max_index];								// Every time we draw an index from nodes_list, we swap the node value with the last node
+	all_nodes_list[max_index] = start_node;									// of the list and we lower max_index, so that the same node cannot be drawn multiple times
+	all_nodes_list[start_node_index] = temp_node;
+
+	max_index--;
+
+	int last_node = start_node;
+	int next_node_index = -1;
+	int next_node = -1;
+	double curr_sol_cost = 0.0;
+	while (max_index >= 0) {												// Repeat until all edges apart from the "closing loop" one are found
+
+		if (max_index != 0) next_node_index = rand() % max_index;			// Generate a random node index between 0 and max_index. If max_index is 0, just take node at index 0
+		else next_node_index = 0;
+		next_node = all_nodes_list[next_node_index];
+
+		nodes_list[last_node_index] = next_node;							// Insert the new node into the final solution nodes list
+		//printf("nodes_list[%d]: %d\n", last_node_index, nodes_list[last_node_index]);
+		last_node_index++;
+
+		curr_sol_cost += dist(last_node, next_node, inst);					// Add up the cost of the edge just found
+
+		temp_node = all_nodes_list[max_index];								// Every time we draw an index from nodes_list, we swap the node value with the last node
+		all_nodes_list[max_index] = next_node;								// of the list and we lower max_index, so that the same node cannot be drawn multiple times
+		all_nodes_list[next_node_index] = temp_node;
+
+		last_node = next_node;												// Move to the next node
+		max_index--;
+	}
+
+	curr_sol_cost += dist(last_node, start_node, inst);						// Add up the cost of the last "closing loop" edge
+
+	inst->z_best = curr_sol_cost;											// Memorize the cost of the generated solution
+
+	return;
+}
+
+
+void solve_heur_genetic(instance* inst, double* x, int pop_size) {
+	 
+	double residual_timelimit = inst->timelimit;
+	double min_sol_cost = INFINITY;
+
+	// Generate the starting population of pop_size (ex. 1000) random solutions (already with 2-opt refinement) and keep their costs (called "fitness")
+	//double** population = (double**)malloc(pop_size * sizeof(double*));
+	int** population = (int**)malloc(pop_size * sizeof(int*));
+	if (population == NULL) print_error("Unable to allocate memory for pop_size solutions in HEUR_GENETIC.");
+	double* fitness = (double*)malloc(pop_size * sizeof(double));
+
+	double t1 = second();
+	/*
+	for (int i = 0; i < pop_size; i++) {
+		double* temp_x = (double*)calloc(inst->ncols, sizeof(double));					// Allocate memory for a single solution
+		generate_random_solution(inst, temp_x);											// Generate it randomly
+		printf("Random solution #%d generated\n", i);
+		//solve_heur_2_opt(inst, temp_x);												// Refine it with 2-opt
+		//printf("Solution #%d refined\n", i);
+		population[i] = temp_x;															// Finally add it to population list
+		fitness[i] = inst->z_best;														// Memorize also the solution cost
+	}
+	*/
+	for (int i = 0; i < pop_size; i++) {
+		int* nodes_list = (int*)malloc(inst->nnodes * sizeof(int));						// Allocate memory for a single list of nodes
+		_generate_feasible_nodes_list(inst, nodes_list);								// Generate it randomly
+		population[i] = nodes_list;														// Add it to population list
+		fitness[i] = inst->z_best;														// Memorize also the solution cost
+		if (inst->verbose >= HIGH) printf("Random solution #%d generated with fitness: %f\n", i, fitness[i]);
+	}
+	if (inst->verbose >= MEDIUM) printf("Population of %d starting solutions generated successfully.\n", pop_size);
+	double t2 = second();
+
+	/*
+	// Check if all generated solutions are feasible
+	for (int i = 0; i < pop_size; i++) {
+		for (int j = 0; j < inst->nnodes; j++) {
+			for (int k = 0; k < inst->nnodes; k++) {
+				if (j != k) {
+					if (population[i][j] == population[i][k]) {
+						printf("j: %d | k: %d\n", j, k);
+						for (int n = 0; n < inst->nnodes; n++) printf("%d ", population[i][n]);
+						print_error("There are not feasible solutions!");
+					}
+				}
+			}
+		}
+	}
+	printf("All feasible solutions!\n");
+	*/
+
+	// Lower the residual timelimit, but wait at least for the first epoch to be concluded to check if timelimit has been reached
+	residual_timelimit = residual_timelimit - (t2 - t1);
+
+	int n_epoch = 1;
+	while (1) {
+
+		double t1 = second();
+
+		if (inst->verbose >= HIGH) printf("\nEpoch #%d\n", n_epoch);
+
+		// Compute the worst fitness (highest cost) of the current epoch
+		double worst_fitness = -INFINITY;
+		for (int i = 0; i < pop_size; i++) {
+			if (fitness[i] > worst_fitness) worst_fitness = fitness[i];
+		}
+		if (inst->verbose >= HIGH) printf("worst_fitness: %f\n\n", worst_fitness);
+
+		// Generate the new 100 offsprings merging the chromosomes (+ applying 2-opt refinement) and kill the worst 100 solutions
+		int offspring_size = pop_size / 10;
+		for (int n = 0; n < offspring_size; n++) {
+
+			// Choose the pair of population members to merge together in a probabilistic way, so that the solutions with highest fitness are mostly chosen
+			double norm_fitness = 1.0;
+			double sol_thresh = 1.0;
+			int first_parent_index = -1;
+			while (1) {
+				//printf("AAAAAAAAAAA\n");
+				first_parent_index = rand() % pop_size;											// Draw a random solution
+				norm_fitness = fitness[first_parent_index] / worst_fitness;						// Normalize its fitness w.r.t. the worst fitness value of the current epoch
+				sol_thresh = 1.0 - norm_fitness * norm_fitness;									// Compute a threshold that favours solutions with fitness far from the worst one
+
+				if (((double)rand() / RAND_MAX) < sol_thresh) break;
+			}
+			if (inst->verbose >= HIGH) printf("first_parent_index: %d with fitness: %f\n", first_parent_index, fitness[first_parent_index]);
+
+			int second_parent_index = -1;
+			while (1) {
+				//printf("BBBBBBBBBBB\n");
+				second_parent_index = rand() % pop_size;										// Draw another random solution, making sure that it is different from the first parent
+				while (first_parent_index == second_parent_index)
+					second_parent_index = rand() % pop_size;
+
+				norm_fitness = fitness[second_parent_index] / worst_fitness;					// Normalize its fitness w.r.t. the worst fitness value of the current epoch
+				sol_thresh = 1.0 - norm_fitness * norm_fitness;									// Compute a threshold that favours solutions with fitness far from the worst one
+
+				if (((double)rand() / RAND_MAX) < sol_thresh) break;
+			}
+			if (inst->verbose >= HIGH) printf("second_parent_index: %d with fitness: %f\n", second_parent_index, fitness[second_parent_index]);
+
+			// Choose the population member (to kill), which will be replaced by the new solution (the offspring)
+			int member_to_kill_index = -1;
+			while (1) {
+				//printf("CCCCCCCCCCC\n");
+				member_to_kill_index = rand() % pop_size;										// Draw another random solution, making sure that it is different from both parents
+				while (first_parent_index == member_to_kill_index || second_parent_index == member_to_kill_index)
+					member_to_kill_index = rand() % pop_size;
+
+				norm_fitness = fitness[member_to_kill_index] / worst_fitness;					// Normalize its fitness w.r.t. the worst fitness value of the current epoch
+				sol_thresh = norm_fitness * norm_fitness;										// Compute a threshold that favours solutions with fitness close to the worst one
+
+				if (((double)rand() / RAND_MAX) < sol_thresh) break;
+			}
+			if (inst->verbose >= HIGH) printf("member_to_kill_index: %d with fitness: %f\n", member_to_kill_index, fitness[member_to_kill_index]);
+
+			if (member_to_kill_index == 339 || member_to_kill_index == 143 || second_parent_index == 339) {
+				printf("\n\n\n\n\n\nAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\n\n\n\n");
+			}
+
+			/*
+			first_parent_index = 955;
+			second_parent_index = 796;
+			member_to_kill_index = 242;
+			*/
+
+			/*
+			printf("\n Member to kill nodes list: ");
+			for (int i = 0; i < inst->nnodes; i++) printf("%d ", population[member_to_kill_index][i]);
+			printf("\n");
+			*/
+
+			int offspring_index = member_to_kill_index;
+
+			// N.B. Notice that the killed member will (rarely) be a previous offspring of the same epoch, but this is how evolution works (simulates infant mortality)
+
+			// Get the chromosomes (= list of ordered nodes corresponding to each solution) of these two population members
+			// N.B. The chromosomes are basically: population[first_parent_index] and population[second_parent_index]
+
+			if (inst->verbose >= HIGH) {
+				printf("1st parent nodes list: ");
+				for (int i = 0; i < inst->nnodes; i++) printf("%d ", population[first_parent_index][i]);
+				printf("\n2nd parent nodes list: ");
+				for (int i = 0; i < inst->nnodes; i++) printf("%d ", population[second_parent_index][i]);
+			}
+			
+			// Merge the chromosomes of the two parents such that the offspring solution is feasible:
+			int chromosome_cutting_index = rand() % (inst->nnodes - 4) + 1;								// Cut the chromosomes at index between 1 and inst->nnodes - 2
+			chromosome_cutting_index = inst->nnodes / 2;
+			//printf("chromosome_cutting_index: %d\n", chromosome_cutting_index);
+			// 1) Copy the first half from the first parent chromosome
+			for (int i = 0; i < chromosome_cutting_index; i++) {
+				population[offspring_index][i] = population[first_parent_index][i];
+			}	
+			// 2) Copy the second half from the second parent chromosome such that in the offspring solution no node is repeated and all are included
+			int next_index_to_replace = -1;
+			int n_repeated_nodes = 0;
+			int is_node_repeated = 0;
+			for (int i = chromosome_cutting_index; i < inst->nnodes; i++) {								// Visit the second parent nodes list only until its end
+				for (int j = 0; j < chromosome_cutting_index; j++) {
+					if (population[second_parent_index][i] == population[first_parent_index][j]) {
+						is_node_repeated = 1;
+						break;
+					}
+				}
+				// If we arrive here without having spotted a repeated node => we can add the candidate node to the new solution
+				if (!is_node_repeated) {
+					next_index_to_replace = i - n_repeated_nodes;
+					printf("\nnext_index_to_replace: %d", next_index_to_replace);
+					population[offspring_index][next_index_to_replace] = population[second_parent_index][i];
+				}
+				else {
+					n_repeated_nodes++;
+				}
+				is_node_repeated = 0;
+			}
+			// 3) If at least one node of the second half of the second parent is repeated => start visiting the second parent chromosome from the beginning
+			int i = 0;
+			while (i < n_repeated_nodes) {																// Keep on visiting the second parent nodes list until no node is repeated
+				for (int j = 0; j < chromosome_cutting_index; j++) {
+					if (population[second_parent_index][i] == population[first_parent_index][j]) {
+						is_node_repeated = 1;
+						break;
+					}
+				}
+				// If we arrive here without having spotted a repeated node => we can add the candidate node to the new solution
+				if (!is_node_repeated) {
+					next_index_to_replace++;
+					printf("\nnext_index_to_replace: %d", next_index_to_replace);
+					population[offspring_index][next_index_to_replace] = population[second_parent_index][i];
+				}
+				else {
+					n_repeated_nodes++;
+				}
+				is_node_repeated = 0;
+				i++;
+			}
+			// N.B. The previous chromosomes merging procedure works only under the assumption that both parents' nodes lists are of fesible solutions
+
+			if (inst->verbose >= HIGH) {
+				printf("\n Offspring nodes list: ");
+				for (int i = 0; i < inst->nnodes; i++) printf("%d ", population[offspring_index][i]);
+				printf("\n\n");
+			}
+			
+			// Compute the new solution fitness and update the fitness data structure
+			double new_sol_cost = 0.0;
+			int first_node = population[offspring_index][0];
+			int prev_node = first_node;
+			int next_node = -1;
+			for (int i = 1; i < inst->nnodes; i++) {
+				next_node = population[offspring_index][i];
+				new_sol_cost += dist(prev_node, next_node, inst);
+				prev_node = next_node;
+			}
+			new_sol_cost += dist(next_node, first_node, inst);
+			fitness[offspring_index] = new_sol_cost;
+
+			/*
+			// Kill the chosen bad solution and add the new one to the population
+			for (int i = 0; i < inst->ncols; i++) x[i] = 0.0;
+			for (int i = 0; i <= inst->nnodes - 1; i++) {
+				x[xpos(i, succ[i], inst)] = 1.0;
+			}
+			*/
+		}
+
+		// Compute the average fitness of the current epoch
+		double fitness_sum = 0.0;
+		for (int i = 0; i < pop_size; i++) fitness_sum += fitness[i];
+		double avg_fitness = fitness_sum / (double)pop_size;
+		if (inst->verbose >= MEDIUM) printf("Average fitness of epoch #%d: %f\n", n_epoch, avg_fitness);
+		
+		// Find the solution with best (= smallest) fitness value (called "Champion") of the current epoch
+		double best_fitness = INFINITY;
+		int champion_index = -1;
+		for (int i = 0; i < pop_size; i++) {
+			if (fitness[i] < best_fitness) {
+				best_fitness = fitness[i];
+				champion_index = i;
+			}
+		}
+		if (inst->verbose >= MEDIUM) printf("Champion fitness of epoch #%d: %f\n", n_epoch, best_fitness);
+
+		double t2 = second();
+
+		// Update the residual timelimit and check if the global timelimit has been reached
+		residual_timelimit = residual_timelimit - (t2 - t1);
+		if (residual_timelimit <= 0) break;
+
+		n_epoch++;
+	}
+	
+	// Free all the memory allocated for the population solutions
+	for (int i = 0; i < pop_size; i++) free(population[i]);
+	free(population);
+	free(fitness);
+
+	return;
 }
 
 
