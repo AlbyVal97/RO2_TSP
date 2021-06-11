@@ -1920,11 +1920,31 @@ void _generate_feasible_nodes_list(instance* inst, int* nodes_list) {
 }
 
 
+void get_solution_from_nodes_list(instance* inst, int* nodes_list, double* x) {
+
+	// Clean the array of edges where the solution has to be returned
+	for (int i = 0; i < inst->ncols; i++) x[i] = 0.0;
+	
+	int start_node = nodes_list[0];
+	int last_node = start_node;
+	int next_node = -1;
+	for (int j = 1; j < inst->nnodes; j++) {
+		next_node = nodes_list[j];
+		x[xpos(last_node, next_node, inst)] = 1.0;
+		last_node = next_node;
+	}
+	x[xpos(last_node, start_node, inst)] = 1.0;
+
+	return;
+}
+
+
 void solve_heur_genetic(instance* inst, double* x, int pop_size) {
 	 
 	double residual_timelimit = inst->timelimit;
 	double min_sol_cost = INFINITY;
 	double t1, t2 = 0.0;
+	int champion_index = -1;
 
 	// Generate the starting population of pop_size (ex. 1000) random solutions (already with 2-opt refinement) and keep their costs (called "fitness")
 	//double** population = (double**)malloc(pop_size * sizeof(double*));
@@ -2022,11 +2042,15 @@ void solve_heur_genetic(instance* inst, double* x, int pop_size) {
 			}
 			if (inst->verbose >= HIGH) printf("second_parent_index: %d with fitness: %f\n", second_parent_index, fitness[second_parent_index]);
 
-			// Choose the population member (to kill), which will be replaced by the new solution (the offspring)
+			// Choose the population member that will die in this epoch, which will be replaced by the new solution (the offspring).
+			// N.B. We assume that the Champion of the last epoch cannot die (because it's the most likely to survive the environment).
 			int offspring_index = -1;
 			while (1) {
-				offspring_index = rand() % pop_size;											// Draw another random solution, making sure that it is different from both parents
-				while (offspring_index == first_parent_index || offspring_index == second_parent_index) {
+				offspring_index = rand() % pop_size;											// Draw another random solution, making sure that it is different
+				while (	offspring_index == first_parent_index ||								// from both parents and from the Champion of the last epoch
+						offspring_index == second_parent_index || 
+						offspring_index == champion_index)
+				{
 					offspring_index = rand() % pop_size;
 				}
 
@@ -2115,15 +2139,6 @@ void solve_heur_genetic(instance* inst, double* x, int pop_size) {
 			}
 			new_sol_cost += dist(next_node, first_node, inst);
 			fitness[offspring_index] = new_sol_cost;
-
-			/*
-			// Kill the chosen bad solution and add the new one to the population
-			for (int i = 0; i < inst->ncols; i++) x[i] = 0.0;
-			for (int i = 0; i <= inst->nnodes - 1; i++) {
-				x[xpos(i, succ[i], inst)] = 1.0;
-			}
-			*/
-
 		}
 
 		// Compute the average fitness of the current epoch
@@ -2134,26 +2149,30 @@ void solve_heur_genetic(instance* inst, double* x, int pop_size) {
 		
 		// Find the solution with best (= smallest) fitness value (called "Champion") of the current epoch
 		double best_fitness = INFINITY;
-		int champion_index = -1;
+		
 		for (int i = 0; i < pop_size; i++) {
 			if (fitness[i] < best_fitness) {
 				best_fitness = fitness[i];
 				champion_index = i;
 			}
 		}
-		if (inst->verbose >= MEDIUM) printf("Champion fitness of epoch #%d: %f\n", n_epoch, best_fitness);
+		if (inst->verbose >= MEDIUM) printf("Champion (solution #%d) fitness of epoch #%d: %f\n", champion_index, n_epoch, best_fitness);
 
 		t2 = second();
 
-		// Update the residual timelimit and check if the global timelimit has been reached
+		// Update the residual timelimit and check if the global timelimit has been reached. If so, return the champion solution.
 		residual_timelimit = residual_timelimit - (t2 - t1);
-		if (residual_timelimit <= 0) break;
+		if (residual_timelimit <= 0) {
+			if (inst->verbose >= MEDIUM) printf("Timelimit reached! The Champion of the last epoch will be returned.\n");
+			get_solution_from_nodes_list(inst, population[champion_index], x);
+			break;
+		}
 
 		// If the champion fitness turns out to be equal to the average one, it means that all members have become equal
 		// => stop the algorithm, since it can't find any better solution and will loop until timelimit is reached.
-
 		if (best_fitness >= avg_fitness - EPSILON && best_fitness <= avg_fitness + EPSILON) {
 			if (inst->verbose >= MEDIUM) printf("Population has become completely homogeneous! No further improvements are expected!\n");
+			get_solution_from_nodes_list(inst, population[champion_index], x);
 			break;
 		}
 
@@ -2189,17 +2208,19 @@ void solve_heur_genetic(instance* inst, double* x, int pop_size) {
 				last_node = next_node;
 			}
 			mutant_sol_cost += dist(last_node, start_node, inst);
-
 			fitness[mutant_member_index] = mutant_sol_cost;
-
 		}
-		if (inst->verbose >= MEDIUM) printf("Number of random mutations performed: %d\n", n_mutations);
+		if (inst->verbose >= HIGH) printf("Number of random mutations performed: %d\n", n_mutations);
 
 		t2 = second();
 
-		// Update the residual timelimit and check if the global timelimit has been reached
+		// Update the residual timelimit and check if the global timelimit has been reached. If so, return the champion solution.
 		residual_timelimit = residual_timelimit - (t2 - t1);
-		if (residual_timelimit <= 0) break;
+		if (residual_timelimit <= 0) {
+			if (inst->verbose >= MEDIUM) printf("Timelimit reached! The Champion of the last epoch will be returned.\n");
+			get_solution_from_nodes_list(inst, population[champion_index], x);
+			break;
+		}
 
 		n_epoch++;
 	}

@@ -91,6 +91,9 @@ void generate_random_solution(instance* inst, double* x);
 // Generates a random list of nodes corresponding to a feasible solution (used as chromosome in HEUR_GENETIC)
 void _generate_feasible_nodes_list(instance* inst, int* nodes_list);
 
+// Given the nodes list of a solution, it returns the solution as the array of edges (required to show the final "Champion" solution in HEUR_GENTIC)
+void get_solution_from_nodes_list(instance* inst, int* nodes_list, double* x);
+
 // Builds the tableau (variables and constraints)
 void build_model_BASIC(instance* inst, CPXENVptr env, CPXLPptr lp);
 void build_model_MTZ_STATIC(instance* inst, CPXENVptr env, CPXLPptr lp);
