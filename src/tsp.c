@@ -1924,6 +1924,7 @@ void solve_heur_genetic(instance* inst, double* x, int pop_size) {
 	 
 	double residual_timelimit = inst->timelimit;
 	double min_sol_cost = INFINITY;
+	double t1, t2 = 0.0;
 
 	// Generate the starting population of pop_size (ex. 1000) random solutions (already with 2-opt refinement) and keep their costs (called "fitness")
 	//double** population = (double**)malloc(pop_size * sizeof(double*));
@@ -1931,7 +1932,8 @@ void solve_heur_genetic(instance* inst, double* x, int pop_size) {
 	if (population == NULL) print_error("Unable to allocate memory for pop_size solutions in HEUR_GENETIC.");
 	double* fitness = (double*)malloc(pop_size * sizeof(double));
 
-	double t1 = second();
+	t1 = second();
+
 	/*
 	for (int i = 0; i < pop_size; i++) {
 		double* temp_x = (double*)calloc(inst->ncols, sizeof(double));					// Allocate memory for a single solution
@@ -1951,7 +1953,8 @@ void solve_heur_genetic(instance* inst, double* x, int pop_size) {
 		if (inst->verbose >= HIGH) printf("Random solution #%d generated with fitness: %f\n", i, fitness[i]);
 	}
 	if (inst->verbose >= MEDIUM) printf("Population of %d starting solutions generated successfully.\n", pop_size);
-	double t2 = second();
+
+	t2 = second();
 
 	/*
 	// Check if all generated solutions are feasible
@@ -1962,7 +1965,7 @@ void solve_heur_genetic(instance* inst, double* x, int pop_size) {
 					if (population[i][j] == population[i][k]) {
 						printf("j: %d | k: %d\n", j, k);
 						for (int n = 0; n < inst->nnodes; n++) printf("%d ", population[i][n]);
-						print_error("There are not feasible solutions!");
+						print_error("There is at least one non feasible solution!");
 					}
 				}
 			}
@@ -1977,7 +1980,7 @@ void solve_heur_genetic(instance* inst, double* x, int pop_size) {
 	int n_epoch = 1;
 	while (1) {
 
-		double t1 = second();
+		t1 = second();
 
 		if (inst->verbose >= HIGH) printf("\nEpoch #%d\n", n_epoch);
 
@@ -1997,7 +2000,6 @@ void solve_heur_genetic(instance* inst, double* x, int pop_size) {
 			double sol_thresh = 1.0;
 			int first_parent_index = -1;
 			while (1) {
-				//printf("AAAAAAAAAAA\n");
 				first_parent_index = rand() % pop_size;											// Draw a random solution
 				norm_fitness = fitness[first_parent_index] / worst_fitness;						// Normalize its fitness w.r.t. the worst fitness value of the current epoch
 				sol_thresh = 1.0 - norm_fitness * norm_fitness;									// Compute a threshold that favours solutions with fitness far from the worst one
@@ -2008,10 +2010,10 @@ void solve_heur_genetic(instance* inst, double* x, int pop_size) {
 
 			int second_parent_index = -1;
 			while (1) {
-				//printf("BBBBBBBBBBB\n");
 				second_parent_index = rand() % pop_size;										// Draw another random solution, making sure that it is different from the first parent
-				while (first_parent_index == second_parent_index)
+				while (second_parent_index == first_parent_index) {
 					second_parent_index = rand() % pop_size;
+				}
 
 				norm_fitness = fitness[second_parent_index] / worst_fitness;					// Normalize its fitness w.r.t. the worst fitness value of the current epoch
 				sol_thresh = 1.0 - norm_fitness * norm_fitness;									// Compute a threshold that favours solutions with fitness far from the worst one
@@ -2021,43 +2023,24 @@ void solve_heur_genetic(instance* inst, double* x, int pop_size) {
 			if (inst->verbose >= HIGH) printf("second_parent_index: %d with fitness: %f\n", second_parent_index, fitness[second_parent_index]);
 
 			// Choose the population member (to kill), which will be replaced by the new solution (the offspring)
-			int member_to_kill_index = -1;
+			int offspring_index = -1;
 			while (1) {
-				//printf("CCCCCCCCCCC\n");
-				member_to_kill_index = rand() % pop_size;										// Draw another random solution, making sure that it is different from both parents
-				while (first_parent_index == member_to_kill_index || second_parent_index == member_to_kill_index)
-					member_to_kill_index = rand() % pop_size;
+				offspring_index = rand() % pop_size;											// Draw another random solution, making sure that it is different from both parents
+				while (offspring_index == first_parent_index || offspring_index == second_parent_index) {
+					offspring_index = rand() % pop_size;
+				}
 
-				norm_fitness = fitness[member_to_kill_index] / worst_fitness;					// Normalize its fitness w.r.t. the worst fitness value of the current epoch
+				norm_fitness = fitness[offspring_index] / worst_fitness;						// Normalize its fitness w.r.t. the worst fitness value of the current epoch
 				sol_thresh = norm_fitness * norm_fitness;										// Compute a threshold that favours solutions with fitness close to the worst one
 
 				if (((double)rand() / RAND_MAX) < sol_thresh) break;
 			}
-			if (inst->verbose >= HIGH) printf("member_to_kill_index: %d with fitness: %f\n", member_to_kill_index, fitness[member_to_kill_index]);
-
-			if (member_to_kill_index == 339 || member_to_kill_index == 143 || second_parent_index == 339) {
-				printf("\n\n\n\n\n\nAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\n\n\n\n");
-			}
-
-			/*
-			first_parent_index = 955;
-			second_parent_index = 796;
-			member_to_kill_index = 242;
-			*/
-
-			/*
-			printf("\n Member to kill nodes list: ");
-			for (int i = 0; i < inst->nnodes; i++) printf("%d ", population[member_to_kill_index][i]);
-			printf("\n");
-			*/
-
-			int offspring_index = member_to_kill_index;
+			if (inst->verbose >= HIGH) printf("Index of the killed member: %d with fitness: %f\n", offspring_index, fitness[offspring_index]);
 
 			// N.B. Notice that the killed member will (rarely) be a previous offspring of the same epoch, but this is how evolution works (simulates infant mortality)
 
 			// Get the chromosomes (= list of ordered nodes corresponding to each solution) of these two population members
-			// N.B. The chromosomes are basically: population[first_parent_index] and population[second_parent_index]
-
+			// N.B. The chromosomes are basically: population[first_parent_index] and population[second_parent_index]. 
 			if (inst->verbose >= HIGH) {
 				printf("1st parent nodes list: ");
 				for (int i = 0; i < inst->nnodes; i++) printf("%d ", population[first_parent_index][i]);
@@ -2066,15 +2049,13 @@ void solve_heur_genetic(instance* inst, double* x, int pop_size) {
 			}
 			
 			// Merge the chromosomes of the two parents such that the offspring solution is feasible:
-			int chromosome_cutting_index = rand() % (inst->nnodes - 4) + 1;								// Cut the chromosomes at index between 1 and inst->nnodes - 2
-			chromosome_cutting_index = inst->nnodes / 2;
-			//printf("chromosome_cutting_index: %d\n", chromosome_cutting_index);
+			int chromosome_cutting_index = rand() % (inst->nnodes / 2 - 1) + 1;								// Cut the chromosomes at index between 1 and inst->nnodes / 2 - 1
 			// 1) Copy the first half from the first parent chromosome
 			for (int i = 0; i < chromosome_cutting_index; i++) {
 				population[offspring_index][i] = population[first_parent_index][i];
 			}	
 			// 2) Copy the second half from the second parent chromosome such that in the offspring solution no node is repeated and all are included
-			int next_index_to_replace = -1;
+			int next_index_to_replace = chromosome_cutting_index;
 			int n_repeated_nodes = 0;
 			int is_node_repeated = 0;
 			for (int i = chromosome_cutting_index; i < inst->nnodes; i++) {								// Visit the second parent nodes list only until its end
@@ -2087,7 +2068,6 @@ void solve_heur_genetic(instance* inst, double* x, int pop_size) {
 				// If we arrive here without having spotted a repeated node => we can add the candidate node to the new solution
 				if (!is_node_repeated) {
 					next_index_to_replace = i - n_repeated_nodes;
-					printf("\nnext_index_to_replace: %d", next_index_to_replace);
 					population[offspring_index][next_index_to_replace] = population[second_parent_index][i];
 				}
 				else {
@@ -2107,7 +2087,6 @@ void solve_heur_genetic(instance* inst, double* x, int pop_size) {
 				// If we arrive here without having spotted a repeated node => we can add the candidate node to the new solution
 				if (!is_node_repeated) {
 					next_index_to_replace++;
-					printf("\nnext_index_to_replace: %d", next_index_to_replace);
 					population[offspring_index][next_index_to_replace] = population[second_parent_index][i];
 				}
 				else {
@@ -2144,6 +2123,7 @@ void solve_heur_genetic(instance* inst, double* x, int pop_size) {
 				x[xpos(i, succ[i], inst)] = 1.0;
 			}
 			*/
+
 		}
 
 		// Compute the average fitness of the current epoch
@@ -2163,7 +2143,59 @@ void solve_heur_genetic(instance* inst, double* x, int pop_size) {
 		}
 		if (inst->verbose >= MEDIUM) printf("Champion fitness of epoch #%d: %f\n", n_epoch, best_fitness);
 
-		double t2 = second();
+		t2 = second();
+
+		// Update the residual timelimit and check if the global timelimit has been reached
+		residual_timelimit = residual_timelimit - (t2 - t1);
+		if (residual_timelimit <= 0) break;
+
+		// If the champion fitness turns out to be equal to the average one, it means that all members have become equal
+		// => stop the algorithm, since it can't find any better solution and will loop until timelimit is reached.
+
+		if (best_fitness >= avg_fitness - EPSILON && best_fitness <= avg_fitness + EPSILON) {
+			if (inst->verbose >= MEDIUM) printf("Population has become completely homogeneous! No further improvements are expected!\n");
+			break;
+		}
+
+		t1 = second();
+
+		// Before starting the new epoch, let's introduce some random mutations, where a mutation is the swap of 2 nodes of a solution.
+		int n_mutations = rand() % (pop_size / 10) + 1;
+		for (int i = 0; i < n_mutations; i++) {
+
+			int mutant_member_index = rand() % pop_size;							// Choose a random solution to mutate, avoiding the current "Champion" one
+			while (mutant_member_index == champion_index) {
+				mutant_member_index = rand() % pop_size;
+			}
+
+			int first_node_to_swap_index = rand() % inst->nnodes;					// Choose two random (different) nodes of the selected solution to swap
+			int second_node_to_swap_index = rand() % inst->nnodes;
+			while (second_node_to_swap_index == first_node_to_swap_index) {
+				second_node_to_swap_index = rand() % inst->nnodes;
+			}
+
+			int temp_node = population[mutant_member_index][first_node_to_swap_index];
+			population[mutant_member_index][first_node_to_swap_index] = population[mutant_member_index][second_node_to_swap_index];
+			population[mutant_member_index][second_node_to_swap_index] = temp_node;
+
+			// Of course, now we need to re-compute the fitness value of the mutant solution
+			double mutant_sol_cost = 0.0;
+			int start_node = population[mutant_member_index][0];
+			int last_node = start_node;
+			int next_node = -1;
+			for (int j = 1; j < inst->nnodes; j++) {
+				next_node = population[mutant_member_index][j];
+				mutant_sol_cost += dist(last_node, next_node, inst);
+				last_node = next_node;
+			}
+			mutant_sol_cost += dist(last_node, start_node, inst);
+
+			fitness[mutant_member_index] = mutant_sol_cost;
+
+		}
+		if (inst->verbose >= MEDIUM) printf("Number of random mutations performed: %d\n", n_mutations);
+
+		t2 = second();
 
 		// Update the residual timelimit and check if the global timelimit has been reached
 		residual_timelimit = residual_timelimit - (t2 - t1);
