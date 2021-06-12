@@ -2149,7 +2149,6 @@ void solve_heur_genetic(instance* inst, double* x, int pop_size) {
 		
 		// Find the solution with best (= smallest) fitness value (called "Champion") of the current epoch
 		double best_fitness = INFINITY;
-		
 		for (int i = 0; i < pop_size; i++) {
 			if (fitness[i] < best_fitness) {
 				best_fitness = fitness[i];
@@ -2157,6 +2156,14 @@ void solve_heur_genetic(instance* inst, double* x, int pop_size) {
 			}
 		}
 		if (inst->verbose >= MEDIUM) printf("Champion (solution #%d) fitness of epoch #%d: %f\n", champion_index, n_epoch, best_fitness);
+
+		// Also update the worst fitness after generating the offspring
+		for (int i = 0; i < pop_size; i++) {
+			if (fitness[i] > worst_fitness) {
+				worst_fitness = fitness[i];
+			}
+		}
+		if (inst->verbose >= HIGH) printf("worst_fitness after offspring generation: %f\n\n", worst_fitness);
 
 		t2 = second();
 
@@ -2168,9 +2175,9 @@ void solve_heur_genetic(instance* inst, double* x, int pop_size) {
 			break;
 		}
 
-		// If the champion fitness turns out to be equal to the average one, it means that all members have become equal
+		// If the champion (best) fitness turns out to be equal to the worst one, it means that all population members have become equal
 		// => stop the algorithm, since it can't find any better solution and will loop until timelimit is reached.
-		if (best_fitness >= avg_fitness - EPSILON && best_fitness <= avg_fitness + EPSILON) {
+		if (best_fitness >= worst_fitness - EPSILON && best_fitness <= worst_fitness + EPSILON) {
 			if (inst->verbose >= MEDIUM) printf("Population has become completely homogeneous! No further improvements are expected!\n");
 			get_solution_from_nodes_list(inst, population[champion_index], x);
 			break;
@@ -2178,39 +2185,45 @@ void solve_heur_genetic(instance* inst, double* x, int pop_size) {
 
 		t1 = second();
 
-		// Before starting the new epoch, let's introduce some random mutations, where a mutation is the swap of 2 nodes of a solution.
-		int n_mutations = rand() % (pop_size / 10) + 1;
-		for (int i = 0; i < n_mutations; i++) {
+		// Before starting the new epoch, let's introduce some random mutations, where a mutation consistes in swapping 2 nodes of a solution.
+		// N.B. We want to apply a bunch of mutations only when the average fitness is too close to that of the champion (es. difference < 1%)		
+		double relative_fitness_difference = (worst_fitness - best_fitness) / worst_fitness;	// Close to 0 => best ~= avg; Close to 1 => best != avg
+		if (inst->verbose >= MEDIUM) printf("relative_fitness_difference: %f\n", relative_fitness_difference);
+		if (relative_fitness_difference < 0.01) {
 
-			int mutant_member_index = rand() % pop_size;							// Choose a random solution to mutate, avoiding the current "Champion" one
-			while (mutant_member_index == champion_index) {
-				mutant_member_index = rand() % pop_size;
+			int n_mutations = rand() % (pop_size / 10);
+			for (int i = 0; i < n_mutations; i++) {
+
+				int mutant_member_index = rand() % pop_size;								// Choose a random solution to mutate, avoiding the current "Champion" one
+				while (mutant_member_index == champion_index) {
+					mutant_member_index = rand() % pop_size;
+				}
+
+				int first_node_to_swap_index = rand() % inst->nnodes;						// Choose two random (different) nodes of the selected solution to swap
+				int second_node_to_swap_index = rand() % inst->nnodes;
+				while (second_node_to_swap_index == first_node_to_swap_index) {
+					second_node_to_swap_index = rand() % inst->nnodes;
+				}
+
+				int temp_node = population[mutant_member_index][first_node_to_swap_index];
+				population[mutant_member_index][first_node_to_swap_index] = population[mutant_member_index][second_node_to_swap_index];
+				population[mutant_member_index][second_node_to_swap_index] = temp_node;
+
+				// Of course, now we need to re-compute the fitness value of the mutant solution
+				double mutant_sol_cost = 0.0;
+				int start_node = population[mutant_member_index][0];
+				int last_node = start_node;
+				int next_node = -1;
+				for (int j = 1; j < inst->nnodes; j++) {
+					next_node = population[mutant_member_index][j];
+					mutant_sol_cost += dist(last_node, next_node, inst);
+					last_node = next_node;
+				}
+				mutant_sol_cost += dist(last_node, start_node, inst);
+				fitness[mutant_member_index] = mutant_sol_cost;
 			}
-
-			int first_node_to_swap_index = rand() % inst->nnodes;					// Choose two random (different) nodes of the selected solution to swap
-			int second_node_to_swap_index = rand() % inst->nnodes;
-			while (second_node_to_swap_index == first_node_to_swap_index) {
-				second_node_to_swap_index = rand() % inst->nnodes;
-			}
-
-			int temp_node = population[mutant_member_index][first_node_to_swap_index];
-			population[mutant_member_index][first_node_to_swap_index] = population[mutant_member_index][second_node_to_swap_index];
-			population[mutant_member_index][second_node_to_swap_index] = temp_node;
-
-			// Of course, now we need to re-compute the fitness value of the mutant solution
-			double mutant_sol_cost = 0.0;
-			int start_node = population[mutant_member_index][0];
-			int last_node = start_node;
-			int next_node = -1;
-			for (int j = 1; j < inst->nnodes; j++) {
-				next_node = population[mutant_member_index][j];
-				mutant_sol_cost += dist(last_node, next_node, inst);
-				last_node = next_node;
-			}
-			mutant_sol_cost += dist(last_node, start_node, inst);
-			fitness[mutant_member_index] = mutant_sol_cost;
+			if (inst->verbose >= MEDIUM) printf("\nNumber of random mutations performed: %d\n\n", n_mutations);
 		}
-		if (inst->verbose >= HIGH) printf("Number of random mutations performed: %d\n", n_mutations);
 
 		t2 = second();
 
