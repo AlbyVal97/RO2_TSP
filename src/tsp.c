@@ -249,7 +249,7 @@ int TSPopt(instance* inst) {
 			double* x_2_opt = (double*)calloc(inst->ncols, sizeof(double));
 
 			solve_heur_grasp(inst, x_2_opt, inst->timelimit / 10);
-			solve_heur_2_opt(inst, x_2_opt);
+			solve_heur_2_opt(inst, x_2_opt, NULL, (inst->timelimit / 10) * 9);
 
 			sprintf(edges_file_path, "%s/model_%s_edges.dat", edges_file_path, models[inst->model_type]);
 			print_solution(inst, x_2_opt, symmetric, edges_file_path);
@@ -1443,26 +1443,17 @@ void _2opt_move(instance* inst, int a, int b, int* succ) {
 }
 
 
-void solve_heur_2_opt(instance* inst, double* x) {
+void solve_heur_2_opt(instance* inst, double* x, int* succ, double timelimit) {
 
-	// Compute the list of successors from the solution provided by GRASP constructive heuristic
-	int* succ = (int*)malloc(inst->nnodes * sizeof(int));
+	if (succ == NULL && x == NULL) print_error("solve_heur_2_opt() cannot be called with both x and succ values set to NULL!");
 
-	compute_succ(inst, x, succ);
-	/*
-	for (int i = 0; i < inst->nnodes; i++) succ[i] = -1;
-	int i = 0;
-	for (int k = 0; k < inst->nnodes - 1; k++) {
-		for (int j = 1; j < inst->nnodes; j++) {
-			if (i != j && succ[j] == -1 && x[xpos(i, j, inst)] > 0.5) {
-				succ[i] = j;
-				i = j;
-				break;
-			}
-		}
+	// If not provided, compute the list of successors from the solution provided by GRASP constructive heuristic
+	int is_succ_provided = 1;
+	if (succ == NULL) {
+		is_succ_provided = 0;
+		succ = (int*)malloc(inst->nnodes * sizeof(int));
+		compute_succ(inst, x, succ);
 	}
-	succ[i] = 0;
-	*/
 
 	// Retrieve the cost of the solution provided by GRASP or by an iteration of VNS
 	double curr_sol_cost = inst->z_best;
@@ -1478,6 +1469,8 @@ void solve_heur_2_opt(instance* inst, double* x) {
 	int n_iter = 1;
 	while (1) {
 
+		double t1 = second();
+
 		if (inst->verbose >= HIGH) printf("n_iter: %d\n", n_iter);
 
 		int best_a = -1;
@@ -1485,22 +1478,7 @@ void solve_heur_2_opt(instance* inst, double* x) {
 		double min_delta_cost = INFINITY;
 
 		compute_best_node(inst, succ, &best_a, &best_b, &min_delta_cost);
-		/*
-		for (int a = 0; a < inst->nnodes; a++) {
-			for (int b = 0; b < inst->nnodes; b++) {
 
-				// The two selected nodes must be non-consecutive
-				if (a != b && b != succ[a] && a != succ[b]) {
-					double curr_delta_cost = (dist(a, b, inst) + dist(succ[a], succ[b], inst)) - (dist(a, succ[a], inst) + dist(b, succ[b], inst));
-					if (curr_delta_cost < min_delta_cost) {
-						min_delta_cost = curr_delta_cost;
-						best_a = a;
-						best_b = b;
-					}
-				}
-			}
-		}
-		*/
 		// When the new solution cost is no longer able to become lower => local optimal solution achieved!
 		if (min_delta_cost >= 0) break;
 
@@ -1513,28 +1491,6 @@ void solve_heur_2_opt(instance* inst, double* x) {
 		}
 
 		_2opt_move(inst, best_a, best_b, succ);
-		/*
-		// Since the successors of best_a and best_b will soon be updated, memorize the original ones for later use
-		int old_succ_a = succ[best_a];
-		int old_succ_b = succ[best_b];
-		// Change verse to all edges between nodes old_succ_a and b
-		int temp_curr = old_succ_a;										// Start from node old_succ_a
-		int temp_succ = -1;
-		while (temp_curr != best_b) {									// Continue until node best_b is reached
-			if (temp_succ == -1) temp_succ = succ[temp_curr];			// N.B. both successor (temp_succ) and successor of successor (temp_succ_succ)
-			int temp_succ_succ = succ[temp_succ];						// of temp_curr have to be memorized for the next iteration!
-			
-			succ[temp_succ] = temp_curr;								// Change the verse of the edge (temp_curr -> temp_succ)
-			
-			temp_curr = temp_succ;										// Shift one position towards node best_b
-			temp_succ = temp_succ_succ;
-			
-		}
-		
-		// Rearrange the connections between nodes a and b
-		succ[old_succ_a] = old_succ_b;
-		succ[best_a] = best_b;
-		*/
 		
 		if (inst->verbose >= HIGH) {
 			printf("IMPROVED list of successors: [ ");
@@ -1542,6 +1498,15 @@ void solve_heur_2_opt(instance* inst, double* x) {
 			printf("%d->%d ]\n", inst->nnodes - 1, succ[inst->nnodes - 1]);
 		}
 		
+		double t2 = second();
+
+		// Update the timelimit and check if it has been reached for this call of 2-opt
+		timelimit = timelimit - (t2 - t1);
+		if (timelimit <= 0) {
+			printf("Timelimit reached after 0.1 secs!\n");
+			break;
+		}
+
 		n_iter++;
 	}
 	
@@ -1552,15 +1517,17 @@ void solve_heur_2_opt(instance* inst, double* x) {
 	}
 
 	// Remove the values of the solution provided by GRASP and insert the 2-opt improved one
-	for (int i = 0; i < inst->ncols; i++) x[i] = 0.0;
-	for (int i = 0; i <= inst->nnodes - 1; i++) {
-		x[xpos(i, succ[i], inst)] = 1.0;
+	if (x != NULL) {
+		for (int i = 0; i < inst->ncols; i++) x[i] = 0.0;
+		for (int i = 0; i <= inst->nnodes - 1; i++) {
+			x[xpos(i, succ[i], inst)] = 1.0;
+		}
 	}
 
 	if (inst->verbose >= MEDIUM) printf("HEUR_2_OPT -> Cost of the best solution (after 2-opt refinement): %f\n\n", curr_sol_cost);
 	inst->z_best = curr_sol_cost;
 
-	free(succ);
+	if (!is_succ_provided) free(succ);
 
 	return;
 }
@@ -1581,7 +1548,7 @@ void solve_heur_multi_start(instance* inst, double* x) {
 
 		double t1 = second();
 		solve_heur_grasp(inst, temp_x, grasp_timelimit);		// First let GRASP find an always different reference solution (no need to reset solution array temp_x)
-		solve_heur_2_opt(inst, temp_x);							// Then use 2-opt refinement heuristic to improve the reference solution
+		solve_heur_2_opt(inst, temp_x, NULL, INFINITY);							// Then use 2-opt refinement heuristic to improve the reference solution
 		double t2 = second();
 
 		// Keep the best solution found up to now
@@ -1629,9 +1596,11 @@ void solve_heur_vns(instance* inst, double* x) {
 	int* succ = (int*)malloc(inst->nnodes * sizeof(int));
 
 	t1 = second();
+
 	while (1) {
 
-		solve_heur_2_opt(inst, x);
+		solve_heur_2_opt(inst, x, NULL, INFINITY);
+
 		t2 = second();
 
 		double curr_sol_cost = inst->z_best;
@@ -1647,6 +1616,8 @@ void solve_heur_vns(instance* inst, double* x) {
 		
 		t1 = second();
 
+		compute_succ(inst, x, succ);
+		/*
 		// Compute the list of successors from the local optimum solution 
 		for (int i = 0; i < inst->nnodes; i++) succ[i] = -1;
 		int i = 0;
@@ -1660,6 +1631,7 @@ void solve_heur_vns(instance* inst, double* x) {
 			}
 		}
 		succ[i] = 0;
+		*/
 
 		// Select three random edges to be removed 
 		int a = rand() % inst->nnodes;
@@ -1747,28 +1719,26 @@ void solve_heur_tabu(instance* inst, double* x) {
 	double curr_cost = inst->z_best;
 
 	t1 = second();
+
 	while (1) {
 		
 		while (1) {
 			int a, b;
-			double min_cost = INFINITY;
+			double min_delta_cost = INFINITY;
 
 			if (n_iter % 500 == 0) {
 				if (flag == 0) {
-					tenure = 100;
+					tenure = inst->nnodes / 10;
 					flag = 1;
-					printf("TENURE 100\n");
 				}
 				else {
-					tenure = 20;
+					tenure = inst->nnodes / 50;
 					flag = 0;
-					printf("TENURE 20\n");
 				}
+				if (inst->verbose >= HIGH) printf("Switching to TENURE = %d\n", tenure);
 			}
 			
-			compute_best_node(inst, succ, &a, &b, &min_cost);
-			//printf("Inside 2opt a, b: %d, %d\n", a, b);
-			//printf("%f\n", min_cost);
+			compute_best_node(inst, succ, &a, &b, &min_delta_cost);
 			if (fase_miglioramento == 0 && tabu[a] != -1 && n_iter - tabu[a] <= tenure) {
 				//printf("NODE a is tabu!\n");
 				if (curr_cost < min_sol_cost) {
@@ -1785,9 +1755,9 @@ void solve_heur_tabu(instance* inst, double* x) {
 				}
 				break;
 			}
-			if (min_cost >= 0) {
+			if (min_delta_cost >= 0) {
 				
-				printf("LOCAL optimum reached: %f\n", curr_cost);
+				if (inst->verbose >= MEDIUM) printf("LOCAL optimum reached: %f\n", curr_cost);
 				if (curr_cost < min_sol_cost) {
 					min_sol_cost = curr_cost;
 					final_succ = memcpy(final_succ, succ, sizeof(int) * inst->nnodes);
@@ -1795,48 +1765,40 @@ void solve_heur_tabu(instance* inst, double* x) {
 				fase_miglioramento = 0;
 				break;
 			}
-			//tabu[a] = n_iter;
-			//tabu[b] = n_iter;
-			//printf("SI MIGLIORA\n");
+
 			fase_miglioramento = 1;
-			curr_cost += min_cost;
+			curr_cost += min_delta_cost;
 			_2opt_move(inst, a, b, succ);
 
 			n_iter++;
-
 		}
 
 		t2 = second();
+
 		residual_timelimit = residual_timelimit - (t2 - t1);
 		if (residual_timelimit <= 0) break;
 
 		t1 = second();
-		//2-opt random kick to avoid loop
+
+		// Perform a 2-opt random kick to avoid loop
 		int node_a, node_b;
 		
 		node_a = rand() % inst->nnodes;
 		while ((node_b = rand() % inst->nnodes) == node_a || node_b == succ[node_a]);
-		//printf("a: %d, b: %d\n", node_a, node_b);
-			/*if (tabu[node_a] != -1 && n_iter - tabu[node_a] <= tenure)
-				printf("NODE a is tabu!\n");
-			else if (tabu[node_b] != -1 && n_iter - tabu[node_b] <= tenure)
-				printf("NODE b is tabu!\n");*/
 			
-			//worsening move
+		// Apply a worsening move
 		double worse_cost = (dist(node_a, node_b, inst) + dist(succ[node_a], succ[node_b], inst)) - (dist(node_a, succ[node_a], inst) + dist(node_b, succ[node_b], inst));
 		curr_cost = curr_cost + worse_cost;
 		tabu[node_a] = n_iter;
 		tabu[node_b] = n_iter;
-		//printf("STARTING list of successors: [ ");
-		//for (int i = 0; i <= inst->nnodes - 2; i++) printf("%d->%d, ", i, succ[i]);
-		//printf("%d->%d ]\n", inst->nnodes - 1, succ[inst->nnodes - 1]);
+
 		_2opt_move(inst, node_a, node_b, succ);
-		//printf("Cost after 2-OPT kick: %f\n", curr_cost);
+		if (inst->verbose >= HIGH) printf("Cost after 2-OPT kick: %f\n", curr_cost);
 		
 		n_iter++;
 	}
 
-	printf("Cost FINAL solution: %f\n", min_sol_cost);
+	if (inst->verbose >= MEDIUM) printf("Cost FINAL solution: %f\n", min_sol_cost);
 	inst->z_best = min_sol_cost;
 	
 	for (int i = 0; i < inst->ncols; i++) x[i] = 0.0;
@@ -1847,7 +1809,6 @@ void solve_heur_tabu(instance* inst, double* x) {
 	free(succ);
 	free(final_succ);
 	free(tabu);
-
 }
 
 
@@ -1980,6 +1941,31 @@ void get_solution_from_nodes_list(instance* inst, int* nodes_list, double* x) {
 }
 
 
+void get_succ_from_nodes_list(instance* inst, int* nodes_list, int* succ, int* start_node) {
+
+	*start_node = nodes_list[0];
+
+	for (int j = 0; j < inst->nnodes - 1; j++) {
+		succ[nodes_list[j]] = nodes_list[j + 1];
+	}
+	succ[nodes_list[inst->nnodes - 1]] = nodes_list[0];
+
+	return;
+}
+
+
+void get_nodes_list_from_succ(instance* inst, int* nodes_list, int* succ, int start_node) {
+
+	nodes_list[0] = start_node;
+
+	for (int j = 1; j < inst->nnodes; j++) {
+		nodes_list[j] = succ[nodes_list[j - 1]];
+	}
+
+	return;
+}
+
+
 void solve_heur_genetic(instance* inst, double* x, int pop_size) {
 	 
 	double residual_timelimit = inst->timelimit;
@@ -1995,25 +1981,26 @@ void solve_heur_genetic(instance* inst, double* x, int pop_size) {
 
 	t1 = second();
 
-	/*
-	for (int i = 0; i < pop_size; i++) {
-		double* temp_x = (double*)calloc(inst->ncols, sizeof(double));					// Allocate memory for a single solution
-		generate_random_solution(inst, temp_x);											// Generate it randomly
-		printf("Random solution #%d generated\n", i);
-		//solve_heur_2_opt(inst, temp_x);												// Refine it with 2-opt
-		//printf("Solution #%d refined\n", i);
-		population[i] = temp_x;															// Finally add it to population list
-		fitness[i] = inst->z_best;														// Memorize also the solution cost
-	}
-	*/
+	int start_node = -1;
+	int* succ = (int*)malloc(inst->nnodes * sizeof(int));
 	for (int i = 0; i < pop_size; i++) {
 		int* nodes_list = (int*)malloc(inst->nnodes * sizeof(int));						// Allocate memory for a single list of nodes
+
 		_generate_feasible_nodes_list(inst, nodes_list);								// Generate it randomly
+
+		/*
+		if (i < (4 * pop_size) / 5) {
+			get_succ_from_nodes_list(inst, nodes_list, succ, &start_node);					// Get the successors list from the nodes list and the start node
+			solve_heur_2_opt(inst, NULL, succ, 1.0);										// Refine it with 2-opt
+			get_nodes_list_from_succ(inst, nodes_list, succ, start_node);					// Get back the nodes list given the successors list and the start node
+		}
+		*/
+		
+		
 		population[i] = nodes_list;														// Add it to population list
 		fitness[i] = inst->z_best;														// Memorize also the solution cost
 		if (inst->verbose >= HIGH) printf("Random solution #%d generated with fitness: %f\n", i, fitness[i]);
 	}
-	if (inst->verbose >= MEDIUM) printf("Population of %d starting solutions generated successfully.\n", pop_size);
 
 	t2 = second();
 
@@ -2052,11 +2039,11 @@ void solve_heur_genetic(instance* inst, double* x, int pop_size) {
 		}
 		if (inst->verbose >= HIGH) printf("worst_fitness: %f\n\n", worst_fitness);
 
-		// Generate the new 100 offsprings merging the chromosomes (+ applying 2-opt refinement) and kill the worst 100 solutions
+		// Generate the new (pop_size / 10) offsprings merging the chromosomes and kill among the worst (pop_size / 10) solutions
 		int offspring_size = pop_size / 10;
 		for (int n = 0; n < offspring_size; n++) {
 
-			// Choose the pair of population members to merge together in a probabilistic way, so that the solutions with highest fitness are mostly chosen
+			// Choose the pair of population members to merge together in a probabilistic way, so that the solutions with best fitness are mostly chosen
 			double norm_fitness = 1.0;
 			double sol_thresh = 1.0;
 			int first_parent_index = -1;
@@ -2065,7 +2052,7 @@ void solve_heur_genetic(instance* inst, double* x, int pop_size) {
 				norm_fitness = fitness[first_parent_index] / worst_fitness;						// Normalize its fitness w.r.t. the worst fitness value of the current epoch
 				sol_thresh = 1.0 - norm_fitness * norm_fitness;									// Compute a threshold that favours solutions with fitness far from the worst one
 
-				if (((double)rand() / RAND_MAX) < sol_thresh) break;
+				if (((double)rand() / RAND_MAX) <= sol_thresh + EPSILON) break;
 			}
 			if (inst->verbose >= HIGH) printf("first_parent_index: %d with fitness: %f\n", first_parent_index, fitness[first_parent_index]);
 
@@ -2079,7 +2066,7 @@ void solve_heur_genetic(instance* inst, double* x, int pop_size) {
 				norm_fitness = fitness[second_parent_index] / worst_fitness;					// Normalize its fitness w.r.t. the worst fitness value of the current epoch
 				sol_thresh = 1.0 - norm_fitness * norm_fitness;									// Compute a threshold that favours solutions with fitness far from the worst one
 
-				if (((double)rand() / RAND_MAX) < sol_thresh) break;
+				if (((double)rand() / RAND_MAX) <= sol_thresh + EPSILON) break;
 			}
 			if (inst->verbose >= HIGH) printf("second_parent_index: %d with fitness: %f\n", second_parent_index, fitness[second_parent_index]);
 
@@ -2098,7 +2085,7 @@ void solve_heur_genetic(instance* inst, double* x, int pop_size) {
 				norm_fitness = fitness[offspring_index] / worst_fitness;						// Normalize its fitness w.r.t. the worst fitness value of the current epoch
 				sol_thresh = norm_fitness * norm_fitness;										// Compute a threshold that favours solutions with fitness close to the worst one
 
-				if (((double)rand() / RAND_MAX) < sol_thresh) break;
+				if (((double)rand() / RAND_MAX) < sol_thresh + EPSILON) break;
 			}
 			if (inst->verbose >= HIGH) printf("Index of the killed member: %d with fitness: %f\n", offspring_index, fitness[offspring_index]);
 
@@ -2227,10 +2214,13 @@ void solve_heur_genetic(instance* inst, double* x, int pop_size) {
 		t1 = second();
 
 		// Before starting the new epoch, let's introduce some random mutations, where a mutation consistes in swapping 2 nodes of a solution.
-		// N.B. We want to apply a bunch of mutations only when the average fitness is too close to that of the champion (es. difference < 1%)		
-		double relative_fitness_difference = (worst_fitness - best_fitness) / worst_fitness;	// Close to 0 => best ~= avg; Close to 1 => best != avg
-		if (inst->verbose >= MEDIUM) printf("relative_fitness_difference: %f\n", relative_fitness_difference);
-		if (relative_fitness_difference < 0.01) {
+		// N.B. We want to apply a bunch of mutations only when the average fitness is too close to that of the champion (es. difference < 2%)		
+		//double relative_fitness_difference = (worst_fitness - best_fitness) / worst_fitness;	// Close to 0 => best ~= avg; Close to 1 => best != avg
+		//if (inst->verbose >= MEDIUM) printf("relative_fitness_difference: %f\n", relative_fitness_difference);
+		double fitness_difference = (worst_fitness - best_fitness);
+		if (inst->verbose >= MEDIUM) printf("fitness_difference: %f\n", fitness_difference);
+		//if (relative_fitness_difference < 0.02) {
+		if (fitness_difference < 5.0) {
 
 			int n_mutations = rand() % (pop_size / 10);
 			for (int i = 0; i < n_mutations; i++) {
@@ -2283,6 +2273,7 @@ void solve_heur_genetic(instance* inst, double* x, int pop_size) {
 	for (int i = 0; i < pop_size; i++) free(population[i]);
 	free(population);
 	free(fitness);
+	free(succ);
 
 	return;
 }

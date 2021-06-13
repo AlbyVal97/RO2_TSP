@@ -67,7 +67,7 @@ void solve_heur_grasp(instance* inst, double* x, double max_time);
 void solve_heur_extra_mileage(instance* inst, double* x);
 
 // Apply 2-opt moves to the solution provided by HEUR_GRASP
-void solve_heur_2_opt(instance* inst, double* x);
+void solve_heur_2_opt(instance* inst, double* x, int* succ, double timelimit);
 
 // Apply 2-opt refinement heuristic to multiple starting solutions provided by HEUR_GRASP, until timelimit is reached
 void solve_heur_multi_start(instance* inst, double* x);
@@ -93,6 +93,12 @@ void _generate_feasible_nodes_list(instance* inst, int* nodes_list);
 
 // Given the nodes list of a solution, it returns the solution as the array of edges (required to show the final "Champion" solution in HEUR_GENTIC)
 void get_solution_from_nodes_list(instance* inst, int* nodes_list, double* x);
+
+// Given the list of nodes from HEUR_GENETIC, it returns the list of successors needed to apply 2-opt refinement
+void get_succ_from_nodes_list(instance* inst, int* nodes_list, int* succ, int* start_node);
+
+// Given the list of successors provided by 2-opt refinement, it returns the list of nodes of the correspondent solution
+void get_nodes_list_from_succ(instance* inst, int* nodes_list, int* succ, int start_node);
 
 // Builds the tableau (variables and constraints)
 void build_model_BASIC(instance* inst, CPXENVptr env, CPXLPptr lp);

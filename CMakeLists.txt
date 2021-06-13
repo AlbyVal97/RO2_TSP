@@ -68,4 +68,3 @@ target_link_libraries(${PROJECT_NAME}
 # public include directories we will use those link directories when building
 # helloDemo
 #target_link_libraries (helloDemo LINK_PUBLIC Hello)
-© 2021 GitHub, Inc.
