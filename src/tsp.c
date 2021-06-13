@@ -1448,7 +1448,8 @@ void solve_heur_2_opt(instance* inst, double* x) {
 	// Compute the list of successors from the solution provided by GRASP constructive heuristic
 	int* succ = (int*)malloc(inst->nnodes * sizeof(int));
 
-	//compute_succ(inst, x, succ);
+	compute_succ(inst, x, succ);
+	/*
 	for (int i = 0; i < inst->nnodes; i++) succ[i] = -1;
 	int i = 0;
 	for (int k = 0; k < inst->nnodes - 1; k++) {
@@ -1461,6 +1462,7 @@ void solve_heur_2_opt(instance* inst, double* x) {
 		}
 	}
 	succ[i] = 0;
+	*/
 
 	// Retrieve the cost of the solution provided by GRASP or by an iteration of VNS
 	double curr_sol_cost = inst->z_best;
@@ -1482,8 +1484,8 @@ void solve_heur_2_opt(instance* inst, double* x) {
 		int best_b = -1;
 		double min_delta_cost = INFINITY;
 
-		//compute_best_node(inst, succ, &best_a, &best_b, &min_delta_cost);
-
+		compute_best_node(inst, succ, &best_a, &best_b, &min_delta_cost);
+		/*
 		for (int a = 0; a < inst->nnodes; a++) {
 			for (int b = 0; b < inst->nnodes; b++) {
 
@@ -1498,6 +1500,7 @@ void solve_heur_2_opt(instance* inst, double* x) {
 				}
 			}
 		}
+		*/
 		// When the new solution cost is no longer able to become lower => local optimal solution achieved!
 		if (min_delta_cost >= 0) break;
 
@@ -1509,6 +1512,8 @@ void solve_heur_2_opt(instance* inst, double* x) {
 			printf("best_b: %d\n", best_b);
 		}
 
+		_2opt_move(inst, best_a, best_b, succ);
+		/*
 		// Since the successors of best_a and best_b will soon be updated, memorize the original ones for later use
 		int old_succ_a = succ[best_a];
 		int old_succ_b = succ[best_b];
@@ -1529,12 +1534,7 @@ void solve_heur_2_opt(instance* inst, double* x) {
 		// Rearrange the connections between nodes a and b
 		succ[old_succ_a] = old_succ_b;
 		succ[best_a] = best_b;
-
-<<<<<<< HEAD
-		_2opt_move(inst, best_a, best_b, succ);
-=======
-		//void _2opt_move(inst, best_a, best_b, succ);
->>>>>>> 01aa925ad98d1e13ae9aecbbce9820c4cfb69e87
+		*/
 		
 		if (inst->verbose >= HIGH) {
 			printf("IMPROVED list of successors: [ ");
