@@ -1411,13 +1411,14 @@ void compute_best_node(instance* inst, int* succ, int* best_a, int* best_b, doub
 					*best_b = b;
 				}
 			}
+			
 		}
 	}
 }
 
 
 void _2opt_move(instance* inst, int a, int b, int* succ) {
-
+	
 	// Since the successors of best_a and best_b will soon be updated, memorize the original ones for later use
 	int old_succ_a = succ[a];
 	int old_succ_b = succ[b];
@@ -1438,7 +1439,7 @@ void _2opt_move(instance* inst, int a, int b, int* succ) {
 	// Rearrange the connections between nodes a and b
 	succ[old_succ_a] = old_succ_b;
 	succ[a] = b;
-
+	
 }
 
 
@@ -1529,7 +1530,11 @@ void solve_heur_2_opt(instance* inst, double* x) {
 		succ[old_succ_a] = old_succ_b;
 		succ[best_a] = best_b;
 
+<<<<<<< HEAD
+		_2opt_move(inst, best_a, best_b, succ);
+=======
 		//void _2opt_move(inst, best_a, best_b, succ);
+>>>>>>> 01aa925ad98d1e13ae9aecbbce9820c4cfb69e87
 		
 		if (inst->verbose >= HIGH) {
 			printf("IMPROVED list of successors: [ ");
@@ -1718,7 +1723,7 @@ void solve_heur_tabu(instance* inst, double* x) {
 
 	double residual_timelimit = inst->timelimit;
 	double min_sol_cost = INFINITY;
-	int tenure = 100;
+	int tenure = 20;
 
 	// Use GRASP to generate the reference solution, allowing it to use up to 1/10 of the total timelimit
 	double t1 = second();
@@ -1730,12 +1735,15 @@ void solve_heur_tabu(instance* inst, double* x) {
 	if (inst->verbose >= MEDIUM) printf("Starting incumbent cost: %f\n\n", inst->z_best);
 
 	int* succ = (int*)malloc(inst->nnodes * sizeof(int));
+	int* final_succ = (int*)malloc(inst->nnodes * sizeof(int));
 	compute_succ(inst, x, succ);
 
 	int* tabu = malloc(inst->nnodes * sizeof(int));
 	for (int i = 0; i < inst->nnodes; i++) tabu[i] = -1;
 
 	int n_iter = 0;
+	int flag = 0;
+	int fase_miglioramento = 1;
 	double curr_cost = inst->z_best;
 
 	t1 = second();
@@ -1744,24 +1752,53 @@ void solve_heur_tabu(instance* inst, double* x) {
 		while (1) {
 			int a, b;
 			double min_cost = INFINITY;
+
+			if (n_iter % 500 == 0) {
+				if (flag == 0) {
+					tenure = 100;
+					flag = 1;
+					printf("TENURE 100\n");
+				}
+				else {
+					tenure = 20;
+					flag = 0;
+					printf("TENURE 20\n");
+				}
+			}
 			
 			compute_best_node(inst, succ, &a, &b, &min_cost);
-			printf("%f\n", min_cost);
-			if (tabu[a] != -1 && n_iter - tabu[a] <= tenure) {
-				printf("NODE a is tabu!\n");
+			//printf("Inside 2opt a, b: %d, %d\n", a, b);
+			//printf("%f\n", min_cost);
+			if (fase_miglioramento == 0 && tabu[a] != -1 && n_iter - tabu[a] <= tenure) {
+				//printf("NODE a is tabu!\n");
+				if (curr_cost < min_sol_cost) {
+					min_sol_cost = curr_cost;
+					final_succ = memcpy(final_succ, succ, sizeof(int) * inst->nnodes);
+				}
 				break;
 			}
-			if (tabu[b] != -1 && n_iter - tabu[b] <= tenure) {
-				printf("NODE b is tabu!\n");
+			if (fase_miglioramento == 0 && tabu[b] != -1 && n_iter - tabu[b] <= tenure) {
+				//printf("NODE b is tabu!\n");
+				if (curr_cost < min_sol_cost) {
+					min_sol_cost = curr_cost;
+					final_succ = memcpy(final_succ, succ, sizeof(int) * inst->nnodes);
+				}
 				break;
 			}
 			if (min_cost >= 0) {
+				
 				printf("LOCAL optimum reached: %f\n", curr_cost);
-				min_sol_cost = curr_cost;
+				if (curr_cost < min_sol_cost) {
+					min_sol_cost = curr_cost;
+					final_succ = memcpy(final_succ, succ, sizeof(int) * inst->nnodes);
+				}
+				fase_miglioramento = 0;
 				break;
 			}
 			//tabu[a] = n_iter;
 			//tabu[b] = n_iter;
+			//printf("SI MIGLIORA\n");
+			fase_miglioramento = 1;
 			curr_cost += min_cost;
 			_2opt_move(inst, a, b, succ);
 
@@ -1776,35 +1813,39 @@ void solve_heur_tabu(instance* inst, double* x) {
 		t1 = second();
 		//2-opt random kick to avoid loop
 		int node_a, node_b;
-		while (1) {
-			node_a = rand() % inst->nnodes;
-			while ((node_b = rand() % inst->nnodes) == succ[node_a]);
-			printf("a: %d, b: %d\n", node_a, node_b);
+		
+		node_a = rand() % inst->nnodes;
+		while ((node_b = rand() % inst->nnodes) == node_a || node_b == succ[node_a]);
+		//printf("a: %d, b: %d\n", node_a, node_b);
 			/*if (tabu[node_a] != -1 && n_iter - tabu[node_a] <= tenure)
 				printf("NODE a is tabu!\n");
 			else if (tabu[node_b] != -1 && n_iter - tabu[node_b] <= tenure)
 				printf("NODE b is tabu!\n");*/
-			{
-				//worsening move
-				double worse_cost = (dist(node_a, node_b, inst) + dist(succ[node_a], succ[node_b], inst)) - (dist(node_a, succ[node_a], inst) + dist(node_b, succ[node_b], inst));
-				curr_cost = min_sol_cost + worse_cost;
-				tabu[node_a] = n_iter;
-				tabu[node_b] = n_iter;
-				_2opt_move(inst, node_a, node_b, succ);
-				printf("Cost after 2-OPT kick: %f\n", curr_cost);
-				n_iter++;
-				break;
-			}
-		}
-
+			
+			//worsening move
+		double worse_cost = (dist(node_a, node_b, inst) + dist(succ[node_a], succ[node_b], inst)) - (dist(node_a, succ[node_a], inst) + dist(node_b, succ[node_b], inst));
+		curr_cost = curr_cost + worse_cost;
+		tabu[node_a] = n_iter;
+		tabu[node_b] = n_iter;
+		//printf("STARTING list of successors: [ ");
+		//for (int i = 0; i <= inst->nnodes - 2; i++) printf("%d->%d, ", i, succ[i]);
+		//printf("%d->%d ]\n", inst->nnodes - 1, succ[inst->nnodes - 1]);
+		_2opt_move(inst, node_a, node_b, succ);
+		//printf("Cost after 2-OPT kick: %f\n", curr_cost);
+		
+		n_iter++;
 	}
+
+	printf("Cost FINAL solution: %f\n", min_sol_cost);
+	inst->z_best = min_sol_cost;
 	
 	for (int i = 0; i < inst->ncols; i++) x[i] = 0.0;
 	for (int i = 0; i <= inst->nnodes - 1; i++) {
-		x[xpos(i, succ[i], inst)] = 1.0;
+		x[xpos(i, final_succ[i], inst)] = 1.0;
 	}
 
 	free(succ);
+	free(final_succ);
 	free(tabu);
 
 }
