@@ -1970,6 +1970,7 @@ void solve_heur_genetic(instance* inst, double* x, int pop_size) {
 	 
 	double residual_timelimit = inst->timelimit;
 	double min_sol_cost = INFINITY;
+	double fitness_spread_at_first_epoch = 0.0;
 	double t1, t2 = 0.0;
 	int champion_index = -1;
 
@@ -2025,19 +2026,19 @@ void solve_heur_genetic(instance* inst, double* x, int pop_size) {
 	// Lower the residual timelimit, but wait at least for the first epoch to be concluded to check if timelimit has been reached
 	residual_timelimit = residual_timelimit - (t2 - t1);
 
+	// Compute the worst fitness (highest cost) of the first epoch. Then it will be updated after the offspring generation
+	double worst_fitness = -INFINITY;
+	for (int i = 0; i < pop_size; i++) {
+		if (fitness[i] > worst_fitness) worst_fitness = fitness[i];
+	}
+	if (inst->verbose >= HIGH) printf("Worst fitness of the starting population: %f\n\n", worst_fitness);
+
 	int n_epoch = 1;
 	while (1) {
 
 		t1 = second();
 
 		if (inst->verbose >= HIGH) printf("\nEpoch #%d\n", n_epoch);
-
-		// Compute the worst fitness (highest cost) of the current epoch
-		double worst_fitness = -INFINITY;
-		for (int i = 0; i < pop_size; i++) {
-			if (fitness[i] > worst_fitness) worst_fitness = fitness[i];
-		}
-		if (inst->verbose >= HIGH) printf("worst_fitness: %f\n\n", worst_fitness);
 
 		// Generate the new (pop_size / 10) offsprings merging the chromosomes and kill among the worst (pop_size / 10) solutions
 		int offspring_size = pop_size / 10;
@@ -2183,15 +2184,14 @@ void solve_heur_genetic(instance* inst, double* x, int pop_size) {
 				champion_index = i;
 			}
 		}
-		if (inst->verbose >= MEDIUM) printf("Champion (solution #%d) fitness of epoch #%d: %f\n", champion_index, n_epoch, best_fitness);
+		if (inst->verbose >= MEDIUM) printf("Champion fitness of epoch #%d: %f\n", n_epoch, best_fitness);
 
 		// Also update the worst fitness after generating the offspring
+		worst_fitness = -INFINITY;
 		for (int i = 0; i < pop_size; i++) {
-			if (fitness[i] > worst_fitness) {
-				worst_fitness = fitness[i];
-			}
+			if (fitness[i] > worst_fitness) worst_fitness = fitness[i];
 		}
-		if (inst->verbose >= HIGH) printf("worst_fitness after offspring generation: %f\n\n", worst_fitness);
+		if (inst->verbose >= MEDIUM) printf("Worst fitness of epoch #%d (after offspring generation): %f\n", n_epoch, worst_fitness);
 
 		t2 = second();
 
@@ -2214,13 +2214,12 @@ void solve_heur_genetic(instance* inst, double* x, int pop_size) {
 		t1 = second();
 
 		// Before starting the new epoch, let's introduce some random mutations, where a mutation consistes in swapping 2 nodes of a solution.
-		// N.B. We want to apply a bunch of mutations only when the average fitness is too close to that of the champion (es. difference < 2%)		
-		//double relative_fitness_difference = (worst_fitness - best_fitness) / worst_fitness;	// Close to 0 => best ~= avg; Close to 1 => best != avg
-		//if (inst->verbose >= MEDIUM) printf("relative_fitness_difference: %f\n", relative_fitness_difference);
-		double fitness_difference = (worst_fitness - best_fitness);
-		if (inst->verbose >= MEDIUM) printf("fitness_difference: %f\n", fitness_difference);
-		//if (relative_fitness_difference < 0.02) {
-		if (fitness_difference < 5.0) {
+		// N.B. We want to apply a bunch of mutations when the spread between the worst and best solution is too low compared to that of the first epoch (es. < 20%)
+		double fitness_spread = (worst_fitness - best_fitness);
+		if (n_epoch == 1) fitness_spread_at_first_epoch = fitness_spread;
+		double relative_fitness_spread = fitness_spread / fitness_spread_at_first_epoch;
+		if (inst->verbose >= MEDIUM) printf("relative_fitness_spread: %f\n\n", relative_fitness_spread);
+		if (relative_fitness_spread < 0.2) {
 
 			int n_mutations = rand() % (pop_size / 10);
 			for (int i = 0; i < n_mutations; i++) {
