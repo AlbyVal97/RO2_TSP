@@ -297,11 +297,23 @@ int TSPopt(instance* inst) {
 			inst->ncols = (inst->nnodes * (inst->nnodes - 1)) / 2;
 			double* x_genetic = (double*)calloc(inst->ncols, sizeof(double));
 
-			solve_heur_genetic(inst, x_genetic, 1000);
+			solve_heur_genetic(inst, x_genetic, 1000, 0.0);
 
 			sprintf(edges_file_path, "%s/model_%s_edges.dat", edges_file_path, models[inst->model_type]);
 			print_solution(inst, x_genetic, symmetric, edges_file_path);
 			free(x_genetic);
+			break;
+
+		case HEUR_GENETIC_2_OPT:
+			symmetric = 0;
+			inst->ncols = (inst->nnodes * (inst->nnodes - 1)) / 2;
+			double* x_genetic_2_opt = (double*)calloc(inst->ncols, sizeof(double));
+
+			solve_heur_genetic(inst, x_genetic_2_opt, 100, 0.1);
+
+			sprintf(edges_file_path, "%s/model_%s_edges.dat", edges_file_path, models[inst->model_type]);
+			print_solution(inst, x_genetic_2_opt, symmetric, edges_file_path);
+			free(x_genetic_2_opt);
 			break;
 
 		default:
@@ -1457,6 +1469,7 @@ void solve_heur_2_opt(instance* inst, double* x, int* succ, double timelimit) {
 
 	// Retrieve the cost of the solution provided by GRASP or by an iteration of VNS
 	double curr_sol_cost = inst->z_best;
+	double residual_timelimit = timelimit;
 
 	if (inst->verbose >= HIGH) {
 		printf("STARTING list of successors: [ ");
@@ -1501,9 +1514,9 @@ void solve_heur_2_opt(instance* inst, double* x, int* succ, double timelimit) {
 		double t2 = second();
 
 		// Update the timelimit and check if it has been reached for this call of 2-opt
-		timelimit = timelimit - (t2 - t1);
-		if (timelimit <= 0) {
-			printf("Timelimit reached after 0.1 secs!\n");
+		residual_timelimit = residual_timelimit - (t2 - t1);
+		if (residual_timelimit <= 0) {
+			printf("Timelimit reached after %f secs!\n", timelimit);
 			break;
 		}
 
@@ -1966,7 +1979,7 @@ void get_nodes_list_from_succ(instance* inst, int* nodes_list, int* succ, int st
 }
 
 
-void solve_heur_genetic(instance* inst, double* x, int pop_size) {
+void solve_heur_genetic(instance* inst, double* x, int pop_size, double ratio_2_opt) {
 	 
 	double residual_timelimit = inst->timelimit;
 	double min_sol_cost = INFINITY;
@@ -1975,7 +1988,6 @@ void solve_heur_genetic(instance* inst, double* x, int pop_size) {
 	int champion_index = -1;
 
 	// Generate the starting population of pop_size (ex. 1000) random solutions (already with 2-opt refinement) and keep their costs (called "fitness")
-	//double** population = (double**)malloc(pop_size * sizeof(double*));
 	int** population = (int**)malloc(pop_size * sizeof(int*));
 	if (population == NULL) print_error("Unable to allocate memory for pop_size solutions in HEUR_GENETIC.");
 	double* fitness = (double*)malloc(pop_size * sizeof(double));
@@ -1983,20 +1995,18 @@ void solve_heur_genetic(instance* inst, double* x, int pop_size) {
 	t1 = second();
 
 	int start_node = -1;
-	int* succ = (int*)malloc(inst->nnodes * sizeof(int));
+	int* succ = (int*)malloc(inst->nnodes * sizeof(int));								// Shared successors list data structure
 	for (int i = 0; i < pop_size; i++) {
 		int* nodes_list = (int*)malloc(inst->nnodes * sizeof(int));						// Allocate memory for a single list of nodes
 
 		_generate_feasible_nodes_list(inst, nodes_list);								// Generate it randomly
 
-		/*
-		if (i < (4 * pop_size) / 5) {
-			get_succ_from_nodes_list(inst, nodes_list, succ, &start_node);					// Get the successors list from the nodes list and the start node
-			solve_heur_2_opt(inst, NULL, succ, 1.0);										// Refine it with 2-opt
-			get_nodes_list_from_succ(inst, nodes_list, succ, start_node);					// Get back the nodes list given the successors list and the start node
+		// Only if ratio_2_opt parameter is > 0, then apply 2-opt refinement to this fraction of starting solutions
+		if (i < (pop_size * ratio_2_opt)) {
+			get_succ_from_nodes_list(inst, nodes_list, succ, &start_node);				// Get the successors list from the nodes list and the start node
+			solve_heur_2_opt(inst, NULL, succ, 0.5);									// Refine it with 2-opt for a small period of time
+			get_nodes_list_from_succ(inst, nodes_list, succ, start_node);				// Get back the nodes list given the successors list and the start node
 		}
-		*/
-		
 		
 		population[i] = nodes_list;														// Add it to population list
 		fitness[i] = inst->z_best;														// Memorize also the solution cost
@@ -2004,24 +2014,6 @@ void solve_heur_genetic(instance* inst, double* x, int pop_size) {
 	}
 
 	t2 = second();
-
-	/*
-	// Check if all generated solutions are feasible
-	for (int i = 0; i < pop_size; i++) {
-		for (int j = 0; j < inst->nnodes; j++) {
-			for (int k = 0; k < inst->nnodes; k++) {
-				if (j != k) {
-					if (population[i][j] == population[i][k]) {
-						printf("j: %d | k: %d\n", j, k);
-						for (int n = 0; n < inst->nnodes; n++) printf("%d ", population[i][n]);
-						print_error("There is at least one non feasible solution!");
-					}
-				}
-			}
-		}
-	}
-	printf("All feasible solutions!\n");
-	*/
 
 	// Lower the residual timelimit, but wait at least for the first epoch to be concluded to check if timelimit has been reached
 	residual_timelimit = residual_timelimit - (t2 - t1);
@@ -2150,13 +2142,7 @@ void solve_heur_genetic(instance* inst, double* x, int pop_size) {
 			}
 			// N.B. The previous chromosomes merging procedure works only under the assumption that both parents' nodes lists are of fesible solutions
 
-			if (inst->verbose >= HIGH) {
-				printf("\n Offspring nodes list: ");
-				for (int i = 0; i < inst->nnodes; i++) printf("%d ", population[offspring_index][i]);
-				printf("\n\n");
-			}
-			
-			// Compute the new solution fitness and update the fitness data structure
+			// Compute the new solution fitness
 			double new_sol_cost = 0.0;
 			int first_node = population[offspring_index][0];
 			int prev_node = first_node;
@@ -2167,7 +2153,25 @@ void solve_heur_genetic(instance* inst, double* x, int pop_size) {
 				prev_node = next_node;
 			}
 			new_sol_cost += dist(next_node, first_node, inst);
+
+			// Make sure that, if this option is enabled (ratio_2_opt > 0), then 2-opt refinement is applied to about ratio_2_opt of the offspring of the current epoch
+			// => "ratio_2_opt" parameter controls both the ratio of starting and new (offspring) solutions to which 2-opt refinement is applied
+			if ((ratio_2_opt > 0) && ((double)rand() / RAND_MAX) < ratio_2_opt) {
+				inst->z_best = new_sol_cost;
+				get_succ_from_nodes_list(inst, population[offspring_index], succ, &start_node);				// Get the successors list from the nodes list and the start node
+				solve_heur_2_opt(inst, NULL, succ, 0.5);													// Refine it with 2-opt for a small period of time
+				get_nodes_list_from_succ(inst, population[offspring_index], succ, start_node);				// Get back the nodes list given the successors list and the start node
+				new_sol_cost = inst->z_best;
+			}
+
+			// Finally update the fitness data structure
 			fitness[offspring_index] = new_sol_cost;
+
+			if (inst->verbose >= HIGH) {
+				printf("\n Offspring nodes list: ");
+				for (int i = 0; i < inst->nnodes; i++) printf("%d ", population[offspring_index][i]);
+				printf("\n\n");
+			}
 		}
 
 		// Compute the average fitness of the current epoch
@@ -2191,7 +2195,7 @@ void solve_heur_genetic(instance* inst, double* x, int pop_size) {
 		for (int i = 0; i < pop_size; i++) {
 			if (fitness[i] > worst_fitness) worst_fitness = fitness[i];
 		}
-		if (inst->verbose >= MEDIUM) printf("Worst fitness of epoch #%d (after offspring generation): %f\n", n_epoch, worst_fitness);
+		if (inst->verbose >= HIGH) printf("Worst fitness of epoch #%d (after offspring generation): %f\n", n_epoch, worst_fitness);
 
 		t2 = second();
 
@@ -2205,6 +2209,7 @@ void solve_heur_genetic(instance* inst, double* x, int pop_size) {
 
 		// If the champion (best) fitness turns out to be equal to the worst one, it means that all population members have become equal
 		// => stop the algorithm, since it can't find any better solution and will loop until timelimit is reached.
+		// N.B. This should never happen!
 		if (best_fitness >= worst_fitness - EPSILON && best_fitness <= worst_fitness + EPSILON) {
 			if (inst->verbose >= MEDIUM) printf("Population has become completely homogeneous! No further improvements are expected!\n");
 			get_solution_from_nodes_list(inst, population[champion_index], x);
@@ -2214,14 +2219,15 @@ void solve_heur_genetic(instance* inst, double* x, int pop_size) {
 		t1 = second();
 
 		// Before starting the new epoch, let's introduce some random mutations, where a mutation consistes in swapping 2 nodes of a solution.
-		// N.B. We want to apply a bunch of mutations when the spread between the worst and best solution is too low compared to that of the first epoch (es. < 20%)
+		// N.B. We want to apply a bunch of mutations when the spread between the worst and best solution is too low compared to that of the first epoch (ex. < 10%)
 		double fitness_spread = (worst_fitness - best_fitness);
-		if (n_epoch == 1) fitness_spread_at_first_epoch = fitness_spread;
+		if (n_epoch == 1) fitness_spread_at_first_epoch = fitness_spread;					// Memorize the fitness spread of the first epoch as a reference to keep "close" to
 		double relative_fitness_spread = fitness_spread / fitness_spread_at_first_epoch;
-		if (inst->verbose >= MEDIUM) printf("relative_fitness_spread: %f\n\n", relative_fitness_spread);
-		if (relative_fitness_spread < 0.2) {
+		if (inst->verbose >= MEDIUM) printf("Relative worst-best fitness spread: %f\n\n", relative_fitness_spread);
 
-			int n_mutations = rand() % (pop_size / 10);
+		if (relative_fitness_spread < 0.1) {
+
+			int n_mutations = rand() % (inst->nnodes) + 1;									// Select a number of mutations between 1 and inst->nnodes
 			for (int i = 0; i < n_mutations; i++) {
 
 				int mutant_member_index = rand() % pop_size;								// Choose a random solution to mutate, avoiding the current "Champion" one

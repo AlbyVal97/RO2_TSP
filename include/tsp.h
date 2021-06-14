@@ -79,9 +79,9 @@ void solve_heur_vns(instance* inst, double* x);
 void solve_heur_tabu(instance* inst, double* x);
 
 // Apply genetic algorithm meta heuristic, until timelimit is reached
-void solve_heur_genetic(instance* inst, double* x, int pop_size);
+void solve_heur_genetic(instance* inst, double* x, int pop_size, double ratio_2_opt);
 
-void _2opt_move(instance * inst, int a, int b, int* succ);
+void _2opt_move(instance* inst, int a, int b, int* succ);
 void compute_best_node(instance* inst, int* succ, int* best_a, int* best_b, double* min_cost);
 void compute_succ(instance* inst, double* x, int* succ);
 
@@ -89,6 +89,7 @@ void compute_succ(instance* inst, double* x, int* succ);
 void generate_random_solution(instance* inst, double* x);
 
 // Generates a random list of nodes corresponding to a feasible solution (used as chromosome in HEUR_GENETIC)
+// Exploits the algorithm shown here: https://stackoverflow.com/questions/196017/unique-non-repeating-random-numbers-in-o1#196065
 void _generate_feasible_nodes_list(instance* inst, int* nodes_list);
 
 // Given the nodes list of a solution, it returns the solution as the array of edges (required to show the final "Champion" solution in HEUR_GENTIC)
