@@ -19,6 +19,7 @@
 // -m 1 -folder test_instances_500 -prefix rnd_500 -n_inst 20 -n_nodes 500
 // -m 1 -folder test_instances_750 -prefix rnd_750 -n_inst 40 -n_nodes 750
 // -m 1 -folder test_instances_1000 -prefix rnd_1000 -n_inst 20 -n_nodes 1000
+// -m 1 -folder test_instances_2000 -prefix rnd_2000 -n_inst 20 -n_nodes 2000
 // -m 1 -folder test_instances_5000 -prefix rnd_5000 -n_inst 20 -n_nodes 5000
 
 // -f ../data/test_instances_200/rnd_200_1.tsp -seed 123456 -model_type 6 -verbose 2 -time_limit 60
@@ -159,9 +160,9 @@ void update_csvfile(instance* inst, int first_model, int last_model, double time
 	FILE* csv_file = fopen(csv_path, "a");
 	if (csv_file == NULL) print_error("csv file not found inside \"outputs\" folder!");
 
-	// If the method to test is a heuristic (inst->model_type >= 13), then the .csv file must report the final value of the objective function
+	// If the method to test is a heuristic (inst->model_type >= HEUR_HARD_FIX_50), then the .csv file must report the final value of the objective function
 	// instead of the computational time, which is fixed since they all run until timelimit is reached
-	if (inst->model_type <= 12) {
+	if (inst->model_type <= ADVBC_PROB_10) {
 		if (inst->model_type == first_model) {						// Print the instance name only before the test on the first model
 			fprintf(csv_file, "%s, %f, ", inst->inst_name, time);
 		}

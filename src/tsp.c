@@ -1001,7 +1001,7 @@ void solve_heur_soft_fix(instance* inst, CPXENVptr env, CPXLPptr lp) {
 	if (CPXsetintparam(env, CPXPARAM_Advance, 1)) print_error("CPXsetintparam() error in setting CPXPARAM_Advance");
 
 	// Set to solve just the root node: by doing that we will get a feasible solution, but not the optimal one => good as a starting point for heuristics
-	if (CPXsetintparam(env, CPX_PARAM_NODELIM, 0)) print_error("CPXsetintparam() error in setting seed");
+	if (CPXsetintparam(env, CPX_PARAM_NODELIM, 0)) print_error("CPXsetintparam() error in setting node limit");
 
 	// Run TSP solver (which is the branch and cut with fractional subtour elimination constraints only applied on the root node)
 	double t1 = second();
@@ -1020,7 +1020,7 @@ void solve_heur_soft_fix(instance* inst, CPXENVptr env, CPXLPptr lp) {
 
 	while (1) {
 
-		if (CPXsetintparam(env, CPX_PARAM_NODELIM, 2100000000)) print_error("CPXsetintparam() error in setting seed");
+		if (CPXsetintparam(env, CPX_PARAM_NODELIM, 2100000000)) print_error("CPXsetintparam() error in setting node limit");
 
 		if (CPXgetx(env, lp, curr_best_sol, 0, inst->ncols - 1)) print_error("CPXgetx() error");
 
@@ -1052,15 +1052,15 @@ void solve_heur_soft_fix(instance* inst, CPXENVptr env, CPXLPptr lp) {
 		}
 
 		if (residual_timelimit <= small_timelimit) {
-			if (CPXsetdblparam(env, CPX_PARAM_TILIM, residual_timelimit)) { print_error("CPXsetdblparam() error in setting timelimit"); }
+			if (CPXsetdblparam(env, CPX_PARAM_TILIM, residual_timelimit)) print_error("CPXsetdblparam() error in setting timelimit");
 		}
 		else {
-			if (CPXsetdblparam(env, CPX_PARAM_TILIM, small_timelimit)) { print_error("CPXsetdblparam() error in setting timelimit"); }
+			if (CPXsetdblparam(env, CPX_PARAM_TILIM, small_timelimit)) print_error("CPXsetdblparam() error in setting timelimit");
 		}
 
 		// After the first iteration, remove the previous local branching constraint
 		if (n_iter >= 1) {
-			if (CPXdelrows(env, lp, inst->nnodes, inst->nnodes)) print_error("wrong CPXdelrows() in deleting local branching constraints!");
+			if (CPXdelrows(env, lp, inst->nnodes, inst->nnodes)) print_error("CPXdelrows() error in deleting local branching constraints!");
 		}
 
 		// Add the new local branching constraint
@@ -1077,7 +1077,7 @@ void solve_heur_soft_fix(instance* inst, CPXENVptr env, CPXLPptr lp) {
 				j++;
 			}
 		}
-		if (CPXaddrows(env, lp, 0, 1, nnz, &rhs, &sense, &i_zero, index, value, NULL, cname)) print_error("wrong CPXaddrows() in adding local branching constraints!");
+		if (CPXaddrows(env, lp, 0, 1, nnz, &rhs, &sense, &i_zero, index, value, NULL, cname)) print_error("CPXaddrows() error in adding local branching constraints!");
 
 		// Uncomment the following to debug adding/removing local branching constraints:
 		char lp_temp_name[50];
@@ -1384,6 +1384,14 @@ void solve_heur_extra_mileage(instance* inst, double* x) {
 		x[xpos(i, succ[i], inst)] = 1.0;
 	}
 
+	// Compute from scratch the cost of the solution
+	double curr_sol_cost = 0.0;
+	for (int i = 0; i < inst->nnodes; i++) curr_sol_cost += dist(i, succ[i], inst);
+
+	if (inst->verbose >= MEDIUM) printf("\nHEUR_EXTRA_MILEAGE -> Cost of the best solution: %f\n\n", curr_sol_cost);
+	inst->z_best = curr_sol_cost;
+	
+
 	free(succ);
 	free(hull);
 	free(instance_nodes);
@@ -1612,6 +1620,7 @@ void solve_heur_vns(instance* inst, double* x) {
 
 	while (1) {
 
+		// Apply the 2-opt refinement heuristics to the current solution to get to a local optimum
 		solve_heur_2_opt(inst, x, NULL, INFINITY);
 
 		t2 = second();
@@ -1624,27 +1633,14 @@ void solve_heur_vns(instance* inst, double* x) {
 			min_sol_cost = curr_sol_cost;
 		}
 
+		// Check if the timelimit has been reached: if so => exit the loop
 		residual_timelimit = residual_timelimit - (t2 - t1);
 		if (residual_timelimit <= 0) break;
 		
 		t1 = second();
 
+		// Compute the list of successors of the local optimum solution 
 		compute_succ(inst, x, succ);
-		/*
-		// Compute the list of successors from the local optimum solution 
-		for (int i = 0; i < inst->nnodes; i++) succ[i] = -1;
-		int i = 0;
-		for (int k = 0; k < inst->nnodes - 1; k++) {
-			for (int j = 1; j < inst->nnodes; j++) {
-				if (i != j && succ[j] == -1 && x[xpos(i, j, inst)] > 0.5) {
-					succ[i] = j;
-					i = j;
-					break;
-				}
-			}
-		}
-		succ[i] = 0;
-		*/
 
 		// Select three random edges to be removed 
 		int a = rand() % inst->nnodes;
@@ -1656,7 +1652,7 @@ void solve_heur_vns(instance* inst, double* x) {
 		if (inst->verbose >= HIGH) printf("a = %d, b = %d, c = %d\n", a, b, c);
 		if (inst->verbose >= HIGH) printf("succ_a = %d, succ_b = %d, succ_c = %d\n", succ[a], succ[b], succ[c]);
 
-		// Assure that a, b, c are chosen in this order inside the succ data structure
+		// Make sure that a, b, c are chosen in this order inside the succ data structure
 		int n_nodes_chosen = 0;
 		int temp_a = a;
 		int temp_b = b;
@@ -1678,6 +1674,7 @@ void solve_heur_vns(instance* inst, double* x) {
 			curr_node = succ[curr_node];
 		}
 
+		// Perform a 3-opt worsening move ("kick" the solution out of the local optimum)
 		int temp_succ_a = succ[a];
 		succ[a] = succ[b];
 		int temp_succ_c = succ[c];
@@ -1686,15 +1683,16 @@ void solve_heur_vns(instance* inst, double* x) {
 		if (inst->verbose >= HIGH) printf("a = %d, b = %d, c = %d\n", a, b, c);
 		if (inst->verbose >= HIGH) printf("succ_a = %d, succ_b = %d, succ_c = %d\n", succ[a], succ[b], succ[c]);
 
+		// Update the current solution with the 3-opt worsening move
 		for (int i = 0; i < inst->ncols; i++) x[i] = 0.0;
 		for (int i = 0; i < inst->nnodes; i++) x[xpos(i, succ[i], inst)] = 1.0;
 
+		// Compute from scratch the cost of the new (worsened) solution
 		curr_sol_cost = 0.0;
 		for (int i = 0; i < inst->nnodes; i++) curr_sol_cost += dist(i, succ[i], inst);
 
 		printf("COST after a 3-opt kick: %f\n\n", curr_sol_cost);
 		inst->z_best = curr_sol_cost;
-
 	}
 
 	if (inst->verbose >= MEDIUM) printf("HEUR_VNS -> Cost of the best solution: %f\n\n", min_sol_cost);
