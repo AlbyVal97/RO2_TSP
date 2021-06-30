@@ -357,6 +357,7 @@ double dist(int i, int j, instance* inst) {
 void free_instance(instance* inst) { 
 	free(inst->xcoord);
 	free(inst->ycoord);
+	free(inst->best_sol);
 
 	return;
 }

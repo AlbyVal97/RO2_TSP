@@ -44,6 +44,8 @@
 // Command line arguments list for tuning hyperparameters of hard fix heuristics (only on 10 instances because each run takes about 15 minutes):
 // -m 2 -test test_tuning_hard_fix -folder test_instances_750_tuning -n_inst 10 -n_models 4 13 14 15 16 -prefix rnd_750 -time_limit 900
 
+// -m 2 -test test_tuning_soft_fix -folder test_instances_750_tuning -n_inst 10 -n_models 4 18 19 20 21 -prefix rnd_750 -time_limit 900
+
 
 void update_csvfile(instance* inst, int first_model, int last_model, double time, double z_best);
 void run_test(instance* inst);

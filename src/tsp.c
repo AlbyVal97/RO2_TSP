@@ -329,10 +329,11 @@ int TSPopt(instance* inst) {
 		double* xstar = (double*)calloc(ncols, sizeof(double));
 
 		// Copy the optimal solution from the Cplex environment to the new array "xstar"
-		if (!inst->timelimit_exceeded && CPXgetx(env, lp, xstar, 0, ncols - 1)) print_error("CPXgetx() error");
+		if (inst->model_type < HEUR_SOFT_FIX_3 && inst->model_type > HEUR_SOFT_FIX_VAR && !inst->timelimit_exceeded && CPXgetx(env, lp, xstar, 0, ncols - 1)) print_error("CPXgetx() error");
 
 		// Fill the .dat file with the correctly formatted nodes of the found solution
-		if (inst->verbose >= LOW) print_solution(inst, xstar, symmetric, edges_file_path);
+		if (inst->verbose >= LOW && inst->model_type < HEUR_SOFT_FIX_3 && inst->model_type > HEUR_SOFT_FIX_VAR) print_solution(inst, xstar, symmetric, edges_file_path);
+		else if (inst->verbose >= LOW) print_solution(inst, inst->best_sol, symmetric, edges_file_path);
 
 		// Free allocated memory and close Cplex model
 		free(xstar);
@@ -991,11 +992,15 @@ void solve_heur_soft_fix(instance* inst, CPXENVptr env, CPXLPptr lp) {
 
 	// Build an array of indices of variables/columns x(i,j) of the model
 	int* indices = (int*)calloc(inst->ncols, sizeof(int));
-	int k = 0;
+	/*int k = 0;
 	for (int i = 0; i < inst->nnodes; i++) {
 		for (int j = i + 1; j < inst->nnodes; j++) {
 			indices[k++] = xpos(i, j, inst);
 		}
+	}*/
+
+	for (int i = 0; i < inst->ncols; i++) {
+		indices[i] = i;
 	}
 
 	if (CPXsetintparam(env, CPXPARAM_Advance, 1)) print_error("CPXsetintparam() error in setting CPXPARAM_Advance");
@@ -1007,34 +1012,36 @@ void solve_heur_soft_fix(instance* inst, CPXENVptr env, CPXLPptr lp) {
 	double t1 = second();
 	solve_adv_branch_cut(inst, env, lp);											// solve first time with nodelimit = 0
 	double t2 = second();
+	if (inst->verbose >= MEDIUM) printf("Time used for iteration number 0: %f\n", t2 - t1);
+	
+	residual_timelimit = residual_timelimit - (t2 - t1);
+	t1 = second();
 
 	int n_iter = 0;
 	int beg = 0;
 	double temp_obj_val = INFINITY;
 	double* curr_best_sol = (double*)calloc(inst->ncols, sizeof(double));
+	inst->best_sol = (double*)calloc(inst->ncols, sizeof(double));
 
 	int* index = (int*)calloc(inst->nnodes, sizeof(int));							// Array of indexes associated to the row variables
 	double* value = (double*)calloc(inst->nnodes, sizeof(double));					// Array of row variables coefficients
 	char** cname = (char**)calloc(1, sizeof(char*));								// (char **) required by cplex...
 	cname[0] = (char*)calloc(100, sizeof(char));
 
+	if (CPXsetintparam(env, CPX_PARAM_NODELIM, 2100000000)) print_error("CPXsetintparam() error in setting node limit");
+
 	while (1) {
 
-		if (CPXsetintparam(env, CPX_PARAM_NODELIM, 2100000000)) print_error("CPXsetintparam() error in setting node limit");
-
 		if (CPXgetx(env, lp, curr_best_sol, 0, inst->ncols - 1)) print_error("CPXgetx() error");
-
-		if (inst->verbose >= MEDIUM) printf("Time used for iteration number %d: %f\n", n_iter, t2 - t1);
 
 		CPXgetobjval(env, lp, &temp_obj_val);
 		if (inst->z_best > temp_obj_val) {
 			inst->z_best = temp_obj_val;
-			inst->best_sol = curr_best_sol;
 
 			// Set the feasible solution (not optimal) from which to start with the heuristics
 			if (CPXaddmipstarts(env, lp, 1, inst->ncols, &beg, indices, inst->best_sol, CPX_MIPSTART_AUTO, NULL)) print_error("CPXaddmipstarts() error in setting known solution");
 		}
-		else if (inst->model_type == HEUR_SOFT_FIX_VAR) {
+		else {
 			// If there has been no improvement in the last iteration and we are using SOFT_FIX heuristics with variable K, then increase K value up to 10
 			if (K < 10) K++;
 		}
@@ -1043,24 +1050,33 @@ void solve_heur_soft_fix(instance* inst, CPXENVptr env, CPXLPptr lp) {
 		if (inst->verbose == MEDIUM) printf("Iteration: %d, K: %d, best_sol: %f\n", n_iter, temp, inst->z_best);
 		temp = K;
 
+		t2 = second();
+
+		if (inst->verbose >= MEDIUM && n_iter >= 1) printf("Time used for iteration number %d: %f\n", n_iter, t2 - t1);
+
+		// After the first iteration, remove the previous local branching constraint
+		if (n_iter >= 1) {
+			int last;
+			if ((last = CPXgetnumrows(env, lp)) == 0) print_error("CPXgetnumrows() error!");
+			if (CPXdelrows(env, lp, last - 1, last - 1)) print_error("CPXdelrows() error in deleting local branching constraints!");
+		}
+
 		// Update the amount of time left before timelimit is reached and provide it to Cplex to check
 		residual_timelimit = residual_timelimit - (t2 - t1);
 		// If the timelimit is reached for the current iteration => exit the loop
 		if (residual_timelimit <= 0) {
 			if (inst->verbose >= LOW) printf("TOTAL time limit reached\n");
+			memcpy(inst->best_sol, curr_best_sol, sizeof(double) * inst->ncols);
 			break;
 		}
+
+		t1 = second();
 
 		if (residual_timelimit <= small_timelimit) {
 			if (CPXsetdblparam(env, CPX_PARAM_TILIM, residual_timelimit)) print_error("CPXsetdblparam() error in setting timelimit");
 		}
 		else {
 			if (CPXsetdblparam(env, CPX_PARAM_TILIM, small_timelimit)) print_error("CPXsetdblparam() error in setting timelimit");
-		}
-
-		// After the first iteration, remove the previous local branching constraint
-		if (n_iter >= 1) {
-			if (CPXdelrows(env, lp, inst->nnodes, inst->nnodes)) print_error("CPXdelrows() error in deleting local branching constraints!");
 		}
 
 		// Add the new local branching constraint
@@ -1080,14 +1096,12 @@ void solve_heur_soft_fix(instance* inst, CPXENVptr env, CPXLPptr lp) {
 		if (CPXaddrows(env, lp, 0, 1, nnz, &rhs, &sense, &i_zero, index, value, NULL, cname)) print_error("CPXaddrows() error in adding local branching constraints!");
 
 		// Uncomment the following to debug adding/removing local branching constraints:
-		char lp_temp_name[50];
+		/*char lp_temp_name[50];
 		sprintf(lp_temp_name, "DEBUG_SOFT_FIX_%d", n_iter);
-		create_lp_file(inst, env, lp, lp_temp_name);
+		create_lp_file(inst, env, lp, lp_temp_name);*/
 
 		// Run TSP solver (which is the branch and cut with fractional subtour elimination constraints only applied on the root node)
-		t1 = second();
 		solve_adv_branch_cut(inst, env, lp);
-		t2 = second();
 
 		n_iter++;
 	}
