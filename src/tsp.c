@@ -385,18 +385,17 @@ void print_solution(instance* inst, double* xstar, int symmetric, char* edges_fi
 	}
 
 	FILE* gn_com = fopen("../outputs/gnuplot_commands.txt", "w");
-	char* comand;
+	char* command;
 	if (gn_com == NULL) print_error("Error while opening gnuplot_commands.txt file\n");
 	if (!symmetric) 
-		comand = "set style line 1 \\\n\tlinecolor rgb '#FF0000' \\\n\tlinetype 1 linewidth 2 \\\n\tpointtype 7 pointsize 2 \\\n\nplot \"%s\" using 1:2 with linespoints linestyle 1\npause mouse close";
+		command = "set style line 1 \\\n\tlinecolor rgb '#FF0000' \\\n\tlinetype 1 linewidth 2 \\\n\tpointtype 7 pointsize 2 \\\n\nplot \"%s\" using 1:2 with linespoints linestyle 1\npause mouse close";
 	else 
-		comand = "set style line 1 \\\n\tlinecolor rgb '#FF0000' \\\n\tlinetype 1 linewidth 2 \\\n\tpointtype 7 pointsize 2 \\\n\nplot \"%s\" using 1:2:3:4 with vectors linestyle 1\npause mouse close";
+		command = "set style line 1 \\\n\tlinecolor rgb '#FF0000' \\\n\tlinetype 1 linewidth 2 \\\n\tpointtype 7 pointsize 2 \\\n\nplot \"%s\" using 1:2:3:4 with vectors linestyle 1\npause mouse close";
 	
-	fprintf(gn_com, comand, edges_file_path);
+	fprintf(gn_com, command, edges_file_path);
 	
 	fclose(gn_com);
 	fclose(edges_plot_file_name);
-	
 }
 
 
@@ -1500,7 +1499,7 @@ void solve_heur_2_opt(instance* inst, double* x, int* succ, double timelimit) {
 	}
 	
 	// Find the pair of edges (associated to their two starting nodes a and b) whose substitution leads to 
-	// the maximum "cut" in current solution cost, which correspond to the most negative value of curr_delta_cost
+	// the maximum "cut" in current solution cost, which corresponds to the most negative value of curr_delta_cost
 	int n_iter = 1;
 	while (1) {
 
@@ -1709,7 +1708,7 @@ void solve_heur_vns(instance* inst, double* x) {
 		inst->z_best = curr_sol_cost;
 	}
 
-	if (inst->verbose >= MEDIUM) printf("HEUR_VNS -> Cost of the best solution: %f\n\n", min_sol_cost);
+	if (inst->verbose >= MEDIUM) printf("\nHEUR_VNS -> Cost of the best solution: %f\n\n", min_sol_cost);
 	inst->z_best = min_sol_cost;
 
 	free(succ);
@@ -1720,13 +1719,16 @@ void solve_heur_tabu(instance* inst, double* x) {
 
 	double residual_timelimit = inst->timelimit;
 	double min_sol_cost = INFINITY;
-	int tenure = 20;
+
+	// Set a default value for the "tenure", which indicates for how many iterations a tabu rule is applied (then it is removed)
+	int tenure = 20;									
 
 	// Use GRASP to generate the reference solution, allowing it to use up to 1/10 of the total timelimit
 	double t1 = second();
 	solve_heur_grasp(inst, x, residual_timelimit / 10);
 	double t2 = second();
 
+	// Update remaining timelimit, but don't check it has been reached because it should just be at about 1/10
 	residual_timelimit = residual_timelimit - (t2 - t1);
 
 	if (inst->verbose >= MEDIUM) printf("Starting incumbent cost: %f\n\n", inst->z_best);
@@ -1735,36 +1737,42 @@ void solve_heur_tabu(instance* inst, double* x) {
 	int* final_succ = (int*)malloc(inst->nnodes * sizeof(int));
 	compute_succ(inst, x, succ);
 
+	// Initialize the "tabu list", which memorizes at which iteration a node has been declared tabu/untouchable
 	int* tabu = malloc(inst->nnodes * sizeof(int));
 	for (int i = 0; i < inst->nnodes; i++) tabu[i] = -1;
 
 	int n_iter = 0;
-	int flag = 0;
-	int fase_miglioramento = 1;
+	int tenure_change_flag = 0;
+	int improvement_phase = 1;
 	double curr_cost = inst->z_best;
 
 	t1 = second();
 
 	while (1) {
-		
+
 		while (1) {
+
 			int a, b;
 			double min_delta_cost = INFINITY;
 
+			// Every 500 iterations change the tenure value (es. for 1000 nodes, it alternates between 20 and 100)
 			if (n_iter % 500 == 0) {
-				if (flag == 0) {
+				if (tenure_change_flag == 0) {
 					tenure = inst->nnodes / 10;
-					flag = 1;
+					tenure_change_flag = 1;
 				}
 				else {
 					tenure = inst->nnodes / 50;
-					flag = 0;
+					tenure_change_flag = 0;
 				}
-				if (inst->verbose >= HIGH) printf("Switching to TENURE = %d\n", tenure);
+				if (inst->verbose >= MEDIUM) printf("Switching to TENURE = %d\n", tenure);
 			}
 			
+			// Find the pair of edges (associated to their two starting nodes a and b) whose substitution leads to 
+			// the maximum "cut" in current solution cost, which corresponds to the most negative value of curr_delta_cost
 			compute_best_node(inst, succ, &a, &b, &min_delta_cost);
-			if (fase_miglioramento == 0 && tabu[a] != -1 && n_iter - tabu[a] <= tenure) {
+
+			if (improvement_phase == 0 && tabu[a] != -1 && n_iter - tabu[a] <= tenure) {
 				//printf("NODE a is tabu!\n");
 				if (curr_cost < min_sol_cost) {
 					min_sol_cost = curr_cost;
@@ -1772,7 +1780,7 @@ void solve_heur_tabu(instance* inst, double* x) {
 				}
 				break;
 			}
-			if (fase_miglioramento == 0 && tabu[b] != -1 && n_iter - tabu[b] <= tenure) {
+			if (improvement_phase == 0 && tabu[b] != -1 && n_iter - tabu[b] <= tenure) {
 				//printf("NODE b is tabu!\n");
 				if (curr_cost < min_sol_cost) {
 					min_sol_cost = curr_cost;
@@ -1787,11 +1795,11 @@ void solve_heur_tabu(instance* inst, double* x) {
 					min_sol_cost = curr_cost;
 					final_succ = memcpy(final_succ, succ, sizeof(int) * inst->nnodes);
 				}
-				fase_miglioramento = 0;
+				improvement_phase = 0;
 				break;
 			}
 
-			fase_miglioramento = 1;
+			improvement_phase = 1;
 			curr_cost += min_delta_cost;
 			_2opt_move(inst, a, b, succ);
 
@@ -1800,6 +1808,7 @@ void solve_heur_tabu(instance* inst, double* x) {
 
 		t2 = second();
 
+		// Check if timellimit has been reached: if so, exit the loop
 		residual_timelimit = residual_timelimit - (t2 - t1);
 		if (residual_timelimit <= 0) break;
 
@@ -1823,9 +1832,10 @@ void solve_heur_tabu(instance* inst, double* x) {
 		n_iter++;
 	}
 
-	if (inst->verbose >= MEDIUM) printf("Cost FINAL solution: %f\n", min_sol_cost);
+	if (inst->verbose >= MEDIUM) printf("\nHEUR_TABU -> Cost of the best solution: %f\n\n", min_sol_cost);
 	inst->z_best = min_sol_cost;
 	
+	// Write the solution memorized in final_succ inside x
 	for (int i = 0; i < inst->ncols; i++) x[i] = 0.0;
 	for (int i = 0; i <= inst->nnodes - 1; i++) {
 		x[xpos(i, final_succ[i], inst)] = 1.0;

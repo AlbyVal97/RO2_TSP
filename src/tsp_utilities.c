@@ -354,10 +354,12 @@ double dist(int i, int j, instance* inst) {
 }
 
 
-void free_instance(instance* inst) { 
+void free_instance(instance* inst) {
+
 	free(inst->xcoord);
 	free(inst->ycoord);
-	free(inst->best_sol);
+	// N.B. constructive heuristic and metaheuristics never initialize "inst->model_type" !
+	if (inst->model_type < HEUR_GREEDY) free(inst->best_sol);
 
 	return;
 }
