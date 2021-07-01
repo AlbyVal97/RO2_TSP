@@ -85,6 +85,15 @@ void _2opt_move(instance* inst, int a, int b, int* succ);
 void compute_best_node(instance* inst, int* succ, int* best_a, int* best_b, double* min_cost);
 void compute_succ(instance* inst, double* x, int* succ);
 
+// Apply a worsening random 3-opt move (used in HEUR_VNS)
+void _apply_rnd_3_opt_move(instance* inst, int* succ);
+
+// Apply a worsening random 5-opt move (used in HEUR_VNS)
+void _apply_rnd_5_opt_move(instance* inst, int* succ);
+
+// Apply a worsening random 7-opt move (used in HEUR_VNS)
+void _apply_rnd_7_opt_move(instance* inst, int* succ);
+
 // Generates a random feasible solution (used to generate the starting population of solutions for HEUR_GENETIC)
 void generate_random_solution(instance* inst, double* x);
 

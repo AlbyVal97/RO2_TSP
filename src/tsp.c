@@ -1613,6 +1613,166 @@ void solve_heur_multi_start(instance* inst, double* x) {
 }
 
 
+void _apply_rnd_3_opt_move(instance* inst, int* succ) {
+
+	// Select 3 random edges (corresponding to as many starting nodes) to be removed
+	int a, b, c = -1;
+	a = rand() % inst->nnodes;
+	while ((b = rand() % inst->nnodes) == a);
+	while ((c = rand() % inst->nnodes) == a || c == b);
+
+	if (inst->verbose >= HIGH) printf("a = %d, b = %d, c = %d\n", a, b, c);
+	if (inst->verbose >= HIGH) printf("succ_a = %d, succ_b = %d, succ_c = %d\n", succ[a], succ[b], succ[c]);
+
+	// Make sure that nodes (a, b, c) are chosen in this order inside the "succ" data structure
+	int n_nodes_chosen = 0;
+	int temp_a = a;
+	int temp_b = b;
+	int temp_c = c;
+	int curr_node = 0;
+	for (int i = 0; i < inst->nnodes; i++) {
+		int is_curr_node_chosen = (curr_node == temp_a || curr_node == temp_b || curr_node == temp_c);
+		if (n_nodes_chosen == 0 && is_curr_node_chosen) {
+			a = curr_node;
+			n_nodes_chosen++;
+		}
+		else if (n_nodes_chosen == 1 && is_curr_node_chosen) {
+			b = curr_node;
+			n_nodes_chosen++;
+		}
+		else if (n_nodes_chosen == 2 && is_curr_node_chosen) {
+			c = curr_node;
+		}
+		curr_node = succ[curr_node];
+	}
+
+	// Perform a 3-opt worsening move ("kick" the solution out of the local optimum)
+	int temp_succ_a = succ[a];
+	succ[a] = succ[b];
+	int temp_succ_c = succ[c];
+	succ[c] = temp_succ_a;
+	succ[b] = temp_succ_c;
+	if (inst->verbose >= HIGH) printf("a = %d, b = %d, c = %d\n", a, b, c);
+	if (inst->verbose >= HIGH) printf("succ_a = %d, succ_b = %d, succ_c = %d\n", succ[a], succ[b], succ[c]);
+
+	return;
+}
+
+
+void _apply_rnd_5_opt_move(instance* inst, int* succ) {
+
+	// Select 5 random edges (corresponding to as many starting nodes) to be removed
+	int a, b, c, d, e = -1;
+	a = rand() % inst->nnodes;
+	while ((b = rand() % inst->nnodes) == a);
+	while ((c = rand() % inst->nnodes) == a || c == b);
+	while ((d = rand() % inst->nnodes) == a || d == b || d == c);
+	while ((e = rand() % inst->nnodes) == a || e == b || e == c || e == d);
+
+	if (inst->verbose >= HIGH) printf("a = %d, b = %d, c = %d, d = %d, e = %d\n", a, b, c, d, e);
+	if (inst->verbose >= HIGH) printf("succ_a = %d, succ_b = %d, succ_c = %d, succ_d = %d, succ_e = %d\n", succ[a], succ[b], succ[c], succ[d], succ[e]);
+
+	// Make sure that nodes (a, b, c, d, e) are chosen in this order inside the "succ" data structure
+	int n_nodes_chosen = 0;
+	int temp_a = a;
+	int temp_b = b;
+	int temp_c = c;
+	int temp_d = d;
+	int temp_e = e;
+	int curr_node = 0;
+	for (int i = 0; i < inst->nnodes; i++) {
+		int is_curr_node_chosen = (curr_node == temp_a || curr_node == temp_b || curr_node == temp_c || curr_node == temp_d || curr_node == temp_e);
+		if (n_nodes_chosen == 0 && is_curr_node_chosen) {
+			a = curr_node;
+			n_nodes_chosen++;
+		}
+		else if (n_nodes_chosen == 1 && is_curr_node_chosen) {
+			b = curr_node;
+			n_nodes_chosen++;
+		}
+		else if (n_nodes_chosen == 2 && is_curr_node_chosen) {
+			c = curr_node;
+			n_nodes_chosen++;
+		}
+		else if (n_nodes_chosen == 3 && is_curr_node_chosen) {
+			d = curr_node;
+			n_nodes_chosen++;
+		}
+		else if (n_nodes_chosen == 4 && is_curr_node_chosen) {
+			e = curr_node;
+		}
+		curr_node = succ[curr_node];
+	}
+
+	// Perform a 5-opt worsening move ("kick" the solution out of the local optimum)
+
+	return;
+}
+
+
+void _apply_rnd_7_opt_move(instance* inst, int* succ) {
+
+	// Select 7 random edges (corresponding to as many starting nodes) to be removed
+	int a, b, c, d, e, f, g = -1;
+	a = rand() % inst->nnodes;
+	while ((b = rand() % inst->nnodes) == a);
+	while ((c = rand() % inst->nnodes) == a || c == b);
+	while ((d = rand() % inst->nnodes) == a || d == b || d == c);
+	while ((e = rand() % inst->nnodes) == a || e == b || e == c || e == d);
+	while ((f = rand() % inst->nnodes) == a || f == b || f == c || f == d || f == e);
+	while ((g = rand() % inst->nnodes) == a || g == b || g == c || g == d || g == e || g == f);
+
+	if (inst->verbose >= HIGH) printf("a = %d, b = %d, c = %d, d = %d, e = %d, f = %d, g = %d\n", a, b, c, d, e, f, g);
+	if (inst->verbose >= HIGH) printf("succ_a = %d, succ_b = %d, succ_c = %d, succ_d = %d, succ_e = %d, succ_f = %d, succ_g = %d\n", succ[a], succ[b], succ[c], succ[d], succ[e], succ[f], succ[g]);
+
+	// Make sure that nodes (a, b, c, d, e, f, g) are chosen in this order inside the "succ" data structure
+	int n_nodes_chosen = 0;
+	int temp_a = a;
+	int temp_b = b;
+	int temp_c = c;
+	int temp_d = d;
+	int temp_e = e;
+	int temp_f = f;
+	int temp_g = g;
+	int curr_node = 0;
+	for (int i = 0; i < inst->nnodes; i++) {
+		int is_curr_node_chosen = (curr_node == temp_a || curr_node == temp_b || curr_node == temp_c || curr_node == temp_d || curr_node == temp_e || curr_node == temp_f || curr_node == temp_g);
+		if (n_nodes_chosen == 0 && is_curr_node_chosen) {
+			a = curr_node;
+			n_nodes_chosen++;
+		}
+		else if (n_nodes_chosen == 1 && is_curr_node_chosen) {
+			b = curr_node;
+			n_nodes_chosen++;
+		}
+		else if (n_nodes_chosen == 2 && is_curr_node_chosen) {
+			c = curr_node;
+			n_nodes_chosen++;
+		}
+		else if (n_nodes_chosen == 3 && is_curr_node_chosen) {
+			d = curr_node;
+			n_nodes_chosen++;
+		}
+		else if (n_nodes_chosen == 4 && is_curr_node_chosen) {
+			e = curr_node;
+			n_nodes_chosen++;
+		}
+		else if (n_nodes_chosen == 5 && is_curr_node_chosen) {
+			f = curr_node;
+			n_nodes_chosen++;
+		}
+		else if (n_nodes_chosen == 6 && is_curr_node_chosen) {
+			g = curr_node;
+		}
+		curr_node = succ[curr_node];
+	}
+
+	// Perform a 7-opt worsening move ("kick" the solution out of the local optimum)
+
+	return;
+}
+
+
 void solve_heur_vns(instance* inst, double* x) {
 
 	double residual_timelimit = inst->timelimit;
@@ -1623,9 +1783,10 @@ void solve_heur_vns(instance* inst, double* x) {
 	solve_heur_grasp(inst, x, residual_timelimit / 10);
 	double t2 = second();
 
+	// Update remaining timelimit, but don't check it has been reached because it should just be at about 1/10
 	residual_timelimit = residual_timelimit - (t2 - t1);
 
-	if (inst->verbose >= MEDIUM) printf("Starting incumbent cost: %f\n\n", inst->z_best);
+	if (inst->verbose >= MEDIUM) printf("Starting incumbent cost (obtained from GRASP): %f\n\n", inst->z_best);
 
 	int* succ = (int*)malloc(inst->nnodes * sizeof(int));
 
@@ -1639,7 +1800,7 @@ void solve_heur_vns(instance* inst, double* x) {
 		t2 = second();
 
 		double curr_sol_cost = inst->z_best;
-		if (inst->verbose >= MEDIUM) printf("Local Optimum reached: %f\n", inst->z_best);
+		//if (inst->verbose >= MEDIUM) printf("Local Optimum reached: %f\n", inst->z_best);
 		
 		// Compare the new solution cost with the (currently) best one, then memorize the best solution
 		if (curr_sol_cost < min_sol_cost) {
@@ -1655,48 +1816,23 @@ void solve_heur_vns(instance* inst, double* x) {
 		// Compute the list of successors of the local optimum solution 
 		compute_succ(inst, x, succ);
 
-		// Select three random edges to be removed 
-		int a = rand() % inst->nnodes;
-		int b = -1;
-		while ((b = rand() % inst->nnodes) == a);
-		int c = -1;
-		while ((c = rand() % inst->nnodes) == a || c==b);
-
-		if (inst->verbose >= HIGH) printf("a = %d, b = %d, c = %d\n", a, b, c);
-		if (inst->verbose >= HIGH) printf("succ_a = %d, succ_b = %d, succ_c = %d\n", succ[a], succ[b], succ[c]);
-
-		// Make sure that a, b, c are chosen in this order inside the succ data structure
-		int n_nodes_chosen = 0;
-		int temp_a = a;
-		int temp_b = b;
-		int temp_c = c;
-		int curr_node = 0;
-		for (int i = 0; i < inst->nnodes; i++) {
-			int is_curr_node_chosen = (curr_node == temp_a || curr_node == temp_b || curr_node == temp_c);
-			if (n_nodes_chosen == 0 && is_curr_node_chosen) {
-				a = curr_node;
-				n_nodes_chosen++;
-			}
-			else if (n_nodes_chosen == 1 && is_curr_node_chosen) {
-				b = curr_node;
-				n_nodes_chosen++;
-			}
-			else if (n_nodes_chosen == 2 && is_curr_node_chosen) {
-				c = curr_node;
-			}
-			curr_node = succ[curr_node];
+		// Apply a worsening 3-opt move with 50% prob, a 5-opt move with 30% prob and a 7-opt move with 20% prob
+		int n_move_chosen = -1;
+		double rnd_value = ((double)rand() / RAND_MAX);
+		if (rnd_value < 0.5) {
+			_apply_rnd_3_opt_move(inst, succ);
+			n_move_chosen = 3;
+		}
+		else if (rnd_value >= 0.5 && rnd_value < 0.8) {
+			_apply_rnd_5_opt_move(inst, succ);
+			n_move_chosen = 5;
+		}
+		else {
+			_apply_rnd_7_opt_move(inst, succ);
+			n_move_chosen = 7;
 		}
 
-		// Perform a 3-opt worsening move ("kick" the solution out of the local optimum)
-		int temp_succ_a = succ[a];
-		succ[a] = succ[b];
-		int temp_succ_c = succ[c];
-		succ[c] = temp_succ_a;
-		succ[b] = temp_succ_c;
-		if (inst->verbose >= HIGH) printf("a = %d, b = %d, c = %d\n", a, b, c);
-		if (inst->verbose >= HIGH) printf("succ_a = %d, succ_b = %d, succ_c = %d\n", succ[a], succ[b], succ[c]);
-
-		// Update the current solution with the 3-opt worsening move
+		// Update the current solution x with the (3-opt, 5-opt, 7-opt) worsening move
 		for (int i = 0; i < inst->ncols; i++) x[i] = 0.0;
 		for (int i = 0; i < inst->nnodes; i++) x[xpos(i, succ[i], inst)] = 1.0;
 
@@ -1704,7 +1840,7 @@ void solve_heur_vns(instance* inst, double* x) {
 		curr_sol_cost = 0.0;
 		for (int i = 0; i < inst->nnodes; i++) curr_sol_cost += dist(i, succ[i], inst);
 
-		printf("COST after a 3-opt kick: %f\n\n", curr_sol_cost);
+		printf("COST after a %d-opt kick: %f\n\n", n_move_chosen, curr_sol_cost);
 		inst->z_best = curr_sol_cost;
 	}
 
@@ -1743,7 +1879,7 @@ void solve_heur_tabu(instance* inst, double* x) {
 
 	int n_iter = 0;
 	int tenure_change_flag = 0;
-	int improvement_phase = 1;
+	int improving_phase = 1;
 	double curr_cost = inst->z_best;
 
 	t1 = second();
@@ -1754,6 +1890,8 @@ void solve_heur_tabu(instance* inst, double* x) {
 
 			int a, b;
 			double min_delta_cost = INFINITY;
+
+			if (inst->verbose >= HIGH) printf("Current iteration: %d\n", n_iter);
 
 			// Every 500 iterations change the tenure value (es. for 1000 nodes, it alternates between 20 and 100)
 			if (n_iter % 500 == 0) {
@@ -1772,34 +1910,43 @@ void solve_heur_tabu(instance* inst, double* x) {
 			// the maximum "cut" in current solution cost, which corresponds to the most negative value of curr_delta_cost
 			compute_best_node(inst, succ, &a, &b, &min_delta_cost);
 
-			if (improvement_phase == 0 && tabu[a] != -1 && n_iter - tabu[a] <= tenure) {
-				//printf("NODE a is tabu!\n");
+			// If one of the nodes a,b involved in the worsening move are tabu, then exit the inner loop
+			if (improving_phase == 0 && tabu[a] != -1 && n_iter - tabu[a] <= tenure) {
+				if (inst->verbose >= HIGH) printf("Node a = %d is TABU!\n", a);
 				if (curr_cost < min_sol_cost) {
 					min_sol_cost = curr_cost;
 					final_succ = memcpy(final_succ, succ, sizeof(int) * inst->nnodes);
 				}
 				break;
 			}
-			if (improvement_phase == 0 && tabu[b] != -1 && n_iter - tabu[b] <= tenure) {
-				//printf("NODE b is tabu!\n");
+			if (improving_phase == 0 && tabu[b] != -1 && n_iter - tabu[b] <= tenure) {
+				if (inst->verbose >= HIGH) printf("Node b = %d is TABU!\n", b);
 				if (curr_cost < min_sol_cost) {
 					min_sol_cost = curr_cost;
 					final_succ = memcpy(final_succ, succ, sizeof(int) * inst->nnodes);
 				}
-				break;
-			}
-			if (min_delta_cost >= 0) {
-				
-				if (inst->verbose >= MEDIUM) printf("LOCAL optimum reached: %f\n", curr_cost);
-				if (curr_cost < min_sol_cost) {
-					min_sol_cost = curr_cost;
-					final_succ = memcpy(final_succ, succ, sizeof(int) * inst->nnodes);
-				}
-				improvement_phase = 0;
 				break;
 			}
 
-			improvement_phase = 1;
+			// If min_delta_cost is a positive value, it means that there was no pair of edges that could lead to a cut in current solution cost
+			// => after a certain number of (improving) 2-opt moves, a local optimum has been reached!
+			if (min_delta_cost >= 0) {
+				
+				if (inst->verbose >= MEDIUM) printf("LOCAL optimum reached: %f\n", curr_cost);
+
+				// If the new locally optimal solution is better than the global one, then replace it inside "final_succ"
+				if (curr_cost < min_sol_cost) {
+					min_sol_cost = curr_cost;
+					final_succ = memcpy(final_succ, succ, sizeof(int) * inst->nnodes);
+				}
+
+				// Switch to "worsening phase", where we worsen the current solution with 2-opt random kicks, and exit the inner loop
+				improving_phase = 0;
+				break;
+			}
+
+			// Apply an improving 2-opt move and update the cost accordingly
+			improving_phase = 1;
 			curr_cost += min_delta_cost;
 			_2opt_move(inst, a, b, succ);
 
@@ -1808,7 +1955,7 @@ void solve_heur_tabu(instance* inst, double* x) {
 
 		t2 = second();
 
-		// Check if timellimit has been reached: if so, exit the loop
+		// Check if timelimit has been reached: if so, exit the loop
 		residual_timelimit = residual_timelimit - (t2 - t1);
 		if (residual_timelimit <= 0) break;
 
@@ -1823,11 +1970,12 @@ void solve_heur_tabu(instance* inst, double* x) {
 		// Apply a worsening move
 		double worse_cost = (dist(node_a, node_b, inst) + dist(succ[node_a], succ[node_b], inst)) - (dist(node_a, succ[node_a], inst) + dist(node_b, succ[node_b], inst));
 		curr_cost = curr_cost + worse_cost;
-		tabu[node_a] = n_iter;
-		tabu[node_b] = n_iter;
-
 		_2opt_move(inst, node_a, node_b, succ);
 		if (inst->verbose >= HIGH) printf("Cost after 2-OPT kick: %f\n", curr_cost);
+
+		// Update the "tabu list" of nodes node_a and node_b, so that they will be tabu for "tenure" iterations from now
+		tabu[node_a] = n_iter;
+		tabu[node_b] = n_iter;
 		
 		n_iter++;
 	}
