@@ -1645,6 +1645,8 @@ void _apply_rnd_3_opt_move(instance* inst, int* succ) {
 		}
 		curr_node = succ[curr_node];
 	}
+	if (inst->verbose >= HIGH) printf("a = %d, b = %d, c = %d\n", a, b, c);
+	if (inst->verbose >= HIGH) printf("succ_a = %d, succ_b = %d, succ_c = %d\n", succ[a], succ[b], succ[c]);
 
 	// Perform a 3-opt worsening move ("kick" the solution out of the local optimum)
 	int temp_succ_a = succ[a];
@@ -1652,7 +1654,6 @@ void _apply_rnd_3_opt_move(instance* inst, int* succ) {
 	int temp_succ_c = succ[c];
 	succ[c] = temp_succ_a;
 	succ[b] = temp_succ_c;
-	if (inst->verbose >= HIGH) printf("a = %d, b = %d, c = %d\n", a, b, c);
 	if (inst->verbose >= HIGH) printf("succ_a = %d, succ_b = %d, succ_c = %d\n", succ[a], succ[b], succ[c]);
 
 	return;
@@ -1703,8 +1704,20 @@ void _apply_rnd_5_opt_move(instance* inst, int* succ) {
 		}
 		curr_node = succ[curr_node];
 	}
+	if (inst->verbose >= HIGH) printf("a = %d, b = %d, c = %d, d = %d, e = %d\n", a, b, c, d, e);
+	if (inst->verbose >= HIGH) printf("succ_a = %d, succ_b = %d, succ_c = %d, succ_d = %d, succ_e = %d\n", succ[a], succ[b], succ[c], succ[d], succ[e]);
 
 	// Perform a 5-opt worsening move ("kick" the solution out of the local optimum)
+	int temp_succ_a = succ[a];
+	succ[a] = succ[c];
+	int temp_succ_d = succ[d];
+	succ[d] = temp_succ_a;
+	int temp_succ_b = succ[b];
+	succ[b] = temp_succ_d;
+	int temp_succ_e = succ[e];
+	succ[e] = temp_succ_b;
+	succ[c] = temp_succ_e;
+	if (inst->verbose >= HIGH) printf("succ_a = %d, succ_b = %d, succ_c = %d, succ_d = %d, succ_e = %d\n", succ[a], succ[b], succ[c], succ[d], succ[e]);
 
 	return;
 }
@@ -1766,8 +1779,24 @@ void _apply_rnd_7_opt_move(instance* inst, int* succ) {
 		}
 		curr_node = succ[curr_node];
 	}
+	if (inst->verbose >= HIGH) printf("a = %d, b = %d, c = %d, d = %d, e = %d, f = %d, g = %d\n", a, b, c, d, e, f, g);
+	if (inst->verbose >= HIGH) printf("succ_a = %d, succ_b = %d, succ_c = %d, succ_d = %d, succ_e = %d, succ_f = %d, succ_g = %d\n", succ[a], succ[b], succ[c], succ[d], succ[e], succ[f], succ[g]);
 
 	// Perform a 7-opt worsening move ("kick" the solution out of the local optimum)
+	int temp_succ_a = succ[a];
+	succ[a] = succ[d];
+	int temp_succ_e = succ[e];
+	succ[e] = temp_succ_a;
+	int temp_succ_b = succ[b];
+	succ[b] = temp_succ_e;
+	int temp_succ_f = succ[f];
+	succ[f] = temp_succ_b;
+	int temp_succ_c = succ[c];
+	succ[c] = temp_succ_f;
+	int temp_succ_g = succ[g];
+	succ[g] = temp_succ_c;
+	succ[d] = temp_succ_g;
+	if (inst->verbose >= HIGH) printf("succ_a = %d, succ_b = %d, succ_c = %d, succ_d = %d, succ_e = %d, succ_f = %d, succ_g = %d\n", succ[a], succ[b], succ[c], succ[d], succ[e], succ[f], succ[g]);
 
 	return;
 }
@@ -1816,6 +1845,12 @@ void solve_heur_vns(instance* inst, double* x) {
 		// Compute the list of successors of the local optimum solution 
 		compute_succ(inst, x, succ);
 
+		if (inst->verbose >= HIGH) {
+			printf("STARTING list of successors: [ ");
+			for (int i = 0; i <= inst->nnodes - 2; i++) printf("%d->%d, ", i, succ[i]);
+			printf("%d->%d ]\n", inst->nnodes - 1, succ[inst->nnodes - 1]);
+		}
+
 		// Apply a worsening 3-opt move with 50% prob, a 5-opt move with 30% prob and a 7-opt move with 20% prob
 		int n_move_chosen = -1;
 		double rnd_value = ((double)rand() / RAND_MAX);
@@ -1832,6 +1867,12 @@ void solve_heur_vns(instance* inst, double* x) {
 			n_move_chosen = 7;
 		}
 
+		if (inst->verbose >= HIGH) {
+			printf("POST %d-OPT MOVE list of successors: [ ", n_move_chosen);
+			for (int i = 0; i <= inst->nnodes - 2; i++) printf("%d->%d, ", i, succ[i]);
+			printf("%d->%d ]\n", inst->nnodes - 1, succ[inst->nnodes - 1]);
+		}
+
 		// Update the current solution x with the (3-opt, 5-opt, 7-opt) worsening move
 		for (int i = 0; i < inst->ncols; i++) x[i] = 0.0;
 		for (int i = 0; i < inst->nnodes; i++) x[xpos(i, succ[i], inst)] = 1.0;
@@ -1840,7 +1881,7 @@ void solve_heur_vns(instance* inst, double* x) {
 		curr_sol_cost = 0.0;
 		for (int i = 0; i < inst->nnodes; i++) curr_sol_cost += dist(i, succ[i], inst);
 
-		printf("COST after a %d-opt kick: %f\n\n", n_move_chosen, curr_sol_cost);
+		if (inst->verbose >= MEDIUM) printf("COST after a %d-opt kick: %f\n\n", n_move_chosen, curr_sol_cost);
 		inst->z_best = curr_sol_cost;
 	}
 
