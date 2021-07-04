@@ -154,8 +154,22 @@ int TSPopt(instance* inst) {
 				sprintf(logfile_path, "%s/logfile_BRANCH_CUT.txt", logfile_path);
 				if (CPXsetlogfilename(env, logfile_path, "w")) print_error("CPXsetlogfilename() error in setting logfile name");
 			}
+			inst->use_2_opt = 0;						// Solve without 2-opt refinement heuristics
 			solve_branch_cut(inst, env, lp);
 			sprintf(edges_file_path, "%s/model_BRANCH_CUT_edges.dat", edges_file_path);
+			break;
+
+		case BRANCH_CUT_2_OPT:
+			symmetric = 0;
+			build_model_BASIC(inst, env, lp);
+			inst->ncols = CPXgetnumcols(env, lp);
+			if (inst->verbose >= LOW) {
+				sprintf(logfile_path, "%s/logfile_BRANCH_CUT_2_OPT.txt", logfile_path);
+				if (CPXsetlogfilename(env, logfile_path, "w")) print_error("CPXsetlogfilename() error in setting logfile name");
+			}
+			inst->use_2_opt = 1;						// Solve using 2-opt refinement heuristics
+			solve_branch_cut(inst, env, lp);
+			sprintf(edges_file_path, "%s/model_BRANCH_CUT_2_OPT_edges.dat", edges_file_path);
 			break;
 		
 		case ADVBC_STD:
@@ -193,7 +207,6 @@ int TSPopt(instance* inst) {
 		case HEUR_SOFT_FIX_5:
 		case HEUR_SOFT_FIX_7:
 		case HEUR_SOFT_FIX_9:
-		case HEUR_SOFT_FIX_VAR:
 			symmetric = 0;
 			build_model_BASIC(inst, env, lp);
 			inst->ncols = CPXgetnumcols(env, lp);
@@ -328,11 +341,11 @@ int TSPopt(instance* inst) {
 		int ncols = CPXgetnumcols(env, lp);
 		double* xstar = (double*)calloc(ncols, sizeof(double));
 
-		// Copy the optimal solution from the Cplex environment to the new array "xstar" (does not work for HEUR_SOFT_FIX because it edits the model at the end)
-		if ((inst->model_type < HEUR_SOFT_FIX_3 || inst->model_type > HEUR_SOFT_FIX_VAR) && !inst->timelimit_exceeded && CPXgetx(env, lp, xstar, 0, ncols - 1)) print_error("CPXgetx() error");
+		// Copy the optimal solution from the Cplex environment to the new array "xstar" (does not work for HEUR_SOFT_FIX_K because it edits the model at the end)
+		if ((inst->model_type < HEUR_SOFT_FIX_3 || inst->model_type > HEUR_SOFT_FIX_9) && !inst->timelimit_exceeded && CPXgetx(env, lp, xstar, 0, ncols - 1)) print_error("CPXgetx() error");
 
 		// Fill the .dat file with the correctly formatted nodes of the found solution
-		if (inst->verbose >= LOW && (inst->model_type < HEUR_SOFT_FIX_3 || inst->model_type > HEUR_SOFT_FIX_VAR)) print_solution(inst, xstar, symmetric, edges_file_path);
+		if (inst->verbose >= LOW && (inst->model_type < HEUR_SOFT_FIX_3 || inst->model_type > HEUR_SOFT_FIX_9)) print_solution(inst, xstar, symmetric, edges_file_path);
 		else if (inst->verbose >= LOW) print_solution(inst, inst->best_sol, symmetric, edges_file_path);
 
 		// Free allocated memory and close Cplex model
@@ -637,6 +650,7 @@ static int CPXPUBLIC branch_cut_callback(CPXCALLBACKCONTEXTptr context, CPXLONG 
 
 	instance* inst = (instance*)userhandle;
 	int ncols = inst->ncols;
+	int use_2_opt = inst->use_2_opt;
 	double* xstar = (double*)malloc(ncols * sizeof(double));
 	double objval = CPX_INFBOUND;
 	if (CPXcallbackgetcandidatepoint(context, xstar, 0, ncols - 1, &objval)) print_error("CPXcallbackgetcandidatepoint error");
@@ -707,6 +721,25 @@ static int CPXPUBLIC branch_cut_callback(CPXCALLBACKCONTEXTptr context, CPXLONG 
 		free(index);
 		free(value);
 		free(comp_nodes);
+	}
+	else if (n_comp == 1 && use_2_opt) {									// Means that the solution is feasible (without cycles => candidate solution which can be improved with 2-opt)
+
+		compute_succ(inst, xstar, succ);
+
+		// Compute from scratch the cost of the solution
+		double curr_sol_cost = 0.0;
+		for (int i = 0; i < inst->nnodes; i++) curr_sol_cost += dist(i, succ[i], inst);
+		inst->z_best = curr_sol_cost;
+
+		// Call the 2-opt refinement heuristics
+		solve_heur_2_opt(inst, xstar, succ, INFINITY);
+
+		// Build the array of indexes associated to solution variables
+		int* index = (int*)calloc(ncols, sizeof(int));						
+		for (int k = 0; k < inst->ncols; k++) index[k] = k;
+
+		// Ask Cplex to use our handcrafted improved solution (which is always complete, so no solution repair strategy is provided)
+		CPXcallbackpostheursoln(context, inst->ncols, index, xstar, inst->z_best, CPXCALLBACKSOLUTION_NOCHECK);
 	}
 
 	// De-comment below to get a sequence of plots showing how the solution evolves

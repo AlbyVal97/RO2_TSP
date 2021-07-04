@@ -31,6 +31,7 @@ void parse_command_line(int argc, char** argv, instance* inst) {
 	inst->seed = 123456;
 	inst->n_runs = 10000;
 	inst->z_best = INFINITY;
+	inst->use_2_opt = 0;
 
 	// Chech if at least one command line argument is provided
 	int help = 0;
@@ -358,7 +359,7 @@ void free_instance(instance* inst) {
 
 	free(inst->xcoord);
 	free(inst->ycoord);
-	// N.B. constructive heuristic and metaheuristics never initialize "inst->model_type" !
+	// N.B. only HEUR_HARD_FIX_* and HEUR_SOFT_FIX_K initialize "inst->model_type" !
 	if (inst->model_type > ADVBC_PROB_10 && inst->model_type < HEUR_GREEDY) free(inst->best_sol);
 
 	return;

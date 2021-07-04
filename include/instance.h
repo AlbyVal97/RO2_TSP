@@ -16,9 +16,10 @@
 // List of the TSP models/approaches names implemented to date
 static const char* models[] = { "BASIC", "MTZ_STATIC", "MTZ_LAZY", "MTZ_SEC2_STATIC", "MTZ_SEC2_LAZY", "GG",						// Compact models
 								"BENDERS",																							// Benders-like solution scheme using SECs
-								"BRANCH_CUT", "ADVBC_STD", "ADVBC_ROOT", "ADVBC_DEPTH_5", "ADVBC_PROB_50", "ADVBC_PROB_10",			// SEC separation using Cplex's callbacks
-								"HEUR_HARD_FIX_50",	"HEUR_HARD_FIX_70",	"HEUR_HARD_FIX_90", "HEUR_HARD_FIX_VAR",					// Hard-fix heuristics variants
-								"HEUR_SOFT_FIX_3", "HEUR_SOFT_FIX_5", "HEUR_SOFT_FIX_7", "HEUR_SOFT_FIX_9", "HEUR_SOFT_FIX_VAR",	// Soft-fix heuristics variants
+								"BRANCH_CUT", "BRANCH_CUT_2_OPT",																	// SEC separation using Cplex's callbacks
+								"ADVBC_STD", "ADVBC_ROOT", "ADVBC_DEPTH_5", "ADVBC_PROB_50", "ADVBC_PROB_10",						// SEC separation using Cplex's callbacks + Concorde utility
+								"HEUR_HARD_FIX_50",	"HEUR_HARD_FIX_70",	"HEUR_HARD_FIX_90", "HEUR_HARD_FIX_VAR",					// Hard-fix math heuristics variants
+								"HEUR_SOFT_FIX_3", "HEUR_SOFT_FIX_5", "HEUR_SOFT_FIX_7", "HEUR_SOFT_FIX_9",							// Soft-fix (local branching) math heuristics variants
 								"HEUR_GREEDY", "HEUR_GRASP", "HEUR_EXTRA_MILEAGE",													// Constructive heuristics
 								"HEUR_2_OPT", "HEUR_MULTI_START", 													                // Refinement heuristics
 								"HEUR_VNS", "HEUR_TABU", "HEUR_GENETIC", "HEUR_GENETIC_2_OPT" };									// Meta heuristics
@@ -62,20 +63,20 @@ typedef enum {
 	GG, // 5
 	BENDERS, // 6
 	BRANCH_CUT, // 7
-	ADVBC_STD, // 8
-	ADVBC_ROOT, // 9
-	ADVBC_DEPTH_5, // 10
-	ADVBC_PROB_50, // 11
-	ADVBC_PROB_10, // 12
-	HEUR_HARD_FIX_50, // 13
-	HEUR_HARD_FIX_70, // 14
-	HEUR_HARD_FIX_90, // 15
-	HEUR_HARD_FIX_VAR, // 16
-	HEUR_SOFT_FIX_3, // 17 NON USARE, UGUALE A HEUR_SOFT_FIX_VAR
-	HEUR_SOFT_FIX_5, // 18
-	HEUR_SOFT_FIX_7, // 19
-	HEUR_SOFT_FIX_9, // 20
-	HEUR_SOFT_FIX_VAR, // 21
+	BRANCH_CUT_2_OPT, // 8
+	ADVBC_STD, // 9
+	ADVBC_ROOT, // 10
+	ADVBC_DEPTH_5, // 11
+	ADVBC_PROB_50, // 12
+	ADVBC_PROB_10, // 13
+	HEUR_HARD_FIX_50, // 14
+	HEUR_HARD_FIX_70, // 15
+	HEUR_HARD_FIX_90, // 16
+	HEUR_HARD_FIX_VAR, // 17
+	HEUR_SOFT_FIX_3, // 18
+	HEUR_SOFT_FIX_5, // 19
+	HEUR_SOFT_FIX_7, // 20
+	HEUR_SOFT_FIX_9, // 21
 	HEUR_GREEDY, // 22
 	HEUR_GRASP, // 23
 	HEUR_EXTRA_MILEAGE, // 24
@@ -133,6 +134,7 @@ typedef struct {
 	int verbose;							// Verbosity level integer value (see "verbose" struct)
 	int seed;								// Internal branching integer random seed used by Cplex. When fixed, leads to more consistent computational times
 	int n_runs;								// Number of runs to execute: used in (meta)heuristics such as HEUR_GRASP. Of course it may affect the returned solution
+	int use_2_opt;							// Flag to indicate if BRANCH_CUT has to make use of 2-opt refinement heuristics or not
 
 	// Global data related to the instance
 	double z_best;							// Value/cost of the objective function to minimize
