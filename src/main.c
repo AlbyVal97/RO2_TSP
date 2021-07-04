@@ -77,7 +77,7 @@ int main(int argc, char **argv) {
 
 	if (inst.verbose >= HIGH) printf("Timestamp 1: %lf seconds.\n", t1);
 
-	if (TSPopt(&inst)) print_error(" error within TSPopt()");
+	if (TSPopt(&inst)) print_error("Error within TSPopt()");
 
 	double t2 = second();
 

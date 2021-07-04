@@ -322,17 +322,17 @@ int TSPopt(instance* inst) {
 
 	if (inst->verbose >= MEDIUM) printf("Complete path for *.dat file: %s\n\n", edges_file_path);
 
-	if (inst->model_type < HEUR_GREEDY) {
+	if (inst->model_type < HEUR_GREEDY) {													// Let's manage how models/approaches using Cplex print their solutions
 
 		// Allocate memory for the optimal solution array
 		int ncols = CPXgetnumcols(env, lp);
 		double* xstar = (double*)calloc(ncols, sizeof(double));
 
-		// Copy the optimal solution from the Cplex environment to the new array "xstar"
-		if (inst->model_type < HEUR_SOFT_FIX_3 && inst->model_type > HEUR_SOFT_FIX_VAR && !inst->timelimit_exceeded && CPXgetx(env, lp, xstar, 0, ncols - 1)) print_error("CPXgetx() error");
+		// Copy the optimal solution from the Cplex environment to the new array "xstar" (does not work for HEUR_SOFT_FIX because it edits the model at the end)
+		if ((inst->model_type < HEUR_SOFT_FIX_3 || inst->model_type > HEUR_SOFT_FIX_VAR) && !inst->timelimit_exceeded && CPXgetx(env, lp, xstar, 0, ncols - 1)) print_error("CPXgetx() error");
 
 		// Fill the .dat file with the correctly formatted nodes of the found solution
-		if (inst->verbose >= LOW && inst->model_type < HEUR_SOFT_FIX_3 && inst->model_type > HEUR_SOFT_FIX_VAR) print_solution(inst, xstar, symmetric, edges_file_path);
+		if (inst->verbose >= LOW && (inst->model_type < HEUR_SOFT_FIX_3 || inst->model_type > HEUR_SOFT_FIX_VAR)) print_solution(inst, xstar, symmetric, edges_file_path);
 		else if (inst->verbose >= LOW) print_solution(inst, inst->best_sol, symmetric, edges_file_path);
 
 		// Free allocated memory and close Cplex model
@@ -350,7 +350,7 @@ int TSPopt(instance* inst) {
 void print_solution(instance* inst, double* xstar, int symmetric, char* edges_file_path) {
 
 	if (symmetric != 0 && symmetric != 1) print_error("symmetric is a boolean variable\n");
-	
+
 	FILE* edges_plot_file_name = fopen(edges_file_path, "w");
 	if (edges_plot_file_name == NULL) print_error("File *_edges.dat not found!");
 
@@ -464,6 +464,45 @@ int mip_solved_to_optimality(instance* inst, CPXENVptr env, CPXLPptr lp) {
 		(lpstat == CPXMIP_OPTIMAL_TOL);
 
 	return solved;
+}
+
+
+void update_connected_components(const double* xstar, instance* inst, int* succ, int* comp, int* ncomp) {
+
+	// Start with 0 connected components
+	*ncomp = 0;
+	// Initialize all cells of "successors" and "components" arrays to -1 (meaning that the node has not been visited yet)
+	for (int i = 0; i < inst->nnodes; i++) {
+		succ[i] = -1;
+		comp[i] = -1;
+	}
+
+	// Start visiting from node 0, then from the first node not yet visited, and so on...
+	for (int start = 0; start < inst->nnodes; start++) {
+		if (comp[start] >= 0) continue;								// Node "start" was already visited, just skip it
+
+		// If we arrive here, it means that a new component is found (count it)
+		(*ncomp)++;
+		int i = start;
+		int done = 0;
+		while (!done) {												// Visit the current component
+			comp[i] = *ncomp;
+			done = 1;
+			// Scan for feasible nodes to draw an edge and close the component
+			for (int j = 0; j < inst->nnodes; j++) {
+				// The edge [i,j] is selected in xstar and j was not visited before
+				if (i != j && xstar[xpos(i, j, inst)] > 0.5 && comp[j] == -1) {
+					succ[i] = j;
+					i = j;
+					done = 0;
+					break;
+				}
+			}
+		}
+		succ[i] = start;											// Last edge to close the cycle
+
+		// Now go to the next component, if there is one...
+	}
 }
 
 
@@ -670,6 +709,16 @@ static int CPXPUBLIC branch_cut_callback(CPXCALLBACKCONTEXTptr context, CPXLONG 
 		free(comp_nodes);
 	}
 
+	// De-comment below to get a sequence of plots showing how the solution evolves
+	/*
+	if (mythread == 0 && incumbent < 10000) {
+		printf("n_comp: %d\n\n", n_comp);
+		print_solution(inst, xstar, 0, "../outputs/B&C_plot.dat");
+		system("C:/\"Program Files\"/gnuplot/bin/gnuplot.exe ../outputs/gnuplot_commands.txt");
+		system("PAUSE");
+	}
+	*/
+
 	free(xstar);
 	free(succ);
 	free(comp);
@@ -759,7 +808,6 @@ static int CPXPUBLIC adv_branch_cut_callback(CPXCALLBACKCONTEXTptr context, CPXL
 
 	int* index = (int*)calloc(ncols, sizeof(int));					// Array of indexes associated to the row variables
 	double* value = (double*)calloc(ncols, sizeof(double));			// Array of row variables coefficients
-
 
 	if (ncomp > 1) {
 
@@ -991,17 +1039,9 @@ void solve_heur_soft_fix(instance* inst, CPXENVptr env, CPXLPptr lp) {
 
 	// Build an array of indices of variables/columns x(i,j) of the model
 	int* indices = (int*)calloc(inst->ncols, sizeof(int));
-	/*int k = 0;
-	for (int i = 0; i < inst->nnodes; i++) {
-		for (int j = i + 1; j < inst->nnodes; j++) {
-			indices[k++] = xpos(i, j, inst);
-		}
-	}*/
+	for (int i = 0; i < inst->ncols; i++) indices[i] = i;
 
-	for (int i = 0; i < inst->ncols; i++) {
-		indices[i] = i;
-	}
-
+	// Ask CPLEX to continue with a partially explored MIP tree, if one is available.
 	if (CPXsetintparam(env, CPXPARAM_Advance, 1)) print_error("CPXsetintparam() error in setting CPXPARAM_Advance");
 
 	// Set to solve just the root node: by doing that we will get a feasible solution, but not the optimal one => good as a starting point for heuristics
@@ -2492,45 +2532,6 @@ void solve_heur_genetic(instance* inst, double* x, int pop_size, double ratio_2_
 	free(succ);
 
 	return;
-}
-
-
-void update_connected_components(const double* xstar, instance* inst, int* succ, int* comp, int* ncomp) {
-
-	// Start with 0 connected components
-	*ncomp = 0;
-	// Initialize all cells of "successors" and "components" arrays to -1 (meaning that the node has not been visited yet)
-	for (int i = 0; i < inst->nnodes; i++) {
-		succ[i] = -1;
-		comp[i] = -1;
-	}
-
-	// Start visiting from node 0, then from the first node not yet visited, and so on...
-	for (int start = 0; start < inst->nnodes; start++) {
-		if (comp[start] >= 0) continue;								// Node "start" was already visited, just skip it
-
-		// If we arrive here, it means that a new component is found (count it)
-		(*ncomp)++;
-		int i = start;
-		int done = 0;
-		while (!done) {												// Visit the current component
-			comp[i] = *ncomp;
-			done = 1;
-			// Scan for feasible nodes to draw an edge and close the component
-			for (int j = 0; j < inst->nnodes; j++) {
-				// The edge [i,j] is selected in xstar and j was not visited before
-				if (i != j && xstar[xpos(i, j, inst)] > 0.5 && comp[j] == -1) {
-					succ[i] = j;
-					i = j;
-					done = 0;
-					break;
-				}
-			}
-		}
-		succ[i] = start;											// Last edge to close the cycle
-
-		// Now go to the next component, if there is one...
-	}
 }
 
 

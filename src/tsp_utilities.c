@@ -359,7 +359,7 @@ void free_instance(instance* inst) {
 	free(inst->xcoord);
 	free(inst->ycoord);
 	// N.B. constructive heuristic and metaheuristics never initialize "inst->model_type" !
-	if (inst->model_type < HEUR_GREEDY) free(inst->best_sol);
+	if (inst->model_type > ADVBC_PROB_10 && inst->model_type < HEUR_GREEDY) free(inst->best_sol);
 
 	return;
 }
