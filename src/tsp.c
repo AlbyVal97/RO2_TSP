@@ -1545,34 +1545,36 @@ void solve_heur_grasp_extra_mileage(instance* inst, double* x, double max_time) 
 
 		for (int n_iter = 1; n_iter <= n_nodes_to_insert; n_iter++) {				// Repeat until a complete solution is built
 
-			int first_refused_node = -1;
-			int second_refused_node = -1;
 			int curr_node_index = -1;
 			int next_node_index = -1;
-			
-			for (int i = 0; i < inst->nnodes; i++) {
-				if (temp_succ[i] != -1) {										// The node i has already been inserted => edge (i, succ[i]) good candidate to be removed
 
-					double min_x_mil = INFINITY;
-					for (int j = 0; j < inst->nnodes; j++) {
-						if (temp_succ[j] == -1) {								// The node j has not been inserted yet nor already discarded => good candidate node to be inserted
+			// Choose randomly to get the pair of nodes that lead to minimum "extra mileage" or to get them randomly (with 10% probability)
+			if (((double)rand() / RAND_MAX) <= 0.1) {
+				do {																// We  need that the chosen starting node has already been inserted (es. part of the hull)
+					curr_node_index = rand() % inst->nnodes;
+				} while (temp_succ[curr_node_index] == -1);
+				do {																// We need that the chosen landing node has not already been inserted
+					next_node_index = rand() % inst->nnodes;
+				} while (temp_succ[next_node_index] != -1);
+			}
+			else {
+				for (int i = 0; i < inst->nnodes; i++) {
+					if (temp_succ[i] != -1) {										// The node i has already been inserted => edge (i, succ[i]) good candidate to be removed
 
-							double x_mil = extra_mileage(i, temp_succ[i], j, inst);
-							if (x_mil < min_x_mil) {
-								min_x_mil = x_mil;
-								curr_node_index = i;
-								next_node_index = j;							// After the last iteration, next_node_index will be the best candidate node to insert
+						double min_x_mil = INFINITY;
+						for (int j = 0; j < inst->nnodes; j++) {
+							if (temp_succ[j] == -1) {								// The node j has not been inserted yet nor already discarded => good candidate node to be inserted
+
+								double x_mil = extra_mileage(i, temp_succ[i], j, inst);
+								if (x_mil < min_x_mil) {
+									min_x_mil = x_mil;
+									curr_node_index = i;
+									next_node_index = j;							// After the last iteration, next_node_index will be the best candidate node to insert
+								}
 							}
 						}
 					}
 				}
-			}
-
-			// Once the best candidate node to move on is found, choose randomly to accept it or to choose another (random) one with 10% probability
-			if (((double)rand() / RAND_MAX) <= 0.1) {
-				do {															// We only need that the alternative chosen node has not already been inserted
-					next_node_index = rand() % inst->nnodes;
-				} while (temp_succ[next_node_index] != -1);
 			}
 
 			// Update the successors list accordingly
