@@ -232,16 +232,16 @@ int TSPopt(instance* inst) {
 			free(x_greedy);
 			break;
 
-		case HEUR_GRASP:
+		case HEUR_GRASP_GREEDY:
 			symmetric = 0;
 			inst->ncols = (inst->nnodes * (inst->nnodes - 1)) / 2;
-			double* x_grasp = (double*)calloc(inst->ncols, sizeof(double));
+			double* x_grasp_greedy = (double*)calloc(inst->ncols, sizeof(double));
 
-			solve_heur_grasp(inst, x_grasp, inst->timelimit);
+			solve_heur_grasp_greedy(inst, x_grasp_greedy, inst->timelimit);
 
 			sprintf(edges_file_path, "%s/model_%s_edges.dat", edges_file_path, models[inst->model_type]);
-			print_solution(inst, x_grasp, symmetric, edges_file_path);
-			free(x_grasp);
+			print_solution(inst, x_grasp_greedy, symmetric, edges_file_path);
+			free(x_grasp_greedy);
 			break;
 
 		case HEUR_EXTRA_MILEAGE:
@@ -256,12 +256,24 @@ int TSPopt(instance* inst) {
 			free(x_extra_mileage);
 			break;
 
+		case HEUR_GRASP_EXTRA_MILEAGE:
+			symmetric = 0;
+			inst->ncols = (inst->nnodes * (inst->nnodes - 1)) / 2;
+			double* x_grasp_extra_mileage = (double*)calloc(inst->ncols, sizeof(double));
+
+			solve_heur_grasp_extra_mileage(inst, x_grasp_extra_mileage, inst->timelimit);
+
+			sprintf(edges_file_path, "%s/model_%s_edges.dat", edges_file_path, models[inst->model_type]);
+			print_solution(inst, x_grasp_extra_mileage, symmetric, edges_file_path);
+			free(x_grasp_extra_mileage);
+			break;
+
 		case HEUR_2_OPT:
 			symmetric = 0;
 			inst->ncols = (inst->nnodes * (inst->nnodes - 1)) / 2;
 			double* x_2_opt = (double*)calloc(inst->ncols, sizeof(double));
 
-			solve_heur_grasp(inst, x_2_opt, inst->timelimit / 10);
+			solve_heur_grasp_greedy(inst, x_2_opt, inst->timelimit / 10);
 			solve_heur_2_opt(inst, x_2_opt, NULL, (inst->timelimit / 10) * 9);
 
 			sprintf(edges_file_path, "%s/model_%s_edges.dat", edges_file_path, models[inst->model_type]);
@@ -740,6 +752,8 @@ static int CPXPUBLIC branch_cut_callback(CPXCALLBACKCONTEXTptr context, CPXLONG 
 
 		// Ask Cplex to use our handcrafted improved solution (which is always complete, so no solution repair strategy is provided)
 		CPXcallbackpostheursoln(context, inst->ncols, index, xstar, inst->z_best, CPXCALLBACKSOLUTION_NOCHECK);
+
+		free(index);
 	}
 
 	// De-comment below to get a sequence of plots showing how the solution evolves
@@ -1265,7 +1279,7 @@ void solve_heur_greedy(instance* inst, double* x) {
 }
 
 
-void solve_heur_grasp(instance* inst, double* x, double max_time) {
+void solve_heur_grasp_greedy(instance* inst, double* x, double max_time) {
 
 	double residual_timelimit = max_time;
 
@@ -1286,7 +1300,7 @@ void solve_heur_grasp(instance* inst, double* x, double max_time) {
 
 	int best_start_node = -1;
 	double min_sol_cost = INFINITY;
-	while(1) {																	// Try as many runs as mad possible by max_time timelimit
+	while(1) {																	// Try as many runs as made possible by max_time timelimit
 
 		double t1 = second();
 
@@ -1466,6 +1480,7 @@ void solve_heur_extra_mileage(instance* inst, double* x) {
 		printf("%d->%d ]\n", inst->nnodes - 1, succ[inst->nnodes - 1]);
 	}
 
+	// Fill the solution array "x" from successors list
 	for (int i = 0; i <= inst->nnodes - 1; i++) {
 		x[xpos(i, succ[i], inst)] = 1.0;
 	}
@@ -1476,11 +1491,135 @@ void solve_heur_extra_mileage(instance* inst, double* x) {
 
 	if (inst->verbose >= MEDIUM) printf("\nHEUR_EXTRA_MILEAGE -> Cost of the best solution: %f\n\n", curr_sol_cost);
 	inst->z_best = curr_sol_cost;
-	
 
 	free(succ);
 	free(hull);
 	free(instance_nodes);
+
+	return;
+}
+
+
+void solve_heur_grasp_extra_mileage(instance* inst, double* x, double max_time) {
+
+	double residual_timelimit = max_time;
+
+	// Fill the following data structure with the coordinates of nodes from the instance
+	Point* instance_nodes = (Point*)calloc(inst->nnodes, sizeof(Point));
+	for (int i = 0; i < inst->nnodes; i++) {
+		instance_nodes[i].id = i;
+		instance_nodes[i].x = inst->xcoord[i];
+		instance_nodes[i].y = inst->ycoord[i];
+	}
+
+	// Compute the convex hull of the set of nodes
+	int hull_size;
+	Point* hull = convexHull(instance_nodes, inst->nnodes, &hull_size);
+
+	// Build the list of "successors" of each node. If a node is not part of the solution yet, then its successor will be -1
+	int* hull_succ = (int*)malloc(inst->nnodes * sizeof(int));
+	for (int i = 0; i < inst->nnodes; i++) hull_succ[i] = -1;
+	for (int i = 0; i <= hull_size - 2; i++) hull_succ[hull[i].id] = hull[i + 1].id;
+	hull_succ[hull[hull_size - 1].id] = hull[0].id;
+
+	if (inst->verbose >= HIGH) {
+		printf("Convex hull list of successors: [ ");
+		for (int i = 0; i <= inst->nnodes - 2; i++) printf("%d->%d, ", i, hull_succ[i]);
+		printf("%d->%d ]\n", inst->nnodes - 1, hull_succ[inst->nnodes - 1]);
+	}
+
+	// Now we start inserting to the partial solution, at each iteration, the node which lead to the lowest "extra mileage" (as a locally optimal choice)
+	int n_nodes_to_insert = inst->nnodes - hull_size;
+	int* temp_succ = (int*)malloc(inst->nnodes * sizeof(int));
+	int* final_succ = (int*)malloc(inst->nnodes * sizeof(int));
+
+	double min_sol_cost = INFINITY;
+	int n_runs = 1;
+	while (1) {																		// Try as many runs as made possible by max_time timelimit
+
+		if (inst->verbose >= HIGH) printf("Restarting from convex hull: run #%d\n", n_runs);
+
+		double t1 = second();
+
+		temp_succ = memcpy(temp_succ, hull_succ, sizeof(int) * inst->nnodes);		// Start from the original succ data structure with the same convex hull
+
+		for (int n_iter = 1; n_iter <= n_nodes_to_insert; n_iter++) {				// Repeat until a complete solution is built
+
+			int first_refused_node = -1;
+			int second_refused_node = -1;
+			int curr_node_index = -1;
+			int next_node_index = -1;
+			
+			for (int i = 0; i < inst->nnodes; i++) {
+				if (temp_succ[i] != -1) {										// The node i has already been inserted => edge (i, succ[i]) good candidate to be removed
+
+					double min_x_mil = INFINITY;
+					for (int j = 0; j < inst->nnodes; j++) {
+						if (temp_succ[j] == -1) {								// The node j has not been inserted yet nor already discarded => good candidate node to be inserted
+
+							double x_mil = extra_mileage(i, temp_succ[i], j, inst);
+							if (x_mil < min_x_mil) {
+								min_x_mil = x_mil;
+								curr_node_index = i;
+								next_node_index = j;							// After the last iteration, next_node_index will be the best candidate node to insert
+							}
+						}
+					}
+				}
+			}
+
+			// Once the best candidate node to move on is found, choose randomly to accept it or to choose another (random) one with 10% probability
+			if (((double)rand() / RAND_MAX) <= 0.1) {
+				do {															// We only need that the alternative chosen node has not already been inserted
+					next_node_index = rand() % inst->nnodes;
+				} while (temp_succ[next_node_index] != -1);
+			}
+
+			// Update the successors list accordingly
+			temp_succ[next_node_index] = temp_succ[curr_node_index];
+			temp_succ[curr_node_index] = next_node_index;
+		}
+
+		// Compute from scratch the cost of the new solution
+		double curr_sol_cost = 0.0;
+		for (int i = 0; i < inst->nnodes; i++) curr_sol_cost += dist(i, temp_succ[i], inst);
+		if (inst->verbose >= HIGH) printf("New solution cost: %f\n", curr_sol_cost);
+
+		// If the newly built solution is better than all the previous ones, then memorize it
+		if (curr_sol_cost < min_sol_cost) {
+			min_sol_cost = curr_sol_cost;
+			final_succ = memcpy(final_succ, temp_succ, sizeof(int) * inst->nnodes);
+
+			if (inst->verbose >= MEDIUM) printf("Found an improved solution of cost: %f at run #%d\n", curr_sol_cost, n_runs);
+		}
+
+		if (inst->verbose >= HIGH) {
+			printf("New solution list of successors: [ ");
+			for (int i = 0; i <= inst->nnodes - 2; i++) printf("%d->%d, ", i, temp_succ[i]);
+			printf("%d->%d ]\n\n", inst->nnodes - 1, temp_succ[inst->nnodes - 1]);
+		}
+
+		double t2 = second();
+
+		// Update the residual timelimit and check if it has been reached (if so, stop generating new solutions and keep the best one found up to now)
+		residual_timelimit = residual_timelimit - (t2 - t1);
+		if (residual_timelimit <= 0) break;
+
+		n_runs++;
+	}
+
+	// Fill the solution array "x" from successors list
+	for (int i = 0; i <= inst->nnodes - 1; i++) {
+		x[xpos(i, final_succ[i], inst)] = 1.0;
+	}
+	
+	if (inst->verbose >= MEDIUM) printf("\nHEUR_GRASP_EXTRA_MILEAGE -> Cost of the best solution: %f\n\n", min_sol_cost);
+	inst->z_best = min_sol_cost;
+	
+	free(final_succ);
+	free(temp_succ);
+	free(hull_succ);
+	free(hull);
 
 	return;
 }
@@ -1654,7 +1793,7 @@ void solve_heur_multi_start(instance* inst, double* x) {
 		double grasp_timelimit = (double)(((double)rand() / RAND_MAX) * 10.0);
 
 		double t1 = second();
-		solve_heur_grasp(inst, temp_x, grasp_timelimit);		// First let GRASP find an always different reference solution (no need to reset solution array temp_x)
+		solve_heur_grasp_greedy(inst, temp_x, grasp_timelimit);					// First let GRASP find an always different reference solution (no need to reset solution array temp_x)
 		solve_heur_2_opt(inst, temp_x, NULL, INFINITY);							// Then use 2-opt refinement heuristic to improve the reference solution
 		double t2 = second();
 
@@ -1882,7 +2021,7 @@ void solve_heur_vns(instance* inst, double* x) {
 
 	// Use GRASP to generate the reference solution, allowing it to use up to 1/10 of the total timelimit
 	double t1 = second();
-	solve_heur_grasp(inst, x, residual_timelimit / 10);
+	solve_heur_grasp_greedy(inst, x, residual_timelimit / 10);
 	double t2 = second();
 
 	// Update remaining timelimit, but don't check it has been reached because it should just be at about 1/10
@@ -1975,7 +2114,7 @@ void solve_heur_tabu(instance* inst, double* x) {
 
 	// Use GRASP to generate the reference solution, allowing it to use up to 1/10 of the total timelimit
 	double t1 = second();
-	solve_heur_grasp(inst, x, residual_timelimit / 10);
+	solve_heur_grasp_greedy(inst, x, residual_timelimit / 10);
 	double t2 = second();
 
 	// Update remaining timelimit, but don't check it has been reached because it should just be at about 1/10

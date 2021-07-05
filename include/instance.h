@@ -8,7 +8,7 @@
 #define TICKS_PER_SECOND	1000.0  	// Cplex's ticks (depends on CPU)
 #define SECONDS_PER_DAY		86400		// Number of seconds in a day
 
-#define N_MODELS			31			// Total number of TSP models/approaches implemented to date = |models[]|
+#define N_MODELS			32			// Total number of TSP models/approaches implemented to date = |models[]|
 #define N_VERBOSITIES		4			// Total number of verbosity levels considered = |verbosities[]|
 #define N_MODES				3			// Total number of working modes of the program = |modes[]|
 
@@ -20,7 +20,7 @@ static const char* models[] = { "BASIC", "MTZ_STATIC", "MTZ_LAZY", "MTZ_SEC2_STA
 								"ADVBC_STD", "ADVBC_ROOT", "ADVBC_DEPTH_5", "ADVBC_PROB_50", "ADVBC_PROB_10",						// SEC separation using Cplex's callbacks + Concorde utility
 								"HEUR_HARD_FIX_50",	"HEUR_HARD_FIX_70",	"HEUR_HARD_FIX_90", "HEUR_HARD_FIX_VAR",					// Hard-fix math heuristics variants
 								"HEUR_SOFT_FIX_3", "HEUR_SOFT_FIX_5", "HEUR_SOFT_FIX_7", "HEUR_SOFT_FIX_9",							// Soft-fix (local branching) math heuristics variants
-								"HEUR_GREEDY", "HEUR_GRASP", "HEUR_EXTRA_MILEAGE",													// Constructive heuristics
+								"HEUR_GREEDY", "HEUR_GRASP_GREEDY", "HEUR_EXTRA_MILEAGE", "HEUR_GRASP_EXTRA_MILEAGE",						// Constructive heuristics
 								"HEUR_2_OPT", "HEUR_MULTI_START", 													                // Refinement heuristics
 								"HEUR_VNS", "HEUR_TABU", "HEUR_GENETIC", "HEUR_GENETIC_2_OPT" };									// Meta heuristics
 
@@ -78,14 +78,15 @@ typedef enum {
 	HEUR_SOFT_FIX_7, // 20
 	HEUR_SOFT_FIX_9, // 21
 	HEUR_GREEDY, // 22
-	HEUR_GRASP, // 23
+	HEUR_GRASP_GREEDY, // 23
 	HEUR_EXTRA_MILEAGE, // 24
-	HEUR_2_OPT, // 25
-	HEUR_MULTI_START, // 26
-	HEUR_VNS, // 27
-	HEUR_TABU, // 28
-	HEUR_GENETIC, // 29
-	HEUR_GENETIC_2_OPT // 30
+	HEUR_GRASP_EXTRA_MILEAGE, // 25
+	HEUR_2_OPT, // 26
+	HEUR_MULTI_START, // 27
+	HEUR_VNS, // 28
+	HEUR_TABU, // 29
+	HEUR_GENETIC, // 30
+	HEUR_GENETIC_2_OPT // 31
 } model_type;
 
 // Working modes enumeration
