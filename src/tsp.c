@@ -2412,6 +2412,25 @@ void solve_heur_genetic(instance* inst, double* x, int pop_size, double ratio_2_
 	double t1, t2 = 0.0;
 	int champion_index = -1;
 
+	// Open the .csv files which will be needed to take not of the average and Champion fitness
+	FILE* average_fitness_csv_file;
+	FILE* champion_fitness_csv_file;
+	if (inst->verbose == TEST) {
+		char average_fitness_csv_path[100];
+		char champion_fitness_csv_path[100];
+		sprintf(average_fitness_csv_path, "../outputs/%s_average_fitness.csv", models[inst->model_type]);
+		sprintf(champion_fitness_csv_path, "../outputs/%s_champion_fitness.csv", models[inst->model_type]);
+
+		average_fitness_csv_file = fopen(average_fitness_csv_path, "a");
+		champion_fitness_csv_file = fopen(champion_fitness_csv_path, "a");
+
+		if (average_fitness_csv_file == NULL) print_error("average_fitness_csv_file not found inside \"outputs\" folder!");
+		if (champion_fitness_csv_file == NULL) print_error("champion_fitness_csv_file not found inside \"outputs\" folder!");
+
+		fprintf(average_fitness_csv_file, "%s", inst->inst_name);
+		fprintf(champion_fitness_csv_file, "%s", inst->inst_name);
+	}
+
 	// Generate the starting population of pop_size (ex. 1000) random solutions (already with 2-opt refinement) and keep their costs (called "fitness")
 	int** population = (int**)malloc(pop_size * sizeof(int*));
 	if (population == NULL) print_error("Unable to allocate memory for pop_size solutions in HEUR_GENETIC.");
@@ -2615,6 +2634,12 @@ void solve_heur_genetic(instance* inst, double* x, int pop_size, double ratio_2_
 		}
 		if (inst->verbose >= MEDIUM) printf("Champion fitness of epoch #%d: %f\n", n_epoch, best_fitness);
 
+		// Take note on a .csv file of both the average and the Champion fitness and the time instant to later get a plot of them
+		if (inst->verbose == TEST) {
+			fprintf(average_fitness_csv_file, ", (%f, %f)", avg_fitness, inst->timelimit - residual_timelimit);
+			fprintf(champion_fitness_csv_file, ", (%f, %f)", best_fitness, inst->timelimit - residual_timelimit);
+		}
+
 		// Also update the worst fitness after generating the offspring
 		worst_fitness = -INFINITY;
 		for (int i = 0; i < pop_size; i++) {
@@ -2697,6 +2722,14 @@ void solve_heur_genetic(instance* inst, double* x, int pop_size, double ratio_2_
 		}
 
 		n_epoch++;
+	}
+
+	// Close the .csv files so that they can receive new data from other instances
+	if (inst->verbose == TEST) {
+		fprintf(average_fitness_csv_file, "\n");
+		fprintf(champion_fitness_csv_file, "\n");
+		fclose(average_fitness_csv_file);
+		fclose(champion_fitness_csv_file);
 	}
 	
 	// Free all the memory allocated for the population solutions
