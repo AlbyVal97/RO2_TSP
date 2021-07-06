@@ -2021,6 +2021,25 @@ void solve_heur_vns(instance* inst, double* x) {
 	double residual_timelimit = inst->timelimit;
 	double min_sol_cost = INFINITY;
 
+	// Open the .csv files which will be needed to take note of the cost of the current and best solution
+	FILE* vns_best_solution_csv_file;
+	FILE* vns_curr_solution_csv_file;
+	if (inst->verbose == TEST) {
+		char vns_curr_solution_csv_path[120];
+		char vns_best_solution_csv_path[120];
+		sprintf(vns_curr_solution_csv_path, "../outputs/%s_curr_solution_cost.csv", models[inst->model_type]);
+		sprintf(vns_best_solution_csv_path, "../outputs/%s_best_solution_cost.csv", models[inst->model_type]);
+
+		vns_curr_solution_csv_file = fopen(vns_curr_solution_csv_path, "a");
+		vns_best_solution_csv_file = fopen(vns_best_solution_csv_path, "a");
+
+		if (vns_curr_solution_csv_file == NULL) print_error("vns_curr_solution_csv_file not found inside \"outputs\" folder!");
+		if (vns_best_solution_csv_file == NULL) print_error("vns_best_solution_csv_file not found inside \"outputs\" folder!");
+
+		fprintf(vns_curr_solution_csv_file, "%s", inst->inst_name);
+		fprintf(vns_best_solution_csv_file, "%s", inst->inst_name);
+	}
+
 	// Use GRASP to generate the reference solution, allowing it to use up to 1/10 of the total timelimit
 	double t1 = second();
 	solve_heur_grasp_greedy(inst, x, residual_timelimit / 10);
@@ -2048,6 +2067,12 @@ void solve_heur_vns(instance* inst, double* x) {
 		// Compare the new solution cost with the (currently) best one, then memorize the best solution
 		if (curr_sol_cost < min_sol_cost) {
 			min_sol_cost = curr_sol_cost;
+		}
+
+		// Take note on two .csv files of the current and best solution cost and the time instant to later get a plot of them
+		if (inst->verbose == TEST) {
+			fprintf(vns_curr_solution_csv_file, ", (%f, %f)", curr_sol_cost, inst->timelimit - residual_timelimit);
+			fprintf(vns_best_solution_csv_file, ", (%f, %f)", min_sol_cost, inst->timelimit - residual_timelimit);
 		}
 
 		// Check if the timelimit has been reached: if so => exit the loop
@@ -2101,6 +2126,14 @@ void solve_heur_vns(instance* inst, double* x) {
 
 	if (inst->verbose >= MEDIUM) printf("\nHEUR_VNS -> Cost of the best solution: %f\n\n", min_sol_cost);
 	inst->z_best = min_sol_cost;
+
+	// Close the .csv files so that they can receive new data from other instances
+	if (inst->verbose == TEST) {
+		fprintf(vns_curr_solution_csv_file, "\n");
+		fprintf(vns_best_solution_csv_file, "\n");
+		fclose(vns_curr_solution_csv_file);
+		fclose(vns_best_solution_csv_file);
+	}
 
 	free(succ);
 }
@@ -2412,12 +2445,12 @@ void solve_heur_genetic(instance* inst, double* x, int pop_size, double ratio_2_
 	double t1, t2 = 0.0;
 	int champion_index = -1;
 
-	// Open the .csv files which will be needed to take not of the average and Champion fitness
+	// Open the .csv files which will be needed to take note of the average and Champion fitness
 	FILE* average_fitness_csv_file;
 	FILE* champion_fitness_csv_file;
 	if (inst->verbose == TEST) {
-		char average_fitness_csv_path[100];
-		char champion_fitness_csv_path[100];
+		char average_fitness_csv_path[120];
+		char champion_fitness_csv_path[120];
 		sprintf(average_fitness_csv_path, "../outputs/%s_average_fitness.csv", models[inst->model_type]);
 		sprintf(champion_fitness_csv_path, "../outputs/%s_champion_fitness.csv", models[inst->model_type]);
 
