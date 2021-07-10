@@ -228,7 +228,7 @@ int TSPopt(instance* inst) {
 			solve_heur_greedy(inst, x_greedy);
 
 			sprintf(edges_file_path, "%s/model_%s_edges.dat", edges_file_path, models[inst->model_type]);
-			print_solution(inst, x_greedy, symmetric, edges_file_path);
+			if (inst->verbose >= LOW) print_solution(inst, x_greedy, symmetric, edges_file_path);
 			free(x_greedy);
 			break;
 
@@ -240,7 +240,7 @@ int TSPopt(instance* inst) {
 			solve_heur_grasp_greedy(inst, x_grasp_greedy, inst->timelimit);
 
 			sprintf(edges_file_path, "%s/model_%s_edges.dat", edges_file_path, models[inst->model_type]);
-			print_solution(inst, x_grasp_greedy, symmetric, edges_file_path);
+			if (inst->verbose >= LOW) print_solution(inst, x_grasp_greedy, symmetric, edges_file_path);
 			free(x_grasp_greedy);
 			break;
 
@@ -252,7 +252,7 @@ int TSPopt(instance* inst) {
 			solve_heur_extra_mileage(inst, x_extra_mileage);
 
 			sprintf(edges_file_path, "%s/model_%s_edges.dat", edges_file_path, models[inst->model_type]);
-			print_solution(inst, x_extra_mileage, symmetric, edges_file_path);
+			if (inst->verbose >= LOW) print_solution(inst, x_extra_mileage, symmetric, edges_file_path);
 			free(x_extra_mileage);
 			break;
 
@@ -264,7 +264,7 @@ int TSPopt(instance* inst) {
 			solve_heur_grasp_extra_mileage(inst, x_grasp_extra_mileage, inst->timelimit);
 
 			sprintf(edges_file_path, "%s/model_%s_edges.dat", edges_file_path, models[inst->model_type]);
-			print_solution(inst, x_grasp_extra_mileage, symmetric, edges_file_path);
+			if (inst->verbose >= LOW) print_solution(inst, x_grasp_extra_mileage, symmetric, edges_file_path);
 			free(x_grasp_extra_mileage);
 			break;
 
@@ -277,7 +277,7 @@ int TSPopt(instance* inst) {
 			solve_heur_2_opt(inst, x_2_opt, NULL, (inst->timelimit / 10) * 9);
 
 			sprintf(edges_file_path, "%s/model_%s_edges.dat", edges_file_path, models[inst->model_type]);
-			print_solution(inst, x_2_opt, symmetric, edges_file_path);
+			if (inst->verbose >= LOW) print_solution(inst, x_2_opt, symmetric, edges_file_path);
 			free(x_2_opt);
 			break;
 
@@ -289,7 +289,7 @@ int TSPopt(instance* inst) {
 			solve_heur_multi_start(inst, x_multi_start);
 
 			sprintf(edges_file_path, "%s/model_%s_edges.dat", edges_file_path, models[inst->model_type]);
-			print_solution(inst, x_multi_start, symmetric, edges_file_path);
+			if (inst->verbose >= LOW) print_solution(inst, x_multi_start, symmetric, edges_file_path);
 			free(x_multi_start);
 			break;
 
@@ -301,7 +301,7 @@ int TSPopt(instance* inst) {
 			solve_heur_vns(inst, x_vns);
 
 			sprintf(edges_file_path, "%s/model_%s_edges.dat", edges_file_path, models[inst->model_type]);
-			print_solution(inst, x_vns, symmetric, edges_file_path);
+			if (inst->verbose >= LOW) print_solution(inst, x_vns, symmetric, edges_file_path);
 			free(x_vns);
 			break;
 
@@ -313,7 +313,7 @@ int TSPopt(instance* inst) {
 			solve_heur_tabu(inst, x_tabu);
 
 			sprintf(edges_file_path, "%s/model_%s_edges.dat", edges_file_path, models[inst->model_type]);
-			print_solution(inst, x_tabu, symmetric, edges_file_path);
+			if (inst->verbose >= LOW) print_solution(inst, x_tabu, symmetric, edges_file_path);
 			free(x_tabu);
 			break;
 
@@ -325,7 +325,7 @@ int TSPopt(instance* inst) {
 			solve_heur_genetic(inst, x_genetic, 1000, 0.0);
 
 			sprintf(edges_file_path, "%s/model_%s_edges.dat", edges_file_path, models[inst->model_type]);
-			print_solution(inst, x_genetic, symmetric, edges_file_path);
+			if (inst->verbose >= LOW) print_solution(inst, x_genetic, symmetric, edges_file_path);
 			free(x_genetic);
 			break;
 
@@ -337,7 +337,7 @@ int TSPopt(instance* inst) {
 			solve_heur_genetic(inst, x_genetic_2_opt, 100, 0.1);
 
 			sprintf(edges_file_path, "%s/model_%s_edges.dat", edges_file_path, models[inst->model_type]);
-			print_solution(inst, x_genetic_2_opt, symmetric, edges_file_path);
+			if (inst->verbose >= LOW) print_solution(inst, x_genetic_2_opt, symmetric, edges_file_path);
 			free(x_genetic_2_opt);
 			break;
 
@@ -545,7 +545,7 @@ void solve_benders(instance* inst, CPXENVptr env, CPXLPptr lp) {
 	while (n_comp > 1) {									// Repeat iteratively until just one connected component is left
 
 		if (n_iter > 0) {									// For the first iteration just solve the BASIC_MODEL
-			// Add a new subtour elimination constraint for each connected components of the current solution
+			// Add a new subtour elimination constraint for each connected component of the current solution
 			update_benders_constraints(env, lp, inst, comp, n_comp, n_iter);
 		}
 
@@ -1548,8 +1548,8 @@ void solve_heur_grasp_extra_mileage(instance* inst, double* x, double max_time) 
 			int curr_node_index = -1;
 			int next_node_index = -1;
 
-			// Choose randomly to get the pair of nodes that lead to minimum "extra mileage" or to get them randomly (with 10% probability)
-			if (((double)rand() / RAND_MAX) <= 0.1) {
+			// Choose randomly to get the pair of nodes that lead to minimum "extra mileage" or to get them randomly (with 1% probability)
+			if (((double)rand() / RAND_MAX) <= 0.01) {
 				do {																// We  need that the chosen starting node has already been inserted (es. part of the hull)
 					curr_node_index = rand() % inst->nnodes;
 				} while (temp_succ[curr_node_index] == -1);
@@ -2071,8 +2071,8 @@ void solve_heur_vns(instance* inst, double* x) {
 
 		// Take note on two .csv files of the current and best solution cost and the time instant to later get a plot of them
 		if (inst->verbose == TEST) {
-			fprintf(vns_curr_solution_csv_file, ", (%f, %f)", curr_sol_cost, inst->timelimit - residual_timelimit);
-			fprintf(vns_best_solution_csv_file, ", (%f, %f)", min_sol_cost, inst->timelimit - residual_timelimit);
+			fprintf(vns_curr_solution_csv_file, ", (%f, %f)", inst->timelimit - residual_timelimit, curr_sol_cost);
+			fprintf(vns_best_solution_csv_file, ", (%f, %f)", inst->timelimit - residual_timelimit, min_sol_cost);
 		}
 
 		// Check if the timelimit has been reached: if so => exit the loop
@@ -2669,8 +2669,8 @@ void solve_heur_genetic(instance* inst, double* x, int pop_size, double ratio_2_
 
 		// Take note on a .csv file of both the average and the Champion fitness and the time instant to later get a plot of them
 		if (inst->verbose == TEST) {
-			fprintf(average_fitness_csv_file, ", (%f, %f)", avg_fitness, inst->timelimit - residual_timelimit);
-			fprintf(champion_fitness_csv_file, ", (%f, %f)", best_fitness, inst->timelimit - residual_timelimit);
+			fprintf(average_fitness_csv_file, ", (%f, %f)", inst->timelimit - residual_timelimit, avg_fitness);
+			fprintf(champion_fitness_csv_file, ", (%f, %f)", inst->timelimit - residual_timelimit, best_fitness);
 		}
 
 		// Also update the worst fitness after generating the offspring
