@@ -50,6 +50,11 @@ int TSPopt(instance* inst) {
 		}
 	}
 
+	if (inst->verbose >= LOW) {
+		sprintf(logfile_path, "%s/logfile_%s.txt", logfile_path, models[inst->model_type]);
+		if (CPXsetlogfilename(env, logfile_path, "w")) print_error("CPXsetlogfilename() error in setting logfile name");
+	}
+
 	// Discern if a model is symmetric (solves the TSP for a directed or an undirected graph)
 	int symmetric = -1;
 
@@ -61,115 +66,96 @@ int TSPopt(instance* inst) {
 			inst->ncols = CPXgetnumcols(env, lp);
 			printf("inst->ncols: %d\n", inst->ncols);
 
-			if (inst->verbose >= LOW) {
-				sprintf(logfile_path, "%s/logfile_BASIC.txt", logfile_path);
-				if (CPXsetlogfilename(env, logfile_path, "w")) print_error("CPXsetlogfilename() error in setting logfile name");
-			}
 			if (CPXmipopt(env, lp)) { print_error("CPXmipopt() error"); }
 			mip_solved_to_optimality(inst, env, lp);												// Check if CPXmipopt has ended correctly
-			sprintf(edges_file_path, "%s/model_BASIC_edges.dat", edges_file_path);
+
+			sprintf(edges_file_path, "%s/model_%s_edges.dat", edges_file_path, models[inst->model_type]);
 			break;
 
 		case MTZ_STATIC:
 			symmetric = 1;
 			build_model_MTZ_STATIC(inst, env, lp);
-			if (inst->verbose >= LOW) {
-				sprintf(logfile_path, "%s/logfile_MTZ_STATIC.txt", logfile_path);
-				if (CPXsetlogfilename(env, logfile_path, "w")) print_error("CPXsetlogfilename() error in setting logfile name");
-			}
+		
 			if (CPXsetdblparam(env, CPX_PARAM_EPINT, 0.0)) { print_error("CPXsetdblparam() error in setting integer value tolerance"); }
 			if (CPXmipopt(env, lp)) { print_error("CPXmipopt() error"); }
 			mip_solved_to_optimality(inst, env, lp);												// Check if CPXmipopt has ended correctly
-			sprintf(edges_file_path, "%s/model_MTZ_STATIC_edges.dat", edges_file_path);
+
+			sprintf(edges_file_path, "%s/model_%s_edges.dat", edges_file_path, models[inst->model_type]);
 			break;
 
 		case MTZ_LAZY:
 			symmetric = 1;
 			build_model_MTZ_LAZY(inst, env, lp);
-			if (inst->verbose >= LOW) {
-				sprintf(logfile_path, "%s/logfile_MTZ_LAZY.txt", logfile_path);
-				if (CPXsetlogfilename(env, logfile_path, "w")) print_error("CPXsetlogfilename() error in setting logfile name");
-			}
+		
 			if (CPXsetdblparam(env, CPX_PARAM_EPINT, 0.0)) { print_error("CPXsetdblparam() error in setting integer value tolerance"); }
 			if (CPXmipopt(env, lp)) { print_error("CPXmipopt() error"); }
 			mip_solved_to_optimality(inst, env, lp);												// Check if CPXmipopt has ended correctly
-			sprintf(edges_file_path, "%s/model_MTZ_LAZY_edges.dat", edges_file_path);
+
+			sprintf(edges_file_path, "%s/model_%s_edges.dat", edges_file_path, models[inst->model_type]);
 			break;
 
 		case MTZ_SEC2_STATIC:
 			symmetric = 1;
 			build_model_MTZ_SEC2_STATIC(inst, env, lp);
-			if (inst->verbose >= LOW) {
-				sprintf(logfile_path, "%s/logfile_MTZ_SEC2_STATIC.txt", logfile_path);
-				if (CPXsetlogfilename(env, logfile_path, "w")) print_error("CPXsetlogfilename() error in setting logfile name");
-			}
+			
 			if (CPXsetdblparam(env, CPX_PARAM_EPINT, 0.0)) { print_error("CPXsetdblparam() error in setting integer value tolerance"); }
 			if (CPXmipopt(env, lp)) { print_error("CPXmipopt() error"); }
 			mip_solved_to_optimality(inst, env, lp);												// Check if CPXmipopt has ended correctly
-			sprintf(edges_file_path, "%s/model_MTZ_SEC2_STATIC_edges.dat", edges_file_path);
+
+			sprintf(edges_file_path, "%s/model_%s_edges.dat", edges_file_path, models[inst->model_type]);
 			break;
 
 		case MTZ_SEC2_LAZY:
 			symmetric = 1;
 			build_model_MTZ_SEC2_LAZY(inst, env, lp);
-			if (inst->verbose >= LOW) {
-				sprintf(logfile_path, "%s/logfile_MTZ_SEC2_LAZY.txt", logfile_path);
-				if (CPXsetlogfilename(env, logfile_path, "w")) print_error("CPXsetlogfilename() error in setting logfile name");
-			}
+		
 			if (CPXsetdblparam(env, CPX_PARAM_EPINT, 0.0)) { print_error("CPXsetdblparam() error in setting integer value tolerance"); }
 			if (CPXmipopt(env, lp)) { print_error("CPXmipopt() error"); }
 			mip_solved_to_optimality(inst, env, lp);												// Check if CPXmipopt has ended correctly
-			sprintf(edges_file_path, "%s/model_MTZ_SEC2_LAZY_edges.dat", edges_file_path);
+
+			sprintf(edges_file_path, "%s/model_%s_edges.dat", edges_file_path, models[inst->model_type]);
 			break;
 
 		case GG:
 			symmetric = 1;
 			build_model_GG(inst, env, lp);
-			if (inst->verbose >= LOW) {
-				sprintf(logfile_path, "%s/logfile_GG.txt", logfile_path);
-				if (CPXsetlogfilename(env, logfile_path, "w")) print_error("CPXsetlogfilename() error in setting logfile name");
-			}
+		
 			if (CPXmipopt(env, lp)) { print_error("CPXmipopt() error"); }
 			mip_solved_to_optimality(inst, env, lp);												// Check if CPXmipopt has ended correctly
-			sprintf(edges_file_path, "%s/model_GG_edges.dat", edges_file_path);
+
+			sprintf(edges_file_path, "%s/model_%s_edges.dat", edges_file_path, models[inst->model_type]);
 			break;
 
 		case BENDERS:
 			symmetric = 0;
 			build_model_BASIC(inst, env, lp);
 			inst->ncols = CPXgetnumcols(env, lp);
-			if (inst->verbose >= LOW) {
-				sprintf(logfile_path, "%s/logfile_BENDERS.txt", logfile_path);
-				if (CPXsetlogfilename(env, logfile_path, "w")) print_error("CPXsetlogfilename() error in setting logfile name");
-			}
+			
 			solve_benders(inst, env, lp);
-			sprintf(edges_file_path, "%s/model_BENDERS_edges.dat", edges_file_path);
+
+			sprintf(edges_file_path, "%s/model_%s_edges.dat", edges_file_path, models[inst->model_type]);
 			break;
 
 		case BRANCH_CUT:
 			symmetric = 0;
 			build_model_BASIC(inst, env, lp);
 			inst->ncols = CPXgetnumcols(env, lp);
-			if (inst->verbose >= LOW) {
-				sprintf(logfile_path, "%s/logfile_BRANCH_CUT.txt", logfile_path);
-				if (CPXsetlogfilename(env, logfile_path, "w")) print_error("CPXsetlogfilename() error in setting logfile name");
-			}
+		
 			inst->use_2_opt = 0;						// Solve without 2-opt refinement heuristics
 			solve_branch_cut(inst, env, lp);
-			sprintf(edges_file_path, "%s/model_BRANCH_CUT_edges.dat", edges_file_path);
+
+			sprintf(edges_file_path, "%s/model_%s_edges.dat", edges_file_path, models[inst->model_type]);
 			break;
 
 		case BRANCH_CUT_2_OPT:
 			symmetric = 0;
 			build_model_BASIC(inst, env, lp);
 			inst->ncols = CPXgetnumcols(env, lp);
-			if (inst->verbose >= LOW) {
-				sprintf(logfile_path, "%s/logfile_BRANCH_CUT_2_OPT.txt", logfile_path);
-				if (CPXsetlogfilename(env, logfile_path, "w")) print_error("CPXsetlogfilename() error in setting logfile name");
-			}
+		
 			inst->use_2_opt = 1;						// Solve using 2-opt refinement heuristics
 			solve_branch_cut(inst, env, lp);
-			sprintf(edges_file_path, "%s/model_BRANCH_CUT_2_OPT_edges.dat", edges_file_path);
+
+			sprintf(edges_file_path, "%s/model_%s_edges.dat", edges_file_path, models[inst->model_type]);
 			break;
 		
 		case ADVBC_STD:
@@ -180,11 +166,9 @@ int TSPopt(instance* inst) {
 			symmetric = 0;
 			build_model_BASIC(inst, env, lp);
 			inst->ncols = CPXgetnumcols(env, lp);
-			if (inst->verbose >= LOW) {
-				sprintf(logfile_path, "%s/logfile_%s.txt", logfile_path, models[inst->model_type]);
-				if (CPXsetlogfilename(env, logfile_path, "w")) print_error("CPXsetlogfilename() error in setting logfile name");
-			}
+		
 			solve_adv_branch_cut(inst, env, lp);
+
 			sprintf(edges_file_path, "%s/model_%s_edges.dat", edges_file_path, models[inst->model_type]);
 			break;
 
@@ -195,11 +179,9 @@ int TSPopt(instance* inst) {
 			symmetric = 0;
 			build_model_BASIC(inst, env, lp);
 			inst->ncols = CPXgetnumcols(env, lp);
-			if (inst->verbose >= LOW) {
-				sprintf(logfile_path, "%s/logfile_%s.txt", logfile_path, models[inst->model_type]);
-				if (CPXsetlogfilename(env, logfile_path, "w")) print_error("CPXsetlogfilename() error in setting logfile name");
-			}
+			
 			solve_heur_hard_fix(inst, env, lp);
+
 			sprintf(edges_file_path, "%s/model_%s_edges.dat", edges_file_path, models[inst->model_type]);
 			break;
 
@@ -210,10 +192,6 @@ int TSPopt(instance* inst) {
 			symmetric = 0;
 			build_model_BASIC(inst, env, lp);
 			inst->ncols = CPXgetnumcols(env, lp);
-			if (inst->verbose >= LOW) {
-				sprintf(logfile_path, "%s/logfile_%s.txt", logfile_path, models[inst->model_type]);
-				if (CPXsetlogfilename(env, logfile_path, "w")) print_error("CPXsetlogfilename() error in setting logfile name");
-			}
 
 			solve_heur_soft_fix(inst, env, lp);
 
