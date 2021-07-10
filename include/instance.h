@@ -20,7 +20,7 @@ static const char* models[] = { "BASIC", "MTZ_STATIC", "MTZ_LAZY", "MTZ_SEC2_STA
 								"ADVBC_STD", "ADVBC_ROOT", "ADVBC_DEPTH_5", "ADVBC_PROB_50", "ADVBC_PROB_10",						// SEC separation using Cplex's callbacks + Concorde utility
 								"HEUR_HARD_FIX_50",	"HEUR_HARD_FIX_70",	"HEUR_HARD_FIX_90", "HEUR_HARD_FIX_VAR",					// Hard-fix math heuristics variants
 								"HEUR_SOFT_FIX_3", "HEUR_SOFT_FIX_5", "HEUR_SOFT_FIX_7", "HEUR_SOFT_FIX_9",							// Soft-fix (local branching) math heuristics variants
-								"HEUR_GREEDY", "HEUR_GRASP_GREEDY", "HEUR_EXTRA_MILEAGE", "HEUR_GRASP_EXTRA_MILEAGE",						// Constructive heuristics
+								"HEUR_GREEDY", "HEUR_GRASP_GREEDY", "HEUR_EXTRA_MILEAGE", "HEUR_GRASP_EXTRA_MILEAGE",				// Constructive heuristics
 								"HEUR_2_OPT", "HEUR_MULTI_START", 													                // Refinement heuristics
 								"HEUR_VNS", "HEUR_TABU", "HEUR_GENETIC", "HEUR_GENETIC_2_OPT" };									// Meta heuristics
 

@@ -545,7 +545,7 @@ void solve_benders(instance* inst, CPXENVptr env, CPXLPptr lp) {
 	while (n_comp > 1) {									// Repeat iteratively until just one connected component is left
 
 		if (n_iter > 0) {									// For the first iteration just solve the BASIC_MODEL
-			// Add a new subtour elimination constraint for each connected components of the current solution
+			// Add a new subtour elimination constraint for each connected component of the current solution
 			update_benders_constraints(env, lp, inst, comp, n_comp, n_iter);
 		}
 
@@ -1548,8 +1548,8 @@ void solve_heur_grasp_extra_mileage(instance* inst, double* x, double max_time) 
 			int curr_node_index = -1;
 			int next_node_index = -1;
 
-			// Choose randomly to get the pair of nodes that lead to minimum "extra mileage" or to get them randomly (with 10% probability)
-			if (((double)rand() / RAND_MAX) <= 0.1) {
+			// Choose randomly to get the pair of nodes that lead to minimum "extra mileage" or to get them randomly (with 1% probability)
+			if (((double)rand() / RAND_MAX) <= 0.01) {
 				do {																// We  need that the chosen starting node has already been inserted (es. part of the hull)
 					curr_node_index = rand() % inst->nnodes;
 				} while (temp_succ[curr_node_index] == -1);
@@ -2071,8 +2071,8 @@ void solve_heur_vns(instance* inst, double* x) {
 
 		// Take note on two .csv files of the current and best solution cost and the time instant to later get a plot of them
 		if (inst->verbose == TEST) {
-			fprintf(vns_curr_solution_csv_file, ", (%f, %f)", curr_sol_cost, inst->timelimit - residual_timelimit);
-			fprintf(vns_best_solution_csv_file, ", (%f, %f)", min_sol_cost, inst->timelimit - residual_timelimit);
+			fprintf(vns_curr_solution_csv_file, ", (%f, %f)", inst->timelimit - residual_timelimit, curr_sol_cost);
+			fprintf(vns_best_solution_csv_file, ", (%f, %f)", inst->timelimit - residual_timelimit, min_sol_cost);
 		}
 
 		// Check if the timelimit has been reached: if so => exit the loop
@@ -2669,8 +2669,8 @@ void solve_heur_genetic(instance* inst, double* x, int pop_size, double ratio_2_
 
 		// Take note on a .csv file of both the average and the Champion fitness and the time instant to later get a plot of them
 		if (inst->verbose == TEST) {
-			fprintf(average_fitness_csv_file, ", (%f, %f)", avg_fitness, inst->timelimit - residual_timelimit);
-			fprintf(champion_fitness_csv_file, ", (%f, %f)", best_fitness, inst->timelimit - residual_timelimit);
+			fprintf(average_fitness_csv_file, ", (%f, %f)", inst->timelimit - residual_timelimit, avg_fitness);
+			fprintf(champion_fitness_csv_file, ", (%f, %f)", inst->timelimit - residual_timelimit, best_fitness);
 		}
 
 		// Also update the worst fitness after generating the offspring
