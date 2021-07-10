@@ -228,7 +228,7 @@ int TSPopt(instance* inst) {
 			solve_heur_greedy(inst, x_greedy);
 
 			sprintf(edges_file_path, "%s/model_%s_edges.dat", edges_file_path, models[inst->model_type]);
-			print_solution(inst, x_greedy, symmetric, edges_file_path);
+			if (inst->verbose >= LOW) print_solution(inst, x_greedy, symmetric, edges_file_path);
 			free(x_greedy);
 			break;
 
@@ -240,7 +240,7 @@ int TSPopt(instance* inst) {
 			solve_heur_grasp_greedy(inst, x_grasp_greedy, inst->timelimit);
 
 			sprintf(edges_file_path, "%s/model_%s_edges.dat", edges_file_path, models[inst->model_type]);
-			print_solution(inst, x_grasp_greedy, symmetric, edges_file_path);
+			if (inst->verbose >= LOW) print_solution(inst, x_grasp_greedy, symmetric, edges_file_path);
 			free(x_grasp_greedy);
 			break;
 
@@ -252,7 +252,7 @@ int TSPopt(instance* inst) {
 			solve_heur_extra_mileage(inst, x_extra_mileage);
 
 			sprintf(edges_file_path, "%s/model_%s_edges.dat", edges_file_path, models[inst->model_type]);
-			print_solution(inst, x_extra_mileage, symmetric, edges_file_path);
+			if (inst->verbose >= LOW) print_solution(inst, x_extra_mileage, symmetric, edges_file_path);
 			free(x_extra_mileage);
 			break;
 
@@ -264,7 +264,7 @@ int TSPopt(instance* inst) {
 			solve_heur_grasp_extra_mileage(inst, x_grasp_extra_mileage, inst->timelimit);
 
 			sprintf(edges_file_path, "%s/model_%s_edges.dat", edges_file_path, models[inst->model_type]);
-			print_solution(inst, x_grasp_extra_mileage, symmetric, edges_file_path);
+			if (inst->verbose >= LOW) print_solution(inst, x_grasp_extra_mileage, symmetric, edges_file_path);
 			free(x_grasp_extra_mileage);
 			break;
 
@@ -277,7 +277,7 @@ int TSPopt(instance* inst) {
 			solve_heur_2_opt(inst, x_2_opt, NULL, (inst->timelimit / 10) * 9);
 
 			sprintf(edges_file_path, "%s/model_%s_edges.dat", edges_file_path, models[inst->model_type]);
-			print_solution(inst, x_2_opt, symmetric, edges_file_path);
+			if (inst->verbose >= LOW) print_solution(inst, x_2_opt, symmetric, edges_file_path);
 			free(x_2_opt);
 			break;
 
@@ -289,7 +289,7 @@ int TSPopt(instance* inst) {
 			solve_heur_multi_start(inst, x_multi_start);
 
 			sprintf(edges_file_path, "%s/model_%s_edges.dat", edges_file_path, models[inst->model_type]);
-			print_solution(inst, x_multi_start, symmetric, edges_file_path);
+			if (inst->verbose >= LOW) print_solution(inst, x_multi_start, symmetric, edges_file_path);
 			free(x_multi_start);
 			break;
 
@@ -301,7 +301,7 @@ int TSPopt(instance* inst) {
 			solve_heur_vns(inst, x_vns);
 
 			sprintf(edges_file_path, "%s/model_%s_edges.dat", edges_file_path, models[inst->model_type]);
-			print_solution(inst, x_vns, symmetric, edges_file_path);
+			if (inst->verbose >= LOW) print_solution(inst, x_vns, symmetric, edges_file_path);
 			free(x_vns);
 			break;
 
@@ -313,7 +313,7 @@ int TSPopt(instance* inst) {
 			solve_heur_tabu(inst, x_tabu);
 
 			sprintf(edges_file_path, "%s/model_%s_edges.dat", edges_file_path, models[inst->model_type]);
-			print_solution(inst, x_tabu, symmetric, edges_file_path);
+			if (inst->verbose >= LOW) print_solution(inst, x_tabu, symmetric, edges_file_path);
 			free(x_tabu);
 			break;
 
@@ -325,7 +325,7 @@ int TSPopt(instance* inst) {
 			solve_heur_genetic(inst, x_genetic, 1000, 0.0);
 
 			sprintf(edges_file_path, "%s/model_%s_edges.dat", edges_file_path, models[inst->model_type]);
-			print_solution(inst, x_genetic, symmetric, edges_file_path);
+			if (inst->verbose >= LOW) print_solution(inst, x_genetic, symmetric, edges_file_path);
 			free(x_genetic);
 			break;
 
@@ -337,7 +337,7 @@ int TSPopt(instance* inst) {
 			solve_heur_genetic(inst, x_genetic_2_opt, 100, 0.1);
 
 			sprintf(edges_file_path, "%s/model_%s_edges.dat", edges_file_path, models[inst->model_type]);
-			print_solution(inst, x_genetic_2_opt, symmetric, edges_file_path);
+			if (inst->verbose >= LOW) print_solution(inst, x_genetic_2_opt, symmetric, edges_file_path);
 			free(x_genetic_2_opt);
 			break;
 
@@ -1751,7 +1751,7 @@ void solve_heur_2_opt(instance* inst, double* x, int* succ, double timelimit) {
 		// Update the timelimit and check if it has been reached for this call of 2-opt
 		residual_timelimit = residual_timelimit - (t2 - t1);
 		if (residual_timelimit <= 0) {
-			printf("Timelimit reached after %f secs!\n", timelimit);
+			if (inst->verbose >= MEDIUM) printf("Timelimit reached after %f secs!\n", timelimit);
 			break;
 		}
 

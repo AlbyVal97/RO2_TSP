@@ -42,10 +42,23 @@
 // -m 2 -test test_benders_bc_models_300 -folder test_instances_300 -n_inst 20 -n_models 3 6 7 9 -prefix rnd_300 -time_limit 1800
 
 // Command line arguments list for tuning hyperparameters of hard fix heuristics (only on 10 instances because each run takes about 15 minutes):
-// -m 2 -test test_tuning_hard_fix -folder test_instances_750_tuning -n_inst 10 -n_models 4 13 14 15 16 -prefix rnd_750 -time_limit 900
+// -m 2 -test test_tuning_hard_fix -folder test_instances_750_tuning -n_inst 10 -n_models 4 14 15 16 17 -prefix rnd_750 -time_limit 900
 
+// Command line arguments list for tuning hyperparameters of soft fix heuristics (only on 10 instances because each run takes about 15 minutes):
 // -m 2 -test test_tuning_soft_fix -folder test_instances_750_tuning -n_inst 10 -n_models 4 18 19 20 21 -prefix rnd_750 -time_limit 900
 
+// Command line arguments lists for hard fix and soft fix (best) methods official tests (split in two parts because each run takes about 30 minutes):
+// -m 2 -test test_math_heuristics_part_1 -folder test_instances_750_part_1 -n_inst 10 -n_models 2 17 21 -prefix rnd_750 -time_limit 1800
+// -m 2 -test test_math_heuristics_part_2 -folder test_instances_750_part_2 -n_inst 10 -n_models 2 17 21 -prefix rnd_750 -time_limit 1800
+
+// Command line arguments list for constructive heuristics official tests (each run takes about 10 minutes):
+// -m 2 -test test_constructive_heuristics -folder test_instances_1000 -n_inst 20 -n_models 3 23 25 27 -prefix rnd_1000 -time_limit 600
+
+// Command line arguments lists for metaheuristics official tests (each run takes about 30 minutes):
+// -m 2 -test test_metaheuristics_part_1 -folder test_instances_2000_part_1 -n_inst 5 -n_models 4 28 29 30 31 -prefix rnd_2000 -time_limit 1800
+// -m 2 -test test_metaheuristics_part_2 -folder test_instances_2000_part_2 -n_inst 5 -n_models 4 28 29 30 31 -prefix rnd_2000 -time_limit 1800
+// -m 2 -test test_metaheuristics_part_3 -folder test_instances_2000_part_3 -n_inst 5 -n_models 4 28 29 30 31 -prefix rnd_2000 -time_limit 1800
+// -m 2 -test test_metaheuristics_part_4 -folder test_instances_2000_part_4 -n_inst 5 -n_models 4 28 29 30 31 -prefix rnd_2000 -time_limit 1800
 
 void update_csvfile(instance* inst, int first_model, int last_model, double time, double z_best);
 void run_test(instance* inst);
