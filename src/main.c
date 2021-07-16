@@ -18,7 +18,7 @@
 // -m 1 -folder test_instances_300 -prefix rnd_300 -n_inst 40 -n_nodes 300
 // -m 1 -folder test_instances_500 -prefix rnd_500 -n_inst 20 -n_nodes 500
 // -m 1 -folder test_instances_750 -prefix rnd_750 -n_inst 40 -n_nodes 750
-// -m 1 -folder test_instances_1000 -prefix rnd_1000 -n_inst 20 -n_nodes 1000
+// -m 1 -folder test_instances_1000 -prefix rnd_1000 -n_inst 40 -n_nodes 1000
 // -m 1 -folder test_instances_2000 -prefix rnd_2000 -n_inst 20 -n_nodes 2000
 // -m 1 -folder test_instances_5000 -prefix rnd_5000 -n_inst 20 -n_nodes 5000
 
@@ -44,9 +44,11 @@
 
 // Command line arguments list for tuning hyperparameters of hard fix heuristics (only on 10 instances because each run takes about 15 minutes):
 // -m 2 -test test_tuning_hard_fix -folder test_instances_750_tuning -n_inst 10 -n_models 4 14 15 16 17 -prefix rnd_750 -time_limit 900
+// -m 2 -test test_tuning_1000_hard_fix -folder test_instances_1000_tuning -n_inst 10 -n_models 4 14 15 16 17 -prefix rnd_1000 -time_limit 900
 
 // Command line arguments list for tuning hyperparameters of soft fix heuristics (only on 10 instances because each run takes about 15 minutes):
 // -m 2 -test test_tuning_soft_fix -folder test_instances_750_tuning -n_inst 10 -n_models 4 18 19 20 21 -prefix rnd_750 -time_limit 900
+// -m 2 -test test_tuning_1000_soft_fix -folder test_instances_1000_tuning -n_inst 10 -n_models 4 14 15 16 17 -prefix rnd_1000 -time_limit 900
 
 // Command line arguments lists for hard fix and soft fix (best) methods official tests (split in two parts because each run takes about 30 minutes):
 // -m 2 -test test_math_heuristics_part_1_bc_2opt -folder test_instances_750_part_1 -n_inst 10 -n_models 2 17 21 -prefix rnd_750 -time_limit 1800
