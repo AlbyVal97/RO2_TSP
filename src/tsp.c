@@ -2898,7 +2898,7 @@ void build_model_MTZ_STATIC(instance* inst, CPXENVptr env, CPXLPptr lp) {
 
 void build_model_MTZ_LAZY(instance* inst, CPXENVptr env, CPXLPptr lp) {
 
-	// Model MTZ with lazy subtour elimination constraints.
+	// Model MTZ with lazy consistency constraints.
 
 	double zero = 0.0;
 	char binary = 'B';
@@ -2979,9 +2979,9 @@ void build_model_MTZ_LAZY(instance* inst, CPXENVptr env, CPXLPptr lp) {
 
 	// Add the u consistency constraints for each edge (i,j)
 	double M = inst->nnodes - 1.0;								// Smallest M value for big M trick
-	rhs = M - 1;											// "rhs" = right-hand side of the degree constraints
-	sense = 'L';											// 'L' for less-or-equal constraint
-	nnz = 3;												// number of cells != 0 in the row
+	rhs = M - 1;												// "rhs" = right-hand side of the degree constraints
+	sense = 'L';												// 'L' for less-or-equal constraint
+	nnz = 3;													// number of cells != 0 in the row
 	for (int i = 1; i < inst->nnodes; i++) {
 		for (int j = 1; j < inst->nnodes; j++) {
 			if (i == j) continue;
@@ -3137,7 +3137,7 @@ void build_model_MTZ_SEC2_STATIC(instance* inst, CPXENVptr env, CPXLPptr lp) {
 
 void build_model_MTZ_SEC2_LAZY(instance* inst, CPXENVptr env, CPXLPptr lp) {
 
-	// Model MTZ with lazy subtour elimination constraints of dimension 2.
+	// Model MTZ with both lazy consistency constraints and lazy subtour elimination constraints of dimension 2.
 
 	double zero = 0.0;
 	char binary = 'B';
@@ -3348,7 +3348,6 @@ void build_model_GG(instance* inst, CPXENVptr env, CPXLPptr lp) {
 	}
 
 	// Add the linking constraints for the variable y
-	// Add the u consistency constraints for each edge (i,j)
 	rhs = 0.0;																		// "rhs" = right-hand side of the degree constraints
 	sense = 'L';																	// 'L' for less-or-equal constraint
 	nnz = 2;																		// number of cells != 0 in the row
@@ -3357,7 +3356,7 @@ void build_model_GG(instance* inst, CPXENVptr env, CPXLPptr lp) {
 			if (i == j) continue;
 
 			sprintf(cname[0], "linking_constr(%d,%d)", i + 1, j + 1);
-			index[0] = xpos_compact(i, j, inst);									// +(2.0 - N) * Xij
+			index[0] = xpos_compact(i, j, inst);									// +(1.0 - N) * Xij
 			value[0] = 1.0 - inst->nnodes;
 			index[1] = ypos_compact(i, j, inst);									// +1.0 * Yij
 			value[1] = 1.0;

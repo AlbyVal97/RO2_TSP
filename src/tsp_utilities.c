@@ -296,7 +296,6 @@ void create_instances(instance* inst) {
 	for (int i = 0; i < inst->n_instances; i++) {
 		seeds[i] = base_seed + i * 9;
 	}
-
 	
 	char inst_name[20];
 	char inst_file_path[50];
