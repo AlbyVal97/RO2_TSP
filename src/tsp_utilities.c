@@ -358,7 +358,7 @@ void free_instance(instance* inst) {
 
 	free(inst->xcoord);
 	free(inst->ycoord);
-	// N.B. only HEUR_HARD_FIX_* and HEUR_SOFT_FIX_K initialize "inst->model_type" !
+	// N.B. only HEUR_SOFT_FIX_K initialize "inst->model_type" and need it to be freed!
 	if (inst->model_type > HEUR_HARD_FIX_VAR && inst->model_type < HEUR_GREEDY) free(inst->best_sol);
 
 	return;

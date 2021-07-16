@@ -67,7 +67,7 @@ int TSPopt(instance* inst) {
 			build_model_BASIC(inst, env, lp);
 			inst->ncols = CPXgetnumcols(env, lp);
 
-			if (CPXmipopt(env, lp)) { print_error("CPXmipopt() error"); }
+			if (CPXmipopt(env, lp)) print_error("CPXmipopt() error");
 			mip_solved_to_optimality(inst, env, lp);												// Check if CPXmipopt has ended correctly
 			break;
 
@@ -75,8 +75,8 @@ int TSPopt(instance* inst) {
 			symmetric = 1;
 			build_model_MTZ_STATIC(inst, env, lp);
 		
-			if (CPXsetdblparam(env, CPX_PARAM_EPINT, 0.0)) { print_error("CPXsetdblparam() error in setting integer value tolerance"); }
-			if (CPXmipopt(env, lp)) { print_error("CPXmipopt() error"); }
+			if (CPXsetdblparam(env, CPX_PARAM_EPINT, 0.0)) print_error("CPXsetdblparam() error in setting integer value tolerance");
+			if (CPXmipopt(env, lp)) print_error("CPXmipopt() error");
 			mip_solved_to_optimality(inst, env, lp);												// Check if CPXmipopt has ended correctly
 			break;
 
@@ -84,8 +84,8 @@ int TSPopt(instance* inst) {
 			symmetric = 1;
 			build_model_MTZ_LAZY(inst, env, lp);
 		
-			if (CPXsetdblparam(env, CPX_PARAM_EPINT, 0.0)) { print_error("CPXsetdblparam() error in setting integer value tolerance"); }
-			if (CPXmipopt(env, lp)) { print_error("CPXmipopt() error"); }
+			if (CPXsetdblparam(env, CPX_PARAM_EPINT, 0.0)) print_error("CPXsetdblparam() error in setting integer value tolerance");
+			if (CPXmipopt(env, lp)) print_error("CPXmipopt() error");
 			mip_solved_to_optimality(inst, env, lp);												// Check if CPXmipopt has ended correctly
 			break;
 
@@ -93,8 +93,8 @@ int TSPopt(instance* inst) {
 			symmetric = 1;
 			build_model_MTZ_SEC2_STATIC(inst, env, lp);
 			
-			if (CPXsetdblparam(env, CPX_PARAM_EPINT, 0.0)) { print_error("CPXsetdblparam() error in setting integer value tolerance"); }
-			if (CPXmipopt(env, lp)) { print_error("CPXmipopt() error"); }
+			if (CPXsetdblparam(env, CPX_PARAM_EPINT, 0.0)) print_error("CPXsetdblparam() error in setting integer value tolerance");
+			if (CPXmipopt(env, lp)) print_error("CPXmipopt() error");
 			mip_solved_to_optimality(inst, env, lp);												// Check if CPXmipopt has ended correctly
 			break;
 
@@ -102,8 +102,8 @@ int TSPopt(instance* inst) {
 			symmetric = 1;
 			build_model_MTZ_SEC2_LAZY(inst, env, lp);
 		
-			if (CPXsetdblparam(env, CPX_PARAM_EPINT, 0.0)) { print_error("CPXsetdblparam() error in setting integer value tolerance"); }
-			if (CPXmipopt(env, lp)) { print_error("CPXmipopt() error"); }
+			if (CPXsetdblparam(env, CPX_PARAM_EPINT, 0.0)) print_error("CPXsetdblparam() error in setting integer value tolerance");
+			if (CPXmipopt(env, lp)) print_error("CPXmipopt() error");
 			mip_solved_to_optimality(inst, env, lp);												// Check if CPXmipopt has ended correctly
 			break;
 
@@ -111,7 +111,7 @@ int TSPopt(instance* inst) {
 			symmetric = 1;
 			build_model_GG(inst, env, lp);
 		
-			if (CPXmipopt(env, lp)) { print_error("CPXmipopt() error"); }
+			if (CPXmipopt(env, lp)) print_error("CPXmipopt() error");
 			mip_solved_to_optimality(inst, env, lp);												// Check if CPXmipopt has ended correctly
 			break;
 
@@ -502,7 +502,7 @@ void solve_benders(instance* inst, CPXENVptr env, CPXLPptr lp) {
 
 		double t1 = second();
 		// Optimize with the new constraint
-		if (CPXmipopt(env, lp)) { print_error("CPXmipopt() error"); }
+		if (CPXmipopt(env, lp)) print_error("CPXmipopt() error");
 		double t2 = second();
 		
 		// Check if CPXmipopt has ended correctly
@@ -513,10 +513,10 @@ void solve_benders(instance* inst, CPXENVptr env, CPXLPptr lp) {
 		// Update the amount of time left before timelimit is reached and provide it to Cplex to check
 		residual_timelimit = residual_timelimit - (t2 - t1);
 		if (inst->verbose >= MEDIUM) printf("New time limit: %f\n\n", residual_timelimit);
-		if (CPXsetdblparam(env, CPX_PARAM_TILIM, residual_timelimit)) { print_error("CPXsetdblparam() error in setting timelimit"); }
+		if (CPXsetdblparam(env, CPX_PARAM_TILIM, residual_timelimit)) print_error("CPXsetdblparam() error in setting timelimit");
 
 		// Extract the new solution (but only if timelimit has not been reached)
-		if (!inst->timelimit_exceeded && CPXgetx(env, lp, x, 0, ncols - 1)) { print_error("CPXgetx() error"); }
+		if (!inst->timelimit_exceeded && CPXgetx(env, lp, x, 0, ncols - 1)) print_error("CPXgetx() error");
 
 		// Update the number of connected components of the new graph
 		update_connected_components(x, inst, succ, comp, &n_comp);
@@ -952,10 +952,9 @@ void solve_heur_hard_fix(instance* inst, CPXENVptr env, CPXLPptr lp) {
 		CPXgetobjval(env, lp, &temp_obj_val);
 		if (inst->z_best > temp_obj_val) {
 			inst->z_best = temp_obj_val;
-			
 
 			// Set the feasible solution (not optimal) from which to start with the heuristics
-			if (CPXaddmipstarts(env, lp, 1, inst->ncols, &beg, indices, inst->best_sol, CPX_MIPSTART_AUTO, NULL)) print_error("CPXaddmipstarts() error in setting known solution");
+			if (CPXaddmipstarts(env, lp, 1, inst->ncols, &beg, indices, curr_best_sol, CPX_MIPSTART_AUTO, NULL)) print_error("CPXaddmipstarts() error in setting known solution");
 		}
 		else if (inst->model_type == HEUR_HARD_FIX_VAR) {
 			// If there has been no improvement in the last iteration and we are using HARD_FIX heuristics with variable prob_param, then decrease prob_param value
@@ -977,10 +976,10 @@ void solve_heur_hard_fix(instance* inst, CPXENVptr env, CPXLPptr lp) {
 		}
 
 		if (residual_timelimit <= small_timelimit) {
-			if (CPXsetdblparam(env, CPX_PARAM_TILIM, residual_timelimit)) { print_error("CPXsetdblparam() error in setting timelimit"); }
+			if (CPXsetdblparam(env, CPX_PARAM_TILIM, residual_timelimit)) print_error("CPXsetdblparam() error in setting timelimit");
 		}
 		else { 
-			if (CPXsetdblparam(env, CPX_PARAM_TILIM, small_timelimit)) { print_error("CPXsetdblparam() error in setting timelimit"); }
+			if (CPXsetdblparam(env, CPX_PARAM_TILIM, small_timelimit)) print_error("CPXsetdblparam() error in setting timelimit");
 		}
 
 		for (int i = 0; i < inst->ncols; i++) {
@@ -2756,9 +2755,9 @@ void build_model_BASIC(instance* inst, CPXENVptr env, CPXLPptr lp) {
 			double obj = dist(i, j, inst);						// cost == distance   
 			double lb = 0.0;
 			double ub = 1.0;
-			if (CPXnewcols(env, lp, 1, &obj, &lb, &ub, &binary, cname)) { print_error("Wrong CPXnewcols on x variables"); }
+			if (CPXnewcols(env, lp, 1, &obj, &lb, &ub, &binary, cname)) print_error("Wrong CPXnewcols on x variables");
 			// Verify if xpos returns the right position inside the tableu (xpos starts from 0)
-			if (CPXgetnumcols(env, lp) - 1 != xpos(i, j, inst)) { print_error("Wrong position for x variables"); }
+			if (CPXgetnumcols(env, lp) - 1 != xpos(i, j, inst)) print_error("Wrong position for x variables");
 		}
 	}
 
@@ -2817,7 +2816,7 @@ void build_model_MTZ_STATIC(instance* inst, CPXENVptr env, CPXLPptr lp) {
 			double lb = 0.0;
 			double ub = 1.0;
 			if (i == j) { ub = 0.0; }
-			if (CPXnewcols(env, lp, 1, &obj, &lb, &ub, &binary, cname)) { print_error("Wrong CPXnewcols on x variables"); }
+			if (CPXnewcols(env, lp, 1, &obj, &lb, &ub, &binary, cname)) print_error("Wrong CPXnewcols on x variables");
 
 			//printf("Curr num_cols: %d\n", CPXgetnumcols(env, lp));
 			// Verify if xpos returns the right position inside the tableu (xpos_compact starts from 0)
@@ -2835,7 +2834,7 @@ void build_model_MTZ_STATIC(instance* inst, CPXENVptr env, CPXLPptr lp) {
 		double obj = 0.0;
 		double lb = 0.0;
 		double ub = inst->nnodes - 2.0;
-		if (CPXnewcols(env, lp, 1, &obj, &lb, &ub, &integer, cname)) { print_error("Wrong CPXnewcols on x variables"); }
+		if (CPXnewcols(env, lp, 1, &obj, &lb, &ub, &integer, cname)) print_error("Wrong CPXnewcols on x variables");
 
 		//printf("Curr num_cols: %d\n", CPXgetnumcols(env, lp));
 		if (CPXgetnumcols(env, lp) - 1 != upos_compact(i, inst)) {
@@ -2928,7 +2927,7 @@ void build_model_MTZ_LAZY(instance* inst, CPXENVptr env, CPXLPptr lp) {
 			double lb = 0.0;
 			double ub = 1.0;
 			if (i == j) { ub = 0.0; }
-			if (CPXnewcols(env, lp, 1, &obj, &lb, &ub, &binary, cname)) { print_error("Wrong CPXnewcols on x variables"); }
+			if (CPXnewcols(env, lp, 1, &obj, &lb, &ub, &binary, cname)) print_error("Wrong CPXnewcols on x variables");
 
 			//printf("Curr num_cols: %d\n", CPXgetnumcols(env, lp));
 			// Verify if xpos returns the right position inside the tableu (xpos_compact starts from 0)
@@ -2946,7 +2945,7 @@ void build_model_MTZ_LAZY(instance* inst, CPXENVptr env, CPXLPptr lp) {
 		double obj = 0.0;
 		double lb = 0.0;
 		double ub = inst->nnodes - 2.0;
-		if (CPXnewcols(env, lp, 1, &obj, &lb, &ub, &integer, cname)) { print_error("Wrong CPXnewcols on x variables"); }
+		if (CPXnewcols(env, lp, 1, &obj, &lb, &ub, &integer, cname)) print_error("Wrong CPXnewcols on x variables");
 
 		//printf("Curr num_cols: %d\n", CPXgetnumcols(env, lp));
 		if (CPXgetnumcols(env, lp) - 1 != upos_compact(i, inst)) {
@@ -3039,7 +3038,7 @@ void build_model_MTZ_SEC2_STATIC(instance* inst, CPXENVptr env, CPXLPptr lp) {
 			double lb = 0.0;
 			double ub = 1.0;
 			if (i == j) { ub = 0.0; }
-			if (CPXnewcols(env, lp, 1, &obj, &lb, &ub, &binary, cname)) { print_error("Wrong CPXnewcols on x variables"); }
+			if (CPXnewcols(env, lp, 1, &obj, &lb, &ub, &binary, cname)) print_error("Wrong CPXnewcols on x variables");
 
 			//printf("Curr num_cols: %d\n", CPXgetnumcols(env, lp));
 			// Verify if xpos returns the right position inside the tableu (xpos_compact starts from 0)
@@ -3057,7 +3056,7 @@ void build_model_MTZ_SEC2_STATIC(instance* inst, CPXENVptr env, CPXLPptr lp) {
 		double obj = 0.0;
 		double lb = 0.0;
 		double ub = inst->nnodes - 2.0;
-		if (CPXnewcols(env, lp, 1, &obj, &lb, &ub, &integer, cname)) { print_error("Wrong CPXnewcols on x variables"); }
+		if (CPXnewcols(env, lp, 1, &obj, &lb, &ub, &integer, cname)) print_error("Wrong CPXnewcols on x variables");
 
 		//printf("Curr num_cols: %d\n", CPXgetnumcols(env, lp));
 		if (CPXgetnumcols(env, lp) - 1 != upos_compact(i, inst)) {
@@ -3167,7 +3166,7 @@ void build_model_MTZ_SEC2_LAZY(instance* inst, CPXENVptr env, CPXLPptr lp) {
 			double lb = 0.0;
 			double ub = 1.0;
 			if (i == j) { ub = 0.0; }
-			if (CPXnewcols(env, lp, 1, &obj, &lb, &ub, &binary, cname)) { print_error("Wrong CPXnewcols on x variables"); }
+			if (CPXnewcols(env, lp, 1, &obj, &lb, &ub, &binary, cname)) print_error("Wrong CPXnewcols on x variables");
 
 			//printf("Curr num_cols: %d\n", CPXgetnumcols(env, lp));
 			// Verify if xpos returns the right position inside the tableu (xpos_compact starts from 0)
@@ -3185,7 +3184,7 @@ void build_model_MTZ_SEC2_LAZY(instance* inst, CPXENVptr env, CPXLPptr lp) {
 		double obj = 0.0;
 		double lb = 0.0;
 		double ub = inst->nnodes - 2.0;
-		if (CPXnewcols(env, lp, 1, &obj, &lb, &ub, &integer, cname)) { print_error("Wrong CPXnewcols on x variables"); }
+		if (CPXnewcols(env, lp, 1, &obj, &lb, &ub, &integer, cname)) print_error("Wrong CPXnewcols on x variables");
 
 		//printf("Curr num_cols: %d\n", CPXgetnumcols(env, lp));
 		if (CPXgetnumcols(env, lp) - 1 != upos_compact(i, inst)) {
@@ -3295,7 +3294,7 @@ void build_model_GG(instance* inst, CPXENVptr env, CPXLPptr lp) {
 			double lb = 0.0;
 			double ub = 1.0;
 			if (i == j) { ub = 0.0; }
-			if (CPXnewcols(env, lp, 1, &obj, &lb, &ub, &binary, cname)) { print_error("Wrong CPXnewcols on x variables"); }
+			if (CPXnewcols(env, lp, 1, &obj, &lb, &ub, &binary, cname)) print_error("Wrong CPXnewcols on x variables");
 
 			//printf("Curr num_cols: %d\n", CPXgetnumcols(env, lp));
 			// Verify if xpos returns the right position inside the tableu (xpos_compact starts from 0)
@@ -3315,7 +3314,7 @@ void build_model_GG(instance* inst, CPXENVptr env, CPXLPptr lp) {
 			double lb = 0.0;
 			double ub = inst->nnodes - 1.0;
 			if (i == j || j == 0) ub = 0.0;
-			if (CPXnewcols(env, lp, 1, &obj, &lb, &ub, &integer, cname)) { print_error("Wrong CPXnewcols on y variables"); }
+			if (CPXnewcols(env, lp, 1, &obj, &lb, &ub, &integer, cname)) print_error("Wrong CPXnewcols on y variables");
 
 			//printf("Curr num_cols: %d\n", CPXgetnumcols(env, lp));
 			if (CPXgetnumcols(env, lp) - 1 != ypos_compact(i, j, inst)) {
