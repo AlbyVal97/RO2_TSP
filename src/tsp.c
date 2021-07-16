@@ -50,6 +50,13 @@ int TSPopt(instance* inst) {
 		}
 	}
 
+	if (inst->verbose >= LOW) {
+		sprintf(logfile_path, "%s/logfile_%s.txt", logfile_path, models[inst->model_type]);
+		if (CPXsetlogfilename(env, logfile_path, "w")) print_error("CPXsetlogfilename() error in setting logfile name");
+
+		sprintf(edges_file_path, "%s/model_%s_edges.dat", edges_file_path, models[inst->model_type]);
+	}
+
 	// Discern if a model is symmetric (solves the TSP for a directed or an undirected graph)
 	int symmetric = -1;
 
@@ -60,115 +67,81 @@ int TSPopt(instance* inst) {
 			build_model_BASIC(inst, env, lp);
 			inst->ncols = CPXgetnumcols(env, lp);
 
-			if (inst->verbose >= LOW) {
-				sprintf(logfile_path, "%s/logfile_BASIC.txt", logfile_path);
-				if (CPXsetlogfilename(env, logfile_path, "w")) print_error("CPXsetlogfilename() error in setting logfile name");
-			}
 			if (CPXmipopt(env, lp)) { print_error("CPXmipopt() error"); }
 			mip_solved_to_optimality(inst, env, lp);												// Check if CPXmipopt has ended correctly
-			sprintf(edges_file_path, "%s/model_BASIC_edges.dat", edges_file_path);
 			break;
 
 		case MTZ_STATIC:
 			symmetric = 1;
 			build_model_MTZ_STATIC(inst, env, lp);
-			if (inst->verbose >= LOW) {
-				sprintf(logfile_path, "%s/logfile_MTZ_STATIC.txt", logfile_path);
-				if (CPXsetlogfilename(env, logfile_path, "w")) print_error("CPXsetlogfilename() error in setting logfile name");
-			}
+		
 			if (CPXsetdblparam(env, CPX_PARAM_EPINT, 0.0)) { print_error("CPXsetdblparam() error in setting integer value tolerance"); }
 			if (CPXmipopt(env, lp)) { print_error("CPXmipopt() error"); }
 			mip_solved_to_optimality(inst, env, lp);												// Check if CPXmipopt has ended correctly
-			sprintf(edges_file_path, "%s/model_MTZ_STATIC_edges.dat", edges_file_path);
 			break;
 
 		case MTZ_LAZY:
 			symmetric = 1;
 			build_model_MTZ_LAZY(inst, env, lp);
-			if (inst->verbose >= LOW) {
-				sprintf(logfile_path, "%s/logfile_MTZ_LAZY.txt", logfile_path);
-				if (CPXsetlogfilename(env, logfile_path, "w")) print_error("CPXsetlogfilename() error in setting logfile name");
-			}
+		
 			if (CPXsetdblparam(env, CPX_PARAM_EPINT, 0.0)) { print_error("CPXsetdblparam() error in setting integer value tolerance"); }
 			if (CPXmipopt(env, lp)) { print_error("CPXmipopt() error"); }
 			mip_solved_to_optimality(inst, env, lp);												// Check if CPXmipopt has ended correctly
-			sprintf(edges_file_path, "%s/model_MTZ_LAZY_edges.dat", edges_file_path);
 			break;
 
 		case MTZ_SEC2_STATIC:
 			symmetric = 1;
 			build_model_MTZ_SEC2_STATIC(inst, env, lp);
-			if (inst->verbose >= LOW) {
-				sprintf(logfile_path, "%s/logfile_MTZ_SEC2_STATIC.txt", logfile_path);
-				if (CPXsetlogfilename(env, logfile_path, "w")) print_error("CPXsetlogfilename() error in setting logfile name");
-			}
+			
 			if (CPXsetdblparam(env, CPX_PARAM_EPINT, 0.0)) { print_error("CPXsetdblparam() error in setting integer value tolerance"); }
 			if (CPXmipopt(env, lp)) { print_error("CPXmipopt() error"); }
 			mip_solved_to_optimality(inst, env, lp);												// Check if CPXmipopt has ended correctly
-			sprintf(edges_file_path, "%s/model_MTZ_SEC2_STATIC_edges.dat", edges_file_path);
 			break;
 
 		case MTZ_SEC2_LAZY:
 			symmetric = 1;
 			build_model_MTZ_SEC2_LAZY(inst, env, lp);
-			if (inst->verbose >= LOW) {
-				sprintf(logfile_path, "%s/logfile_MTZ_SEC2_LAZY.txt", logfile_path);
-				if (CPXsetlogfilename(env, logfile_path, "w")) print_error("CPXsetlogfilename() error in setting logfile name");
-			}
+		
 			if (CPXsetdblparam(env, CPX_PARAM_EPINT, 0.0)) { print_error("CPXsetdblparam() error in setting integer value tolerance"); }
 			if (CPXmipopt(env, lp)) { print_error("CPXmipopt() error"); }
 			mip_solved_to_optimality(inst, env, lp);												// Check if CPXmipopt has ended correctly
-			sprintf(edges_file_path, "%s/model_MTZ_SEC2_LAZY_edges.dat", edges_file_path);
 			break;
 
 		case GG:
 			symmetric = 1;
 			build_model_GG(inst, env, lp);
-			if (inst->verbose >= LOW) {
-				sprintf(logfile_path, "%s/logfile_GG.txt", logfile_path);
-				if (CPXsetlogfilename(env, logfile_path, "w")) print_error("CPXsetlogfilename() error in setting logfile name");
-			}
+		
 			if (CPXmipopt(env, lp)) { print_error("CPXmipopt() error"); }
 			mip_solved_to_optimality(inst, env, lp);												// Check if CPXmipopt has ended correctly
-			sprintf(edges_file_path, "%s/model_GG_edges.dat", edges_file_path);
 			break;
 
 		case BENDERS:
 			symmetric = 0;
 			build_model_BASIC(inst, env, lp);
 			inst->ncols = CPXgetnumcols(env, lp);
-			if (inst->verbose >= LOW) {
-				sprintf(logfile_path, "%s/logfile_BENDERS.txt", logfile_path);
-				if (CPXsetlogfilename(env, logfile_path, "w")) print_error("CPXsetlogfilename() error in setting logfile name");
-			}
+			
 			solve_benders(inst, env, lp);
-			sprintf(edges_file_path, "%s/model_BENDERS_edges.dat", edges_file_path);
+
 			break;
 
 		case BRANCH_CUT:
 			symmetric = 0;
 			build_model_BASIC(inst, env, lp);
 			inst->ncols = CPXgetnumcols(env, lp);
-			if (inst->verbose >= LOW) {
-				sprintf(logfile_path, "%s/logfile_BRANCH_CUT.txt", logfile_path);
-				if (CPXsetlogfilename(env, logfile_path, "w")) print_error("CPXsetlogfilename() error in setting logfile name");
-			}
 			inst->use_2_opt = 0;						// Solve without 2-opt refinement heuristics
+
 			solve_branch_cut(inst, env, lp);
-			sprintf(edges_file_path, "%s/model_BRANCH_CUT_edges.dat", edges_file_path);
+
 			break;
 
 		case BRANCH_CUT_2_OPT:
 			symmetric = 0;
 			build_model_BASIC(inst, env, lp);
 			inst->ncols = CPXgetnumcols(env, lp);
-			if (inst->verbose >= LOW) {
-				sprintf(logfile_path, "%s/logfile_BRANCH_CUT_2_OPT.txt", logfile_path);
-				if (CPXsetlogfilename(env, logfile_path, "w")) print_error("CPXsetlogfilename() error in setting logfile name");
-			}
 			inst->use_2_opt = 1;						// Solve using 2-opt refinement heuristics
+
 			solve_branch_cut(inst, env, lp);
-			sprintf(edges_file_path, "%s/model_BRANCH_CUT_2_OPT_edges.dat", edges_file_path);
+
 			break;
 		
 		case ADVBC_STD:
@@ -179,12 +152,9 @@ int TSPopt(instance* inst) {
 			symmetric = 0;
 			build_model_BASIC(inst, env, lp);
 			inst->ncols = CPXgetnumcols(env, lp);
-			if (inst->verbose >= LOW) {
-				sprintf(logfile_path, "%s/logfile_%s.txt", logfile_path, models[inst->model_type]);
-				if (CPXsetlogfilename(env, logfile_path, "w")) print_error("CPXsetlogfilename() error in setting logfile name");
-			}
+		
 			solve_adv_branch_cut(inst, env, lp);
-			sprintf(edges_file_path, "%s/model_%s_edges.dat", edges_file_path, models[inst->model_type]);
+
 			break;
 
 		case HEUR_HARD_FIX_50:
@@ -194,12 +164,9 @@ int TSPopt(instance* inst) {
 			symmetric = 0;
 			build_model_BASIC(inst, env, lp);
 			inst->ncols = CPXgetnumcols(env, lp);
-			if (inst->verbose >= LOW) {
-				sprintf(logfile_path, "%s/logfile_%s.txt", logfile_path, models[inst->model_type]);
-				if (CPXsetlogfilename(env, logfile_path, "w")) print_error("CPXsetlogfilename() error in setting logfile name");
-			}
+			
 			solve_heur_hard_fix(inst, env, lp);
-			sprintf(edges_file_path, "%s/model_%s_edges.dat", edges_file_path, models[inst->model_type]);
+
 			break;
 
 		case HEUR_SOFT_FIX_3:
@@ -209,14 +176,9 @@ int TSPopt(instance* inst) {
 			symmetric = 0;
 			build_model_BASIC(inst, env, lp);
 			inst->ncols = CPXgetnumcols(env, lp);
-			if (inst->verbose >= LOW) {
-				sprintf(logfile_path, "%s/logfile_%s.txt", logfile_path, models[inst->model_type]);
-				if (CPXsetlogfilename(env, logfile_path, "w")) print_error("CPXsetlogfilename() error in setting logfile name");
-			}
 
 			solve_heur_soft_fix(inst, env, lp);
 
-			sprintf(edges_file_path, "%s/model_%s_edges.dat", edges_file_path, models[inst->model_type]);
 			break;
 
 		case HEUR_GREEDY:
@@ -226,7 +188,6 @@ int TSPopt(instance* inst) {
 
 			solve_heur_greedy(inst, x_greedy);
 
-			sprintf(edges_file_path, "%s/model_%s_edges.dat", edges_file_path, models[inst->model_type]);
 			if (inst->verbose >= LOW) print_solution(inst, x_greedy, symmetric, edges_file_path);
 			free(x_greedy);
 			break;
@@ -238,7 +199,6 @@ int TSPopt(instance* inst) {
 
 			solve_heur_grasp_greedy(inst, x_grasp_greedy, inst->timelimit);
 
-			sprintf(edges_file_path, "%s/model_%s_edges.dat", edges_file_path, models[inst->model_type]);
 			if (inst->verbose >= LOW) print_solution(inst, x_grasp_greedy, symmetric, edges_file_path);
 			free(x_grasp_greedy);
 			break;
@@ -250,7 +210,6 @@ int TSPopt(instance* inst) {
 
 			solve_heur_extra_mileage(inst, x_extra_mileage);
 
-			sprintf(edges_file_path, "%s/model_%s_edges.dat", edges_file_path, models[inst->model_type]);
 			if (inst->verbose >= LOW) print_solution(inst, x_extra_mileage, symmetric, edges_file_path);
 			free(x_extra_mileage);
 			break;
@@ -262,7 +221,6 @@ int TSPopt(instance* inst) {
 
 			solve_heur_grasp_extra_mileage(inst, x_grasp_extra_mileage, inst->timelimit);
 
-			sprintf(edges_file_path, "%s/model_%s_edges.dat", edges_file_path, models[inst->model_type]);
 			if (inst->verbose >= LOW) print_solution(inst, x_grasp_extra_mileage, symmetric, edges_file_path);
 			free(x_grasp_extra_mileage);
 			break;
@@ -275,7 +233,6 @@ int TSPopt(instance* inst) {
 			solve_heur_grasp_greedy(inst, x_2_opt, inst->timelimit / 10);
 			solve_heur_2_opt(inst, x_2_opt, NULL, (inst->timelimit / 10) * 9);
 
-			sprintf(edges_file_path, "%s/model_%s_edges.dat", edges_file_path, models[inst->model_type]);
 			if (inst->verbose >= LOW) print_solution(inst, x_2_opt, symmetric, edges_file_path);
 			free(x_2_opt);
 			break;
@@ -287,7 +244,6 @@ int TSPopt(instance* inst) {
 
 			solve_heur_multi_start(inst, x_multi_start);
 
-			sprintf(edges_file_path, "%s/model_%s_edges.dat", edges_file_path, models[inst->model_type]);
 			if (inst->verbose >= LOW) print_solution(inst, x_multi_start, symmetric, edges_file_path);
 			free(x_multi_start);
 			break;
@@ -299,7 +255,6 @@ int TSPopt(instance* inst) {
 
 			solve_heur_vns(inst, x_vns);
 
-			sprintf(edges_file_path, "%s/model_%s_edges.dat", edges_file_path, models[inst->model_type]);
 			if (inst->verbose >= LOW) print_solution(inst, x_vns, symmetric, edges_file_path);
 			free(x_vns);
 			break;
@@ -311,7 +266,6 @@ int TSPopt(instance* inst) {
 
 			solve_heur_tabu(inst, x_tabu);
 
-			sprintf(edges_file_path, "%s/model_%s_edges.dat", edges_file_path, models[inst->model_type]);
 			if (inst->verbose >= LOW) print_solution(inst, x_tabu, symmetric, edges_file_path);
 			free(x_tabu);
 			break;
@@ -323,7 +277,6 @@ int TSPopt(instance* inst) {
 
 			solve_heur_genetic(inst, x_genetic, 1000, 0.0);
 
-			sprintf(edges_file_path, "%s/model_%s_edges.dat", edges_file_path, models[inst->model_type]);
 			if (inst->verbose >= LOW) print_solution(inst, x_genetic, symmetric, edges_file_path);
 			free(x_genetic);
 			break;
@@ -335,7 +288,6 @@ int TSPopt(instance* inst) {
 
 			solve_heur_genetic(inst, x_genetic_2_opt, 100, 0.1);
 
-			sprintf(edges_file_path, "%s/model_%s_edges.dat", edges_file_path, models[inst->model_type]);
 			if (inst->verbose >= LOW) print_solution(inst, x_genetic_2_opt, symmetric, edges_file_path);
 			free(x_genetic_2_opt);
 			break;
