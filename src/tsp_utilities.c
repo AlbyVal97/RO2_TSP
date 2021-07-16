@@ -14,7 +14,7 @@ void parse_command_line(int argc, char** argv, instance* inst) {
 	inst->mode = DEFAULT;
 	inst->model_type = BASIC;
 	inst->verbose = MEDIUM;
-	inst->tsp_solver = ADVBC_ROOT;
+	inst->tsp_solver = BRANCH_CUT_2_OPT;
 	inst->n_instances = 0;
 	inst->n_nodes_per_instance = 0;
 	strcpy(inst->input_file, "NULL\0");
@@ -359,7 +359,7 @@ void free_instance(instance* inst) {
 	free(inst->xcoord);
 	free(inst->ycoord);
 	// N.B. only HEUR_HARD_FIX_* and HEUR_SOFT_FIX_K initialize "inst->model_type" !
-	if (inst->model_type > ADVBC_PROB_10 && inst->model_type < HEUR_GREEDY) free(inst->best_sol);
+	if (inst->model_type > HEUR_HARD_FIX_VAR && inst->model_type < HEUR_GREEDY) free(inst->best_sol);
 
 	return;
 }
