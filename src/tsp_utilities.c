@@ -360,7 +360,7 @@ void free_instance(instance* inst) {
 	free(inst->xcoord);
 	free(inst->ycoord);
 	// N.B. only HEUR_HARD_FIX_* and HEUR_SOFT_FIX_K initialize "inst->model_type" !
-	if (inst->model_type > ADVBC_PROB_10 && inst->model_type < HEUR_GREEDY) free(inst->best_sol);
+	if (inst->model_type > HEUR_HARD_FIX_VAR && inst->model_type < HEUR_GREEDY) free(inst->best_sol);
 
 	return;
 }

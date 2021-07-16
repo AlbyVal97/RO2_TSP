@@ -952,7 +952,7 @@ void solve_heur_hard_fix(instance* inst, CPXENVptr env, CPXLPptr lp) {
 		CPXgetobjval(env, lp, &temp_obj_val);
 		if (inst->z_best > temp_obj_val) {
 			inst->z_best = temp_obj_val;
-			inst->best_sol = curr_best_sol;
+			
 
 			// Set the feasible solution (not optimal) from which to start with the heuristics
 			if (CPXaddmipstarts(env, lp, 1, inst->ncols, &beg, indices, inst->best_sol, CPX_MIPSTART_AUTO, NULL)) print_error("CPXaddmipstarts() error in setting known solution");
@@ -1085,7 +1085,7 @@ void solve_heur_soft_fix(instance* inst, CPXENVptr env, CPXLPptr lp) {
 		CPXgetobjval(env, lp, &temp_obj_val);
 		if (inst->z_best > temp_obj_val) {
 			inst->z_best = temp_obj_val;
-
+			
 			// Set the feasible solution (not optimal) from which to start with the heuristics
 			if (CPXaddmipstarts(env, lp, 1, inst->ncols, &beg, indices, inst->best_sol, CPX_MIPSTART_AUTO, NULL)) print_error("CPXaddmipstarts() error in setting known solution");
 		}
