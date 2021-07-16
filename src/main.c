@@ -38,8 +38,9 @@
 // Command line arguments list for tuning hyperparameters of advanced branch and cut method:
 // -m 2 -test test_tuning_advbc -folder test_instances_300_tuning -n_inst 20 -n_models 5 8 9 10 11 12 -prefix rnd_300 -time_limit 1800
 
-// Command line arguments for Benders + B&C + advB&C methods official tests:
-// -m 2 -test test_benders_bc_models_300 -folder test_instances_300 -n_inst 20 -n_models 3 6 7 9 -prefix rnd_300 -time_limit 1800
+// Command line arguments for Benders + B&C + B&C_2_opt + advB&C methods official tests:
+// -m 2 -test test_benders_bc_models_300 -folder test_instances_300 -n_inst 20 -n_models 4 6 7 8 10 -prefix rnd_300 -time_limit 1800
+// -m 2 -test test_benders_bc_models_500 -folder test_instances_500 -n_inst 20 -n_models 4 6 7 8 10 -prefix rnd_500 -time_limit 1800
 
 // Command line arguments list for tuning hyperparameters of hard fix heuristics (only on 10 instances because each run takes about 15 minutes):
 // -m 2 -test test_tuning_hard_fix -folder test_instances_750_tuning -n_inst 10 -n_models 4 14 15 16 17 -prefix rnd_750 -time_limit 900
@@ -48,8 +49,10 @@
 // -m 2 -test test_tuning_soft_fix -folder test_instances_750_tuning -n_inst 10 -n_models 4 18 19 20 21 -prefix rnd_750 -time_limit 900
 
 // Command line arguments lists for hard fix and soft fix (best) methods official tests (split in two parts because each run takes about 30 minutes):
-// -m 2 -test test_math_heuristics_part_1 -folder test_instances_750_part_1 -n_inst 10 -n_models 2 17 21 -prefix rnd_750 -time_limit 1800
-// -m 2 -test test_math_heuristics_part_2 -folder test_instances_750_part_2 -n_inst 10 -n_models 2 17 21 -prefix rnd_750 -time_limit 1800
+// -m 2 -test test_math_heuristics_part_1_bc_2opt -folder test_instances_750_part_1 -n_inst 10 -n_models 2 17 21 -prefix rnd_750 -time_limit 1800
+// -m 2 -test test_math_heuristics_part_2_bc_2opt -folder test_instances_750_part_2 -n_inst 10 -n_models 2 17 21 -prefix rnd_750 -time_limit 1800
+// -m 2 -test test_math_heuristics_part_1_bc_2opt -folder test_instances_1000_part_1 -n_inst 10 -n_models 2 17 21 -prefix rnd_1000 -time_limit 1800
+// -m 2 -test test_math_heuristics_part_2_bc_2opt -folder test_instances_1000_part_2 -n_inst 10 -n_models 2 17 21 -prefix rnd_1000 -time_limit 1800
 
 // Command line arguments list for constructive heuristics official tests (each run takes about 10 minutes):
 // -m 2 -test test_constructive_heuristics -folder test_instances_1000 -n_inst 20 -n_models 3 23 25 27 -prefix rnd_1000 -time_limit 600

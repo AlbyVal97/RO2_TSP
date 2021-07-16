@@ -59,7 +59,6 @@ int TSPopt(instance* inst) {
 			symmetric = 0;
 			build_model_BASIC(inst, env, lp);
 			inst->ncols = CPXgetnumcols(env, lp);
-			printf("inst->ncols: %d\n", inst->ncols);
 
 			if (inst->verbose >= LOW) {
 				sprintf(logfile_path, "%s/logfile_BASIC.txt", logfile_path);
@@ -974,7 +973,8 @@ void solve_heur_hard_fix(instance* inst, CPXENVptr env, CPXLPptr lp) {
 
 	// Run TSP solver (which is the branch and cut with fractional subtour elimination constraints only applied on the root node)
 	double t1 = second();
-	solve_adv_branch_cut(inst, env, lp); // solve first time with nodelimit = 0
+	inst->use_2_opt = 1;
+	solve_branch_cut(inst, env, lp);				// solve the first time with nodelimit = 0 and using Branch & Cut with 2-opt refinement as TSP solver
 	double t2 = second();
 
 	int n_iter = 0;
@@ -984,12 +984,16 @@ void solve_heur_hard_fix(instance* inst, CPXENVptr env, CPXLPptr lp) {
 	double low_bound_value = 1.0;
 	double low_bound_reset = 0.0;
 	double* curr_best_sol = (double*)calloc(inst->ncols, sizeof(double));
+
+	if (CPXsetintparam(env, CPX_PARAM_NODELIM, 2100000000)) print_error("CPXsetintparam() error in setting seed");
 	
 	while (1) {
-
-		if (CPXsetintparam(env, CPX_PARAM_NODELIM, 2100000000)) print_error("CPXsetintparam() error in setting seed");
 		
-		if (CPXgetx(env, lp, curr_best_sol, 0, inst->ncols - 1)) print_error("CPXgetx() error");
+		int status = 0;
+		if (status = CPXgetx(env, lp, curr_best_sol, 0, inst->ncols - 1)) {
+			printf("Status: %d", status);
+			print_error("CPXgetx() error in hard_fix");
+		}
 
 		if (inst->verbose >= MEDIUM) printf("Time used for iteration number %d: %f\n", n_iter, t2 - t1);
 
@@ -1042,7 +1046,8 @@ void solve_heur_hard_fix(instance* inst, CPXENVptr env, CPXLPptr lp) {
 
 		// Run TSP solver (which is the branch and cut with fractional subtour elimination constraints only applied on the root node)
 		t1 = second();
-		solve_adv_branch_cut(inst, env, lp);
+		inst->use_2_opt = 1;
+		solve_branch_cut(inst, env, lp);
 		t2 = second();
 
 		// Increment current iteration number
@@ -1096,7 +1101,8 @@ void solve_heur_soft_fix(instance* inst, CPXENVptr env, CPXLPptr lp) {
 
 	// Run TSP solver (which is the branch and cut with fractional subtour elimination constraints only applied on the root node)
 	double t1 = second();
-	solve_adv_branch_cut(inst, env, lp);											// solve first time with nodelimit = 0
+	inst->use_2_opt = 1;
+	solve_branch_cut(inst, env, lp);						// solve the first time with nodelimit = 0 and using Branch & Cut with 2-opt refinement as TSP solver
 	double t2 = second();
 	if (inst->verbose >= MEDIUM) printf("Time used for iteration number 0: %f\n", t2 - t1);
 	
@@ -1118,7 +1124,11 @@ void solve_heur_soft_fix(instance* inst, CPXENVptr env, CPXLPptr lp) {
 
 	while (1) {
 
-		if (CPXgetx(env, lp, curr_best_sol, 0, inst->ncols - 1)) print_error("CPXgetx() error");
+		int status = 0;
+		if (status = CPXgetx(env, lp, curr_best_sol, 0, inst->ncols - 1)) {
+			printf("Status: %d", status);
+			print_error("CPXgetx() error in soft_fix");
+		}
 
 		CPXgetobjval(env, lp, &temp_obj_val);
 		if (inst->z_best > temp_obj_val) {
@@ -1186,8 +1196,9 @@ void solve_heur_soft_fix(instance* inst, CPXENVptr env, CPXLPptr lp) {
 		sprintf(lp_temp_name, "DEBUG_SOFT_FIX_%d", n_iter);
 		create_lp_file(inst, env, lp, lp_temp_name);*/
 
-		// Run TSP solver (which is the branch and cut with fractional subtour elimination constraints only applied on the root node)
-		solve_adv_branch_cut(inst, env, lp);
+		// Run the previously used TSP solver again
+		inst->use_2_opt = 1;
+		solve_branch_cut(inst, env, lp);
 
 		n_iter++;
 	}
@@ -2662,6 +2673,7 @@ void solve_heur_genetic(instance* inst, double* x, int pop_size, double ratio_2_
 		for (int i = 0; i < pop_size; i++) {
 			if (fitness[i] < best_fitness) {
 				best_fitness = fitness[i];
+				inst->z_best = best_fitness;
 				champion_index = i;
 			}
 		}

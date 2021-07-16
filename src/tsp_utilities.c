@@ -14,7 +14,7 @@ void parse_command_line(int argc, char** argv, instance* inst) {
 	inst->mode = DEFAULT;
 	inst->model_type = BASIC;
 	inst->verbose = MEDIUM;
-	inst->tsp_solver = ADVBC_ROOT;
+	inst->tsp_solver = BRANCH_CUT_2_OPT;
 	inst->n_instances = 0;
 	inst->n_nodes_per_instance = 0;
 	strcpy(inst->input_file, "NULL\0");
