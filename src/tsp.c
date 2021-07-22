@@ -67,7 +67,7 @@ int TSPopt(instance* inst) {
 			build_model_BASIC(inst, env, lp);
 			inst->ncols = CPXgetnumcols(env, lp);
 
-			if (CPXmipopt(env, lp)) { print_error("CPXmipopt() error"); }
+			if (CPXmipopt(env, lp)) print_error("CPXmipopt() error");
 			mip_solved_to_optimality(inst, env, lp);												// Check if CPXmipopt has ended correctly
 			break;
 
@@ -75,8 +75,8 @@ int TSPopt(instance* inst) {
 			symmetric = 1;
 			build_model_MTZ_STATIC(inst, env, lp);
 		
-			if (CPXsetdblparam(env, CPX_PARAM_EPINT, 0.0)) { print_error("CPXsetdblparam() error in setting integer value tolerance"); }
-			if (CPXmipopt(env, lp)) { print_error("CPXmipopt() error"); }
+			if (CPXsetdblparam(env, CPX_PARAM_EPINT, 0.0)) print_error("CPXsetdblparam() error in setting integer value tolerance");
+			if (CPXmipopt(env, lp)) print_error("CPXmipopt() error");
 			mip_solved_to_optimality(inst, env, lp);												// Check if CPXmipopt has ended correctly
 			break;
 
@@ -84,8 +84,8 @@ int TSPopt(instance* inst) {
 			symmetric = 1;
 			build_model_MTZ_LAZY(inst, env, lp);
 		
-			if (CPXsetdblparam(env, CPX_PARAM_EPINT, 0.0)) { print_error("CPXsetdblparam() error in setting integer value tolerance"); }
-			if (CPXmipopt(env, lp)) { print_error("CPXmipopt() error"); }
+			if (CPXsetdblparam(env, CPX_PARAM_EPINT, 0.0)) print_error("CPXsetdblparam() error in setting integer value tolerance");
+			if (CPXmipopt(env, lp)) print_error("CPXmipopt() error");
 			mip_solved_to_optimality(inst, env, lp);												// Check if CPXmipopt has ended correctly
 			break;
 
@@ -93,8 +93,8 @@ int TSPopt(instance* inst) {
 			symmetric = 1;
 			build_model_MTZ_SEC2_STATIC(inst, env, lp);
 			
-			if (CPXsetdblparam(env, CPX_PARAM_EPINT, 0.0)) { print_error("CPXsetdblparam() error in setting integer value tolerance"); }
-			if (CPXmipopt(env, lp)) { print_error("CPXmipopt() error"); }
+			if (CPXsetdblparam(env, CPX_PARAM_EPINT, 0.0)) print_error("CPXsetdblparam() error in setting integer value tolerance");
+			if (CPXmipopt(env, lp)) print_error("CPXmipopt() error");
 			mip_solved_to_optimality(inst, env, lp);												// Check if CPXmipopt has ended correctly
 			break;
 
@@ -102,8 +102,8 @@ int TSPopt(instance* inst) {
 			symmetric = 1;
 			build_model_MTZ_SEC2_LAZY(inst, env, lp);
 		
-			if (CPXsetdblparam(env, CPX_PARAM_EPINT, 0.0)) { print_error("CPXsetdblparam() error in setting integer value tolerance"); }
-			if (CPXmipopt(env, lp)) { print_error("CPXmipopt() error"); }
+			if (CPXsetdblparam(env, CPX_PARAM_EPINT, 0.0)) print_error("CPXsetdblparam() error in setting integer value tolerance");
+			if (CPXmipopt(env, lp)) print_error("CPXmipopt() error");
 			mip_solved_to_optimality(inst, env, lp);												// Check if CPXmipopt has ended correctly
 			break;
 
@@ -111,7 +111,7 @@ int TSPopt(instance* inst) {
 			symmetric = 1;
 			build_model_GG(inst, env, lp);
 		
-			if (CPXmipopt(env, lp)) { print_error("CPXmipopt() error"); }
+			if (CPXmipopt(env, lp)) print_error("CPXmipopt() error");
 			mip_solved_to_optimality(inst, env, lp);												// Check if CPXmipopt has ended correctly
 			break;
 
@@ -502,7 +502,7 @@ void solve_benders(instance* inst, CPXENVptr env, CPXLPptr lp) {
 
 		double t1 = second();
 		// Optimize with the new constraint
-		if (CPXmipopt(env, lp)) { print_error("CPXmipopt() error"); }
+		if (CPXmipopt(env, lp)) print_error("CPXmipopt() error");
 		double t2 = second();
 		
 		// Check if CPXmipopt has ended correctly
@@ -513,10 +513,10 @@ void solve_benders(instance* inst, CPXENVptr env, CPXLPptr lp) {
 		// Update the amount of time left before timelimit is reached and provide it to Cplex to check
 		residual_timelimit = residual_timelimit - (t2 - t1);
 		if (inst->verbose >= MEDIUM) printf("New time limit: %f\n\n", residual_timelimit);
-		if (CPXsetdblparam(env, CPX_PARAM_TILIM, residual_timelimit)) { print_error("CPXsetdblparam() error in setting timelimit"); }
+		if (CPXsetdblparam(env, CPX_PARAM_TILIM, residual_timelimit)) print_error("CPXsetdblparam() error in setting timelimit");
 
 		// Extract the new solution (but only if timelimit has not been reached)
-		if (!inst->timelimit_exceeded && CPXgetx(env, lp, x, 0, ncols - 1)) { print_error("CPXgetx() error"); }
+		if (!inst->timelimit_exceeded && CPXgetx(env, lp, x, 0, ncols - 1)) print_error("CPXgetx() error");
 
 		// Update the number of connected components of the new graph
 		update_connected_components(x, inst, succ, comp, &n_comp);
@@ -887,6 +887,19 @@ int doit_fn_concorde(double cutval, int cutcount, int* cut, void* in_param) {
 }
 
 
+
+/*CODICE PER GRAFICO
+FILE* hard_best_solution_csv_file;
+char hard_best_solution_csv_path[120];
+sprintf(hard_best_solution_csv_path, "../outputs/%s_best_solution_cost.csv", models[inst->model_type]);
+hard_best_solution_csv_file = fopen(hard_best_solution_csv_path, "a");
+fprintf(hard_best_solution_csv_file, "%s", inst->inst_name);
+fprintf(hard_best_solution_csv_file, "%f %f %f\n", inst->timelimit - residual_timelimit, curr_sol_cost, min_sol_cost);
+fclose(hard_best_solution_csv_file);
+*/
+
+
+
 void solve_heur_hard_fix(instance* inst, CPXENVptr env, CPXLPptr lp) {
 
 	double param[] = { 0.9, 0.7, 0.5 };
@@ -912,10 +925,8 @@ void solve_heur_hard_fix(instance* inst, CPXENVptr env, CPXLPptr lp) {
 	// Build an array of indices of variables/columns x(i,j) of the model
 	int* indices = (int*)calloc(inst->ncols, sizeof(int));
 	int k = 0;
-	for (int i = 0; i < inst->nnodes; i++) {
-		for (int j = i + 1; j < inst->nnodes; j++) {
-			indices[k++] = xpos(i, j, inst);
-		}
+	for (int i = 0; i < inst->ncols; i++) {
+		indices[i] = i;
 	}
 
 	if (CPXsetintparam(env, CPXPARAM_Advance, 1)) print_error("CPXsetintparam() error in setting CPXPARAM_Advance");
@@ -925,7 +936,7 @@ void solve_heur_hard_fix(instance* inst, CPXENVptr env, CPXLPptr lp) {
 
 	// Run TSP solver (which is the branch and cut with fractional subtour elimination constraints only applied on the root node)
 	double t1 = second();
-	inst->use_2_opt = 1;
+	inst->use_2_opt = 0;
 	solve_branch_cut(inst, env, lp);				// solve the first time with nodelimit = 0 and using Branch & Cut with 2-opt refinement as TSP solver
 	double t2 = second();
 
@@ -952,10 +963,9 @@ void solve_heur_hard_fix(instance* inst, CPXENVptr env, CPXLPptr lp) {
 		CPXgetobjval(env, lp, &temp_obj_val);
 		if (inst->z_best > temp_obj_val) {
 			inst->z_best = temp_obj_val;
-			inst->best_sol = curr_best_sol;
 
 			// Set the feasible solution (not optimal) from which to start with the heuristics
-			if (CPXaddmipstarts(env, lp, 1, inst->ncols, &beg, indices, inst->best_sol, CPX_MIPSTART_AUTO, NULL)) print_error("CPXaddmipstarts() error in setting known solution");
+			if (CPXaddmipstarts(env, lp, 1, inst->ncols, &beg, indices, curr_best_sol, CPX_MIPSTART_AUTO, NULL)) print_error("CPXaddmipstarts() error in setting known solution");
 		}
 		else if (inst->model_type == HEUR_HARD_FIX_VAR) {
 			// If there has been no improvement in the last iteration and we are using HARD_FIX heuristics with variable prob_param, then decrease prob_param value
@@ -977,10 +987,10 @@ void solve_heur_hard_fix(instance* inst, CPXENVptr env, CPXLPptr lp) {
 		}
 
 		if (residual_timelimit <= small_timelimit) {
-			if (CPXsetdblparam(env, CPX_PARAM_TILIM, residual_timelimit)) { print_error("CPXsetdblparam() error in setting timelimit"); }
+			if (CPXsetdblparam(env, CPX_PARAM_TILIM, residual_timelimit)) print_error("CPXsetdblparam() error in setting timelimit");
 		}
 		else { 
-			if (CPXsetdblparam(env, CPX_PARAM_TILIM, small_timelimit)) { print_error("CPXsetdblparam() error in setting timelimit"); }
+			if (CPXsetdblparam(env, CPX_PARAM_TILIM, small_timelimit)) print_error("CPXsetdblparam() error in setting timelimit");
 		}
 
 		for (int i = 0; i < inst->ncols; i++) {
@@ -998,7 +1008,7 @@ void solve_heur_hard_fix(instance* inst, CPXENVptr env, CPXLPptr lp) {
 
 		// Run TSP solver (which is the branch and cut with fractional subtour elimination constraints only applied on the root node)
 		t1 = second();
-		inst->use_2_opt = 1;
+		inst->use_2_opt = 0;
 		solve_branch_cut(inst, env, lp);
 		t2 = second();
 
@@ -1085,7 +1095,7 @@ void solve_heur_soft_fix(instance* inst, CPXENVptr env, CPXLPptr lp) {
 		CPXgetobjval(env, lp, &temp_obj_val);
 		if (inst->z_best > temp_obj_val) {
 			inst->z_best = temp_obj_val;
-
+			
 			// Set the feasible solution (not optimal) from which to start with the heuristics
 			if (CPXaddmipstarts(env, lp, 1, inst->ncols, &beg, indices, inst->best_sol, CPX_MIPSTART_AUTO, NULL)) print_error("CPXaddmipstarts() error in setting known solution");
 		}
@@ -1978,30 +1988,11 @@ void _apply_rnd_7_opt_move(instance* inst, int* succ) {
 	return;
 }
 
-
 void solve_heur_vns(instance* inst, double* x) {
 
 	double residual_timelimit = inst->timelimit;
 	double min_sol_cost = INFINITY;
 
-	// Open the .csv files which will be needed to take note of the cost of the current and best solution
-	FILE* vns_best_solution_csv_file;
-	FILE* vns_curr_solution_csv_file;
-	if (inst->verbose == TEST) {
-		char vns_curr_solution_csv_path[120];
-		char vns_best_solution_csv_path[120];
-		sprintf(vns_curr_solution_csv_path, "../outputs/%s_curr_solution_cost.csv", models[inst->model_type]);
-		sprintf(vns_best_solution_csv_path, "../outputs/%s_best_solution_cost.csv", models[inst->model_type]);
-
-		vns_curr_solution_csv_file = fopen(vns_curr_solution_csv_path, "a");
-		vns_best_solution_csv_file = fopen(vns_best_solution_csv_path, "a");
-
-		if (vns_curr_solution_csv_file == NULL) print_error("vns_curr_solution_csv_file not found inside \"outputs\" folder!");
-		if (vns_best_solution_csv_file == NULL) print_error("vns_best_solution_csv_file not found inside \"outputs\" folder!");
-
-		fprintf(vns_curr_solution_csv_file, "%s", inst->inst_name);
-		fprintf(vns_best_solution_csv_file, "%s", inst->inst_name);
-	}
 
 	// Use GRASP to generate the reference solution, allowing it to use up to 1/10 of the total timelimit
 	double t1 = second();
@@ -2032,11 +2023,6 @@ void solve_heur_vns(instance* inst, double* x) {
 			min_sol_cost = curr_sol_cost;
 		}
 
-		// Take note on two .csv files of the current and best solution cost and the time instant to later get a plot of them
-		if (inst->verbose == TEST) {
-			fprintf(vns_curr_solution_csv_file, ", (%f, %f)", inst->timelimit - residual_timelimit, curr_sol_cost);
-			fprintf(vns_best_solution_csv_file, ", (%f, %f)", inst->timelimit - residual_timelimit, min_sol_cost);
-		}
 
 		// Check if the timelimit has been reached: if so => exit the loop
 		residual_timelimit = residual_timelimit - (t2 - t1);
@@ -2090,14 +2076,6 @@ void solve_heur_vns(instance* inst, double* x) {
 	if (inst->verbose >= MEDIUM) printf("\nHEUR_VNS -> Cost of the best solution: %f\n\n", min_sol_cost);
 	inst->z_best = min_sol_cost;
 
-	// Close the .csv files so that they can receive new data from other instances
-	if (inst->verbose == TEST) {
-		fprintf(vns_curr_solution_csv_file, "\n");
-		fprintf(vns_best_solution_csv_file, "\n");
-		fclose(vns_curr_solution_csv_file);
-		fclose(vns_best_solution_csv_file);
-	}
-
 	free(succ);
 }
 
@@ -2142,7 +2120,6 @@ void solve_heur_tabu(instance* inst, double* x) {
 			int a, b;
 			double min_delta_cost = INFINITY;
 
-			if (inst->verbose >= HIGH) printf("Current iteration: %d\n", n_iter);
 
 			// Every 500 iterations change the tenure value (es. for 1000 nodes, it alternates between 20 and 100)
 			if (n_iter % 500 == 0) {
@@ -2200,7 +2177,7 @@ void solve_heur_tabu(instance* inst, double* x) {
 			improving_phase = 1;
 			curr_cost += min_delta_cost;
 			_2opt_move(inst, a, b, succ);
-
+			
 			n_iter++;
 		}
 
@@ -2227,7 +2204,7 @@ void solve_heur_tabu(instance* inst, double* x) {
 		// Update the "tabu list" of nodes node_a and node_b, so that they will be tabu for "tenure" iterations from now
 		tabu[node_a] = n_iter;
 		tabu[node_b] = n_iter;
-		
+
 		n_iter++;
 	}
 
@@ -2399,7 +2376,6 @@ void get_nodes_list_from_succ(instance* inst, int* nodes_list, int* succ, int st
 	return;
 }
 
-
 void solve_heur_genetic(instance* inst, double* x, int pop_size, double ratio_2_opt) {
 	 
 	double residual_timelimit = inst->timelimit;
@@ -2407,27 +2383,6 @@ void solve_heur_genetic(instance* inst, double* x, int pop_size, double ratio_2_
 	double fitness_spread_at_first_epoch = 0.0;
 	double t1, t2 = 0.0;
 	int champion_index = -1;
-
-	// Open the .csv files which will be needed to take note of the average and Champion fitness
-	/*
-	FILE* average_fitness_csv_file;
-	FILE* champion_fitness_csv_file;
-	if (inst->verbose == TEST) {
-		char average_fitness_csv_path[120];
-		char champion_fitness_csv_path[120];
-		sprintf(average_fitness_csv_path, "../outputs/%s_average_fitness.csv", models[inst->model_type]);
-		sprintf(champion_fitness_csv_path, "../outputs/%s_champion_fitness.csv", models[inst->model_type]);
-
-		average_fitness_csv_file = fopen(average_fitness_csv_path, "a");
-		champion_fitness_csv_file = fopen(champion_fitness_csv_path, "a");
-
-		if (average_fitness_csv_file == NULL) print_error("average_fitness_csv_file not found inside \"outputs\" folder!");
-		if (champion_fitness_csv_file == NULL) print_error("champion_fitness_csv_file not found inside \"outputs\" folder!");
-
-		fprintf(average_fitness_csv_file, "%s", inst->inst_name);
-		fprintf(champion_fitness_csv_file, "%s", inst->inst_name);
-	}
-	*/
 
 	// Generate the starting population of pop_size (ex. 1000) random solutions (already with 2-opt refinement) and keep their costs (called "fitness")
 	int** population = (int**)malloc(pop_size * sizeof(int*));
@@ -2633,14 +2588,6 @@ void solve_heur_genetic(instance* inst, double* x, int pop_size, double ratio_2_
 		}
 		if (inst->verbose >= MEDIUM) printf("Champion fitness of epoch #%d: %f\n", n_epoch, best_fitness);
 
-		// Take note on a .csv file of both the average and the Champion fitness and the time instant to later get a plot of them
-		/*
-		if (inst->verbose == TEST) {
-			fprintf(average_fitness_csv_file, ", (%f, %f)", inst->timelimit - residual_timelimit, avg_fitness);
-			fprintf(champion_fitness_csv_file, ", (%f, %f)", inst->timelimit - residual_timelimit, best_fitness);
-		}
-		*/
-
 		// Also update the worst fitness after generating the offspring
 		worst_fitness = -INFINITY;
 		for (int i = 0; i < pop_size; i++) {
@@ -2724,16 +2671,6 @@ void solve_heur_genetic(instance* inst, double* x, int pop_size, double ratio_2_
 
 		n_epoch++;
 	}
-
-	// Close the .csv files so that they can receive new data from other instances
-	/*
-	if (inst->verbose == TEST) {
-		fprintf(average_fitness_csv_file, "\n");
-		fprintf(champion_fitness_csv_file, "\n");
-		fclose(average_fitness_csv_file);
-		fclose(champion_fitness_csv_file);
-	}
-	*/
 	
 	// Free all the memory allocated for the population solutions
 	for (int i = 0; i < pop_size; i++) free(population[i]);
@@ -2762,9 +2699,9 @@ void build_model_BASIC(instance* inst, CPXENVptr env, CPXLPptr lp) {
 			double obj = dist(i, j, inst);						// cost == distance   
 			double lb = 0.0;
 			double ub = 1.0;
-			if (CPXnewcols(env, lp, 1, &obj, &lb, &ub, &binary, cname)) { print_error("Wrong CPXnewcols on x variables"); }
+			if (CPXnewcols(env, lp, 1, &obj, &lb, &ub, &binary, cname)) print_error("Wrong CPXnewcols on x variables");
 			// Verify if xpos returns the right position inside the tableu (xpos starts from 0)
-			if (CPXgetnumcols(env, lp) - 1 != xpos(i, j, inst)) { print_error("Wrong position for x variables"); }
+			if (CPXgetnumcols(env, lp) - 1 != xpos(i, j, inst)) print_error("Wrong position for x variables");
 		}
 	}
 
@@ -2823,7 +2760,7 @@ void build_model_MTZ_STATIC(instance* inst, CPXENVptr env, CPXLPptr lp) {
 			double lb = 0.0;
 			double ub = 1.0;
 			if (i == j) { ub = 0.0; }
-			if (CPXnewcols(env, lp, 1, &obj, &lb, &ub, &binary, cname)) { print_error("Wrong CPXnewcols on x variables"); }
+			if (CPXnewcols(env, lp, 1, &obj, &lb, &ub, &binary, cname)) print_error("Wrong CPXnewcols on x variables");
 
 			//printf("Curr num_cols: %d\n", CPXgetnumcols(env, lp));
 			// Verify if xpos returns the right position inside the tableu (xpos_compact starts from 0)
@@ -2841,7 +2778,7 @@ void build_model_MTZ_STATIC(instance* inst, CPXENVptr env, CPXLPptr lp) {
 		double obj = 0.0;
 		double lb = 0.0;
 		double ub = inst->nnodes - 2.0;
-		if (CPXnewcols(env, lp, 1, &obj, &lb, &ub, &integer, cname)) { print_error("Wrong CPXnewcols on x variables"); }
+		if (CPXnewcols(env, lp, 1, &obj, &lb, &ub, &integer, cname)) print_error("Wrong CPXnewcols on x variables");
 
 		//printf("Curr num_cols: %d\n", CPXgetnumcols(env, lp));
 		if (CPXgetnumcols(env, lp) - 1 != upos_compact(i, inst)) {
@@ -2916,7 +2853,7 @@ void build_model_MTZ_STATIC(instance* inst, CPXENVptr env, CPXLPptr lp) {
 
 void build_model_MTZ_LAZY(instance* inst, CPXENVptr env, CPXLPptr lp) {
 
-	// Model MTZ with lazy subtour elimination constraints.
+	// Model MTZ with lazy consistency constraints.
 
 	double zero = 0.0;
 	char binary = 'B';
@@ -2934,7 +2871,7 @@ void build_model_MTZ_LAZY(instance* inst, CPXENVptr env, CPXLPptr lp) {
 			double lb = 0.0;
 			double ub = 1.0;
 			if (i == j) { ub = 0.0; }
-			if (CPXnewcols(env, lp, 1, &obj, &lb, &ub, &binary, cname)) { print_error("Wrong CPXnewcols on x variables"); }
+			if (CPXnewcols(env, lp, 1, &obj, &lb, &ub, &binary, cname)) print_error("Wrong CPXnewcols on x variables");
 
 			//printf("Curr num_cols: %d\n", CPXgetnumcols(env, lp));
 			// Verify if xpos returns the right position inside the tableu (xpos_compact starts from 0)
@@ -2952,7 +2889,7 @@ void build_model_MTZ_LAZY(instance* inst, CPXENVptr env, CPXLPptr lp) {
 		double obj = 0.0;
 		double lb = 0.0;
 		double ub = inst->nnodes - 2.0;
-		if (CPXnewcols(env, lp, 1, &obj, &lb, &ub, &integer, cname)) { print_error("Wrong CPXnewcols on x variables"); }
+		if (CPXnewcols(env, lp, 1, &obj, &lb, &ub, &integer, cname)) print_error("Wrong CPXnewcols on x variables");
 
 		//printf("Curr num_cols: %d\n", CPXgetnumcols(env, lp));
 		if (CPXgetnumcols(env, lp) - 1 != upos_compact(i, inst)) {
@@ -2997,9 +2934,9 @@ void build_model_MTZ_LAZY(instance* inst, CPXENVptr env, CPXLPptr lp) {
 
 	// Add the u consistency constraints for each edge (i,j)
 	double M = inst->nnodes - 1.0;								// Smallest M value for big M trick
-	rhs = M - 1;											// "rhs" = right-hand side of the degree constraints
-	sense = 'L';											// 'L' for less-or-equal constraint
-	nnz = 3;												// number of cells != 0 in the row
+	rhs = M - 1;												// "rhs" = right-hand side of the degree constraints
+	sense = 'L';												// 'L' for less-or-equal constraint
+	nnz = 3;													// number of cells != 0 in the row
 	for (int i = 1; i < inst->nnodes; i++) {
 		for (int j = 1; j < inst->nnodes; j++) {
 			if (i == j) continue;
@@ -3045,7 +2982,7 @@ void build_model_MTZ_SEC2_STATIC(instance* inst, CPXENVptr env, CPXLPptr lp) {
 			double lb = 0.0;
 			double ub = 1.0;
 			if (i == j) { ub = 0.0; }
-			if (CPXnewcols(env, lp, 1, &obj, &lb, &ub, &binary, cname)) { print_error("Wrong CPXnewcols on x variables"); }
+			if (CPXnewcols(env, lp, 1, &obj, &lb, &ub, &binary, cname)) print_error("Wrong CPXnewcols on x variables");
 
 			//printf("Curr num_cols: %d\n", CPXgetnumcols(env, lp));
 			// Verify if xpos returns the right position inside the tableu (xpos_compact starts from 0)
@@ -3063,7 +3000,7 @@ void build_model_MTZ_SEC2_STATIC(instance* inst, CPXENVptr env, CPXLPptr lp) {
 		double obj = 0.0;
 		double lb = 0.0;
 		double ub = inst->nnodes - 2.0;
-		if (CPXnewcols(env, lp, 1, &obj, &lb, &ub, &integer, cname)) { print_error("Wrong CPXnewcols on x variables"); }
+		if (CPXnewcols(env, lp, 1, &obj, &lb, &ub, &integer, cname)) print_error("Wrong CPXnewcols on x variables");
 
 		//printf("Curr num_cols: %d\n", CPXgetnumcols(env, lp));
 		if (CPXgetnumcols(env, lp) - 1 != upos_compact(i, inst)) {
@@ -3155,7 +3092,7 @@ void build_model_MTZ_SEC2_STATIC(instance* inst, CPXENVptr env, CPXLPptr lp) {
 
 void build_model_MTZ_SEC2_LAZY(instance* inst, CPXENVptr env, CPXLPptr lp) {
 
-	// Model MTZ with lazy subtour elimination constraints of dimension 2.
+	// Model MTZ with both lazy consistency constraints and lazy subtour elimination constraints of dimension 2.
 
 	double zero = 0.0;
 	char binary = 'B';
@@ -3173,7 +3110,7 @@ void build_model_MTZ_SEC2_LAZY(instance* inst, CPXENVptr env, CPXLPptr lp) {
 			double lb = 0.0;
 			double ub = 1.0;
 			if (i == j) { ub = 0.0; }
-			if (CPXnewcols(env, lp, 1, &obj, &lb, &ub, &binary, cname)) { print_error("Wrong CPXnewcols on x variables"); }
+			if (CPXnewcols(env, lp, 1, &obj, &lb, &ub, &binary, cname)) print_error("Wrong CPXnewcols on x variables");
 
 			//printf("Curr num_cols: %d\n", CPXgetnumcols(env, lp));
 			// Verify if xpos returns the right position inside the tableu (xpos_compact starts from 0)
@@ -3191,7 +3128,7 @@ void build_model_MTZ_SEC2_LAZY(instance* inst, CPXENVptr env, CPXLPptr lp) {
 		double obj = 0.0;
 		double lb = 0.0;
 		double ub = inst->nnodes - 2.0;
-		if (CPXnewcols(env, lp, 1, &obj, &lb, &ub, &integer, cname)) { print_error("Wrong CPXnewcols on x variables"); }
+		if (CPXnewcols(env, lp, 1, &obj, &lb, &ub, &integer, cname)) print_error("Wrong CPXnewcols on x variables");
 
 		//printf("Curr num_cols: %d\n", CPXgetnumcols(env, lp));
 		if (CPXgetnumcols(env, lp) - 1 != upos_compact(i, inst)) {
@@ -3301,7 +3238,7 @@ void build_model_GG(instance* inst, CPXENVptr env, CPXLPptr lp) {
 			double lb = 0.0;
 			double ub = 1.0;
 			if (i == j) { ub = 0.0; }
-			if (CPXnewcols(env, lp, 1, &obj, &lb, &ub, &binary, cname)) { print_error("Wrong CPXnewcols on x variables"); }
+			if (CPXnewcols(env, lp, 1, &obj, &lb, &ub, &binary, cname)) print_error("Wrong CPXnewcols on x variables");
 
 			//printf("Curr num_cols: %d\n", CPXgetnumcols(env, lp));
 			// Verify if xpos returns the right position inside the tableu (xpos_compact starts from 0)
@@ -3321,7 +3258,7 @@ void build_model_GG(instance* inst, CPXENVptr env, CPXLPptr lp) {
 			double lb = 0.0;
 			double ub = inst->nnodes - 1.0;
 			if (i == j || j == 0) ub = 0.0;
-			if (CPXnewcols(env, lp, 1, &obj, &lb, &ub, &integer, cname)) { print_error("Wrong CPXnewcols on y variables"); }
+			if (CPXnewcols(env, lp, 1, &obj, &lb, &ub, &integer, cname)) print_error("Wrong CPXnewcols on y variables");
 
 			//printf("Curr num_cols: %d\n", CPXgetnumcols(env, lp));
 			if (CPXgetnumcols(env, lp) - 1 != ypos_compact(i, j, inst)) {
@@ -3366,7 +3303,6 @@ void build_model_GG(instance* inst, CPXENVptr env, CPXLPptr lp) {
 	}
 
 	// Add the linking constraints for the variable y
-	// Add the u consistency constraints for each edge (i,j)
 	rhs = 0.0;																		// "rhs" = right-hand side of the degree constraints
 	sense = 'L';																	// 'L' for less-or-equal constraint
 	nnz = 2;																		// number of cells != 0 in the row
@@ -3375,7 +3311,7 @@ void build_model_GG(instance* inst, CPXENVptr env, CPXLPptr lp) {
 			if (i == j) continue;
 
 			sprintf(cname[0], "linking_constr(%d,%d)", i + 1, j + 1);
-			index[0] = xpos_compact(i, j, inst);									// +(2.0 - N) * Xij
+			index[0] = xpos_compact(i, j, inst);									// +(1.0 - N) * Xij
 			value[0] = 1.0 - inst->nnodes;
 			index[1] = ypos_compact(i, j, inst);									// +1.0 * Yij
 			value[1] = 1.0;

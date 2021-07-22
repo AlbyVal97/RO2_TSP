@@ -296,7 +296,6 @@ void create_instances(instance* inst) {
 	for (int i = 0; i < inst->n_instances; i++) {
 		seeds[i] = base_seed + i * 9;
 	}
-
 	
 	char inst_name[20];
 	char inst_file_path[50];
@@ -359,8 +358,8 @@ void free_instance(instance* inst) {
 
 	free(inst->xcoord);
 	free(inst->ycoord);
-	// N.B. only HEUR_HARD_FIX_* and HEUR_SOFT_FIX_K initialize "inst->model_type" !
-	if (inst->model_type > ADVBC_PROB_10 && inst->model_type < HEUR_GREEDY) free(inst->best_sol);
+	// N.B. only HEUR_SOFT_FIX_K initialize "inst->model_type" and need it to be freed!
+	if (inst->model_type > HEUR_HARD_FIX_VAR && inst->model_type < HEUR_GREEDY) free(inst->best_sol);
 
 	return;
 }

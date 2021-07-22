@@ -27,7 +27,7 @@
 // -m 2 -test test_adv_bc_example -folder test_instances_200 -n_inst 5 -n_models 5 8 9 10 11 12 -prefix rnd -time_limit 60
 // -m 2 -test test_bend_bc_example -folder test_instances_200 -n_inst 5 -n_models 2 6 7 -prefix rnd -time_limit 60
 
-// -f ../data/test_instances_750/rnd_750_1.tsp -seed 123456 -model_type 16 -verbose 2 -time_limit 1200
+// \
 // 
 // LESSON
 // -f ../data/test_instances_500/rnd_500_1.tsp -seed 123456 -model_type 18 -verbose 2 -time_limit 120
