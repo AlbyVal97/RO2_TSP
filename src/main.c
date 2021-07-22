@@ -65,6 +65,8 @@
 // -m 2 -test test_metaheuristics_part_3 -folder test_instances_2000_part_3 -n_inst 5 -n_models 4 28 29 30 31 -prefix rnd_2000 -time_limit 1800
 // -m 2 -test test_metaheuristics_part_4 -folder test_instances_2000_part_4 -n_inst 5 -n_models 4 28 29 30 31 -prefix rnd_2000 -time_limit 1800
 
+// -m 2 -test test_genetic_pop_size_100 -folder test_instances_2000 -n_inst 20 -n_models 1 30 -prefix rnd_2000 -time_limit 1800
+
 void update_csvfile(instance* inst, int first_model, int last_model, double time, double z_best);
 void run_test(instance* inst);
 
