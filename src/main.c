@@ -22,15 +22,6 @@
 // -m 1 -folder test_instances_2000 -prefix rnd_2000 -n_inst 20 -n_nodes 2000
 // -m 1 -folder test_instances_5000 -prefix rnd_5000 -n_inst 20 -n_nodes 5000
 
-// -f ../data/test_instances_200/rnd_200_1.tsp -seed 123456 -model_type 6 -verbose 2 -time_limit 60
-// -f ../data/test_instances_200/rnd_200_3.tsp -seed 123456 -model_type 8 -verbose 3 -time_limit 3600
-// -m 2 -test test_adv_bc_example -folder test_instances_200 -n_inst 5 -n_models 5 8 9 10 11 12 -prefix rnd -time_limit 60
-// -m 2 -test test_bend_bc_example -folder test_instances_200 -n_inst 5 -n_models 2 6 7 -prefix rnd -time_limit 60
-
-// \
-// 
-// LESSON
-// -f ../data/test_instances_500/rnd_500_1.tsp -seed 123456 -model_type 18 -verbose 2 -time_limit 120
 
 // Command line arguments list for compact models official tests:
 // -m 2 -test test_compact_models_50 -folder test_instances_50 -n_inst 20 -n_models 5 1 2 3 4 5 -prefix rnd_50 -time_limit 1800
@@ -65,7 +56,8 @@
 // -m 2 -test test_metaheuristics_part_3 -folder test_instances_2000_part_3 -n_inst 5 -n_models 4 28 29 30 31 -prefix rnd_2000 -time_limit 1800
 // -m 2 -test test_metaheuristics_part_4 -folder test_instances_2000_part_4 -n_inst 5 -n_models 4 28 29 30 31 -prefix rnd_2000 -time_limit 1800
 
-// -m 2 -test test_genetic_pop_size_100 -folder test_instances_2000 -n_inst 20 -n_models 1 30 -prefix rnd_2000 -time_limit 1800
+// -m 2 -test test_soft_fixing_2000 -folder test_instances_2000 -n_inst 20 -n_models 1 21 -prefix rnd_2000 -time_limit 1800
+
 
 void update_csvfile(instance* inst, int first_model, int last_model, double time, double z_best);
 void run_test(instance* inst);
