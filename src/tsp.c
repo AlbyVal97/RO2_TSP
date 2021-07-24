@@ -1059,7 +1059,8 @@ void solve_heur_soft_fix(instance* inst, CPXENVptr env, CPXLPptr lp) {
 	if (CPXsetintparam(env, CPXPARAM_Advance, 1)) print_error("CPXsetintparam() error in setting CPXPARAM_Advance");
 
 	// Set to solve just the root node: by doing that we will get a feasible solution, but not the optimal one => good as a starting point for heuristics
-	if (CPXsetintparam(env, CPX_PARAM_NODELIM, 0)) print_error("CPXsetintparam() error in setting node limit");
+	//if (CPXsetintparam(env, CPX_PARAM_NODELIM, 0)) print_error("CPXsetintparam() error in setting node limit");
+	if (CPXsetdblparam(env, CPX_PARAM_TILIM, residual_timelimit/5)) print_error("CPXsetdblparam() error in setting timelimit");
 
 	// Run TSP solver (which is the branch and cut with fractional subtour elimination constraints only applied on the root node)
 	double t1 = second();
@@ -1082,7 +1083,7 @@ void solve_heur_soft_fix(instance* inst, CPXENVptr env, CPXLPptr lp) {
 	char** cname = (char**)calloc(1, sizeof(char*));								// (char **) required by cplex...
 	cname[0] = (char*)calloc(100, sizeof(char));
 
-	if (CPXsetintparam(env, CPX_PARAM_NODELIM, 2100000000)) print_error("CPXsetintparam() error in setting node limit");
+	//if (CPXsetintparam(env, CPX_PARAM_NODELIM, 2100000000)) print_error("CPXsetintparam() error in setting node limit");
 
 	while (1) {
 
