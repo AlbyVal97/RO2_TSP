@@ -19,7 +19,7 @@
 // -m 1 -folder test_instances_500 -prefix rnd_500 -n_inst 20 -n_nodes 500
 // -m 1 -folder test_instances_750 -prefix rnd_750 -n_inst 40 -n_nodes 750
 // -m 1 -folder test_instances_1000 -prefix rnd_1000 -n_inst 40 -n_nodes 1000
-// -m 1 -folder test_instances_2000 -prefix rnd_2000 -n_inst 20 -n_nodes 2000
+// -m 1 -folder test_instances_2000 -prefix rnd_2000 -n_inst 40 -n_nodes 2000
 // -m 1 -folder test_instances_5000 -prefix rnd_5000 -n_inst 20 -n_nodes 5000
 
 
@@ -56,7 +56,10 @@
 // -m 2 -test test_metaheuristics_part_3 -folder test_instances_2000_part_3 -n_inst 5 -n_models 4 28 29 30 31 -prefix rnd_2000 -time_limit 1800
 // -m 2 -test test_metaheuristics_part_4 -folder test_instances_2000_part_4 -n_inst 5 -n_models 4 28 29 30 31 -prefix rnd_2000 -time_limit 1800
 
-// -m 2 -test test_soft_fixing_2000 -folder test_instances_2000 -n_inst 20 -n_models 1 21 -prefix rnd_2000 -time_limit 1800
+// Command line arguments lists for heuristics final test: VNS vs HEUR_SOFT_FIX_9 (each run takes about 30 minutes):
+// -m 2 -test test_soft_fixing_2000_6_minutes_first_timelimit -folder test_instances_2000_final_test -n_inst 20 -n_models 1 21 -prefix rnd_2000 -time_limit 1800
+// -m 2 -test test_soft_fixing_2000_10_minutes_first_timelimit -folder test_instances_2000_final_test -n_inst 20 -n_models 1 21 -prefix rnd_2000 -time_limit 1800
+// -m 2 -test test_vns_2000 -folder test_instances_2000_final_test -n_inst 20 -n_models 1 28 -prefix rnd_2000 -time_limit 1800
 
 
 void update_csvfile(instance* inst, int first_model, int last_model, double time, double z_best);
