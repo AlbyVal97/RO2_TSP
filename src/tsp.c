@@ -2664,7 +2664,7 @@ void solve_heur_genetic(instance* inst, double* x, int pop_size, double ratio_2_
 
 		t1 = second();
 
-		// Before starting the new epoch, let's introduce some random mutations, where a mutation consistes in swapping 2 nodes of a solution.
+		// Before starting the new epoch, let's introduce some random mutations, where a mutation consists in swapping 2 nodes of a solution.
 		// N.B. We want to apply a bunch of mutations when the spread between the worst and best solution is too low compared to that of the first epoch (ex. < 10%)
 		double fitness_spread = (worst_fitness - best_fitness);
 		if (n_epoch == 1) fitness_spread_at_first_epoch = fitness_spread;					// Memorize the fitness spread of the first epoch as a reference to keep "close" to
